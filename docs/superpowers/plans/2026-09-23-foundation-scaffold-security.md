@@ -4,17 +4,17 @@
 
 **Goal:** 산책냥 앱의 클라이언트 뼈대(Expo/TS 프로젝트 구조)와 백엔드 데이터 모델(Postgres+PostGIS 스키마)을 만들고, "서버가 진실 원천" 원칙을 RLS 정책 + 자동화된 pgTAP 테스트로 강제한다.
 
-**Architecture:** `mobile/`(Expo SDK54/RN0.81/TS strict, expo-router root=`src/app`)와 `supabase/`(Postgres+PostGIS, RLS)를 리포 루트에 나란히 둔다. 성장 데이터(체크인·아지트·안개·영역)는 `service_role`(Edge Function)만 쓸 수 있고 클라이언트는 읽기만 가능하도록 RLS로 원천 차단 — 이 규칙이 지켜지는지 pgTAP으로 매 커밋마다 검증한다.
+**Architecture:** `mobile/`(Expo 최신 안정 SDK/TS strict, expo-router root=`src/app`)와 `supabase/`(Postgres+PostGIS, RLS)를 리포 루트에 나란히 둔다. 성장 데이터(체크인·아지트·안개·영역)는 `service_role`(Edge Function)만 쓸 수 있고 클라이언트는 읽기만 가능하도록 RLS로 원천 차단 — 이 규칙이 지켜지는지 pgTAP으로 매 커밋마다 검증한다.
 
-**Tech Stack:** Expo SDK 54 / RN 0.81 / React 19 / TypeScript strict / expo-router 6 / Supabase CLI / Postgres 15 + PostGIS / pgTAP / GitHub Actions.
+**Tech Stack:** Expo SDK 57 / RN 0.86 / React 19 / TypeScript strict / expo-router ~57 / Supabase CLI / Postgres 15 + PostGIS / pgTAP / GitHub Actions. (2026-09-23 결정: 실사용자 0명의 완전 신규 빌드라 "기존 코드 승계" 전제가 적용되지 않음 — SDK54/RN0.81 고정을 폐기하고 스캐폴드 시점의 최신 안정 버전을 채택. 근거는 Global Constraints 아래 참조.)
 
 **Spec:** `docs/기술-아키텍처-v1.md` §1(스택), §3(클라이언트 모듈 구조), §5(데이터 모델), §8(RLS 보안 전략). 앱 이름·범위는 `docs/README.md`, `docs/출시용-v1-범위정의.md` 참조.
 
 ## Global Constraints
 
-- Expo SDK 54 / RN 0.81 / React 19 / New Architecture ON (승계 스택, 변경 금지)
+- Expo SDK 57 / RN 0.86 / React 19 / New Architecture ON (2026-09-23 결정: 완전 신규 빌드이므로 "레거시 승계" 근거 없음 — 스캐폴드 시점의 최신 안정 버전 채택. 이후 임의로 재부트스트랩해서 버전을 바꾸지 말 것 — 바꾸려면 이 문서를 먼저 갱신)
 - TypeScript strict 모드, `any` 사용 금지 (ESLint 규칙으로 강제)
-- expo-router 6, `typedRoutes` 활성화, 라우트 루트는 `mobile/src/app`
+- expo-router ~57 (SDK 버전에 맞춰 배포되는 현재 넘버링), `typedRoutes` 활성화, 라우트 루트는 `mobile/src/app`
 - 모든 좌표 컬럼은 `geography(Point,4326)` + GIST 인덱스만 사용 — 문자열 좌표·geohash 금지
 - 성장/체크인/아지트/영역 데이터는 클라이언트(anon/authenticated 롤)가 절대 쓸 수 없음 — `service_role`(Edge Function)만 쓰기 가능. RLS로 강제하고 pgTAP으로 검증
 - 앱 이름은 "산책냥", 번들ID `com.hyeonsung.sheriff` 유지(변경 금지)
