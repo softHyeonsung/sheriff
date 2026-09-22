@@ -1,0 +1,91 @@
+/* 산책냥 디자인 토큰 — v1 (2026-09-22, 구 "보안관")
+   출처: claude/DESIGN.md · 규칙: 화면 코드에 raw hex 직접 금지, 이 토큰만 참조.
+   기본 테마 = "앰버 마을". 다크 = "저녁" 프리셋. 성장 등급색은 에셋 확정 후 교체(placeholder). */
+
+:root {
+  /* --- color --- */
+  --color-surface:      #FBF6EC;   /* 화면 바탕 (넓게) */
+  --color-surface-card: #FFFFFF;   /* 카드·바텀시트 */
+  --color-primary:      #E6A552;   /* 브랜드 포인트·CTA (면·아이콘·버튼 전용) */
+  --color-primary-deep: #C98A3C;   /* 강조 */
+  --color-nature:       #9FBF9C;   /* 자연 베이스 = 걷힌(개척) 영역 */
+  --color-nature-deep:  #6E8F6B;
+  --color-fog:          #CFC8BA;   /* 미개척 안개 (fog of war) */
+  --color-sky:          #BFD8DF;   /* 보조 포인트 */
+  --color-ink:          #4A3D30;   /* 본문 글자 */
+  --color-ink-sub:      #8A7A68;   /* 보조 글자 */
+  --color-line:         #ECE3D2;   /* 구분선 */
+  --color-on-primary:   #3B2A16;   /* primary 위 글자 */
+
+  /* 성장 등급색 — PLACEHOLDER (asset-first, 완성 아트에서 추출 후 교체) */
+  --grade-1-paw:      #E6A552;
+  --grade-2-box:      #C98A3C;
+  --grade-3-house:    #9FBF9C;
+  --grade-4-tower:    #6E8F6B;
+  --grade-5-castle:   #C98A3C;
+
+  /* --- typography --- */
+  --font-sans: "Pretendard", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+  --fs-display: 28px; --lh-display: 36px; --fw-display: 700;
+  --fs-title:   22px; --lh-title:   30px; --fw-title:   700;
+  --fs-subtitle:18px; --lh-subtitle:26px; --fw-subtitle:600;
+  --fs-body:    16px; --lh-body:    24px; --fw-body:    400;
+  --fs-caption: 13px; --lh-caption: 18px; --fw-caption: 400;
+  --fs-micro:   11px; --lh-micro:   14px; --fw-micro:   500;
+
+  /* --- radius --- */
+  --radius-card: 16px;
+  --radius-btn:  12px;
+  --radius-sheet:24px;
+  --radius-pill: 999px;
+  --radius-min:  8px;
+
+  /* --- spacing (4pt grid) --- */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --gutter: 20px;      /* 화면 좌우 거터 */
+  --section-gap: 24px;
+  --tap-min: 44px;     /* 최소 탭 타깃 (iOS HIG) */
+
+  /* --- elevation / motion --- */
+  --shadow-soft: 0 6px 16px rgba(74, 61, 48, 0.08);  /* 웜 소프트 (검정 금지) */
+  --dur-fast: 200ms;
+  --dur-base: 250ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-celebrate: 600ms;   /* 성장 축하 정점 */
+}
+
+/* 다크 = "저녁" 프리셋 (system 다크) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-surface:      #2A2620;
+    --color-surface-card: #35302A;
+    --color-primary:      #E6A552;
+    --color-primary-deep: #EBB767;
+    --color-nature:       #86A583;
+    --color-nature-deep:  #A9C6A4;
+    --color-fog:          #48423A;
+    --color-sky:          #7C97A0;
+    --color-ink:          #F3ECDD;
+    --color-ink-sub:      #B9AE9B;
+    --color-line:         #453F38;
+    --color-on-primary:   #2A1E0E;
+    --shadow-soft: 0 6px 16px rgba(0, 0, 0, 0.38);
+  }
+}
+/* 명시적 다크 선택 (토글) */
+:root[data-theme="dark"] {
+  --color-surface:      #2A2620;
+  --color-surface-card: #35302A;
+  --color-primary:      #E6A552;
+  --color-primary-deep: #EBB767;
+  --color-nature:       #86A583;
+  --color-nature-deep:  #A9C6A4;
+  --color-fog:          #48423A;
+  --color-sky:          #7C97A0;
+  --color-ink:          #F3ECDD;
+  --color-ink-sub:      #B9AE9B;
+  --color-line:         #453F38;
+  --color-on-primary:   #2A1E0E;
+  --shadow-soft: 0 6px 16px rgba(0, 0, 0, 0.38);
+}
