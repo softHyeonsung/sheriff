@@ -62,6 +62,20 @@ git mv mobile/app mobile/src/app
 ["expo-router", { "root": "./src/app" }]
 ```
 
+- [ ] **Step 3.5: 앱 이름·번들ID 고정**
+
+`mobile/app.json`의 `expo` 객체에 다음 필드를 설정(기존 승계 값 — 절대 새로 생성하지 말 것):
+```json
+{
+  "expo": {
+    "name": "산책냥",
+    "slug": "sanchaeknyang",
+    "ios": { "bundleIdentifier": "com.hyeonsung.sheriff" },
+    "android": { "package": "com.hyeonsung.sheriff" }
+  }
+}
+```
+
 - [ ] **Step 4: 도메인 폴더 스캐폴드**
 
 ```
@@ -98,10 +112,12 @@ Run: `cd mobile && npx expo install jest-expo jest @types/jest react-test-render
 
 - [ ] **Step 7: 스모크 테스트 작성**
 
+`create-expo-app`의 기본 템플릿이 만든 최초 진입 라우트 파일을 Step 3에서 이동한 `mobile/src/app/` 아래에서 직접 확인하고(예: `index.tsx` 또는 `(tabs)/index.tsx` — 템플릿 버전에 따라 다를 수 있음), **실제로 존재하는 경로**를 import하도록 아래 테스트를 작성한다(경로만 실제 파일에 맞게 고칠 것, 테스트 내용은 동일):
+
 ```tsx
 // mobile/src/app/__tests__/index.test.tsx
 import { render, screen } from '@testing-library/react-native';
-import Index from '../index';
+import Index from '../index'; // 실제 생성된 진입 라우트 경로로 교체
 
 test('홈 화면이 크래시 없이 렌더된다', () => {
   render(<Index />);
