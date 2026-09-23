@@ -6,6 +6,10 @@ create policy "users_select_own" on public.users
   for select to authenticated using (auth.uid() = uid);
 create policy "users_update_own" on public.users
   for update to authenticated using (auth.uid() = uid) with check (auth.uid() = uid);
+-- RLS는 행 단위 제어만 한다 — 열 단위 제어(email/provider/terms_agreed_at은
+-- service_role/Edge Function 전용)는 컬럼 GRANT로 별도 강제해야 한다.
+revoke update on public.users from authenticated;
+grant update (home_address) on public.users to authenticated;
 
 -- profiles: 인증 전체 읽기, 쓰기는 service_role만(정책 없음 = 차단)
 alter table public.profiles enable row level security;

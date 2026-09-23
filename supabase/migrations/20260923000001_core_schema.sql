@@ -1,5 +1,5 @@
 -- supabase/migrations/20260923000001_core_schema.sql
-create extension if not exists postgis;
+create extension if not exists postgis with schema extensions;
 
 -- 비공개 사용자 정보
 create table public.users (

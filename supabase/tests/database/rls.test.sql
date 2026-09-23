@@ -1,6 +1,12 @@
 -- supabase/tests/database/rls.test.sql
 begin;
-select plan(6);
+select plan(8);
+
+select is_empty(
+  $$select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity$$,
+  'public 스키마의 모든 테이블에 RLS가 켜져 있다'
+);
 
 -- fixture: auth.users는 supabase auth 스키마 — 슈퍼유저로 직접 삽입(RLS 우회)
 insert into auth.users (id) values
@@ -69,6 +75,13 @@ select throws_ok(
   '42501',
   null,
   '사용자 A는 사용자 B 명의로 wishlist 삽입 불가(with check 위반)'
+);
+
+select throws_ok(
+  $$update public.users set terms_agreed_at = now() where uid = '11111111-1111-1111-1111-111111111111'$$,
+  '42501',
+  null,
+  '사용자 A는 본인 행이라도 terms_agreed_at은 컬럼 GRANT로 차단된다(RLS만으로는 불충분)'
 );
 
 select * from finish();
