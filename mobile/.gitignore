@@ -7,7 +7,9 @@ node_modules/
 .expo/
 dist/
 web-build/
-expo-env.d.ts
+# expo-env.d.ts is committed (not ignored) — CI does a fresh checkout with no
+# `expo start` step to regenerate it, and `tsc` fails without it. Content is
+# static boilerplate for a given Expo version, safe to commit.
 
 # Native
 .kotlin/
