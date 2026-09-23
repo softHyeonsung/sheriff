@@ -20,6 +20,16 @@
 - Supabase Admin API(`admin.createUser`, `admin.generateLink`, `auth.verifyOtp`)의 정확한 파라미터·응답 필드·에러 형태는 시점에 따라 바뀔 수 있다 — 구현 전 반드시 `https://supabase.com/docs/reference/javascript/auth-admin-generatelink`, `auth-admin-createuser`, `auth-verifyotp`를 확인하고, 이 플랜에 적힌 코드와 다르면 **공식 문서 쪽을 따르고 그 사실을 보고할 것**(학습 데이터를 그대로 믿지 말 것 — `mobile/AGENTS.md`가 Expo에 대해 요구하는 것과 같은 원칙을 Supabase Admin API에도 적용).
 - 카카오 code→token 교환의 실제 종단 테스트(진짜 카카오 로그인 화면을 사람이 직접 탭하는 것)는 자동화된 서브에이전트가 할 수 없다 — Task 2는 Kakao API 호출을 mock한 단위 테스트로, Task 3/4는 화면 렌더·상태 전이 테스트로 검증하고, **진짜 종단 확인은 이 플랜의 마지막에 인간이 실기기/시뮬레이터에서 한 번 직접 로그인해보는 것**으로 마무리한다.
 
+## 변경 (2026-09-23, 구현 중): 카카오 네이티브 SDK로 전환
+
+카카오 콘솔이 Redirect URI로 `http(s)://`만 받아서 `sanchaeknyang://oauthredirect` 등록이 거부됨("유효하지 않음"). 그래서 브라우저 OAuth(authorization code) 방식을 버리고 **카카오 네이티브 SDK(`@react-native-kakao/core` + `/user` 2.4.6)**로 바꿨다. 아래 Task 2·3 본문은 원래 설계 기록이고, 실제 코드는 다음과 같다:
+
+- **Task 2 계약 변경:** `POST { kakaoAccessToken } → { access_token, refresh_token } | { error }`. Edge Function이 `GET kapi.kakao.com/v1/user/access_token_info`로 토큰의 `app_id`가 우리 앱(`KAKAO_APP_ID`)인지 검증한 뒤 세션을 발급한다. 다른 카카오 앱에서 발급된 토큰은 거부(토큰 바꿔치기 방지). code 교환이 없으므로 `KAKAO_REST_KEY`/`KAKAO_CLIENT_SECRET`은 더 이상 쓰지 않는다.
+- **Task 3 교체:** `expo-auth-session`/`useKakaoLogin`/`KAKAO_REDIRECT_URI` 삭제 → `mobile/src/features/auth/kakaoLogin.ts`의 `loginWithKakao(): Promise<string>`(카카오 액세스 토큰 반환). 네이티브 앱 키는 `mobile/app.config.js`가 `EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY`에서 읽어 config plugin에 넘긴다. Expo Go 불가 — dev build 필요.
+- **env:** `supabase/functions/.env.local`에 `KAKAO_APP_ID`(콘솔의 숫자 앱 ID), `mobile/.env.local`에 `EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY`.
+- **카카오 콘솔:** Redirect URI 불필요. 대신 플랫폼에 Android 패키지명 `com.hyeonsung.sheriff` + 키 해시, iOS 번들 ID `com.hyeonsung.sheriff` 등록.
+- **추가 보안:** 계정 소유는 `app_metadata.kakao_id`로 묶고 세션 발급 전 확인, `[auth.email] enable_signup = false`(합성 이메일 선점 방지).
+
 ---
 
 ## Task 1: Supabase 클라이언트 + 보안 세션 저장소
@@ -410,7 +420,7 @@ git commit -m "feat(mobile): add Kakao OAuth login screen via expo-auth-session"
 - Test: `mobile/src/stores/__tests__/authStore.test.ts`
 
 **Interfaces:**
-- Consumes: Task 1의 `supabase`(`mobile/src/services/supabase.ts`), Task 2의 `kakao-custom-token` 계약(`{code, redirectUri} → {access_token, refresh_token}`), Task 3의 `useKakaoLogin()`과 `KAKAO_REDIRECT_URI`.
+- Consumes: Task 1의 `supabase`(`mobile/src/services/supabase.ts`), Task 2의 `kakao-custom-token` 계약(`{kakaoAccessToken} → {access_token, refresh_token}`), Task 3의 `loginWithKakao()`.
 - Produces: `useAuthSession()` — `{ session, loading, signOut }`. 이후 모든 화면은 이 훅 하나로 로그인 상태를 읽는다(원칙: 화면에서 `supabase.auth` 직접 호출 금지).
 
 - [ ] **Step 1: authStore**
@@ -466,52 +476,43 @@ export function useAuthSession() {
 
 - [ ] **Step 3: 로그인 화면에서 Edge Function 연결**
 
-`mobile/src/app/login.tsx`를 수정해 `response`가 성공(`type === 'success'`)이면 `code`를 꺼내 로컬 Edge Function(`http://127.0.0.1:54321/functions/v1/kakao-custom-token`)에 POST하고, 받은 `access_token`/`refresh_token`으로 `supabase.auth.setSession(...)`을 호출한 뒤 `router.replace('/profile')`로 이동한다:
+`loginWithKakao()`로 받은 카카오 액세스 토큰을 Edge Function에 POST하고, 받은 세션을 `supabase.auth.setSession(...)`으로 심은 뒤 `router.replace('/profile')`:
 
 ```tsx
 // mobile/src/app/login.tsx (수정)
-import { useEffect } from 'react';
 import { View, Button, Text } from 'react-native';
 import { router } from 'expo-router';
-import { useKakaoLogin, KAKAO_REDIRECT_URI } from '@/features/auth/useKakaoLogin';
+import { loginWithKakao } from '@/features/auth/kakaoLogin';
 import { supabase } from '@/services/supabase';
 
 const EDGE_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/kakao-custom-token`;
 
 export default function LoginScreen() {
-  const { request, response, promptAsync } = useKakaoLogin();
-
-  useEffect(() => {
-    if (response?.type !== 'success') return;
-    const code = response.params.code;
-
-    (async () => {
-      const res = await fetch(EDGE_FUNCTION_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirectUri: KAKAO_REDIRECT_URI }),
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        console.error('kakao-custom-token 실패', body);
-        return;
-      }
-      await supabase.auth.setSession({
-        access_token: body.access_token,
-        refresh_token: body.refresh_token,
-      });
-      router.replace('/profile');
-    })();
-  }, [response]);
+  const onPress = async () => {
+    const kakaoAccessToken = await loginWithKakao();
+    const res = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kakaoAccessToken }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      console.error('kakao-custom-token 실패', body);
+      return;
+    }
+    await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
+    router.replace('/profile');
+  };
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>산책냥</Text>
-      <Button title="카카오로 시작하기" disabled={!request} onPress={() => promptAsync()} />
+      <Button title="카카오로 시작하기" onPress={onPress} />
     </View>
   );
 }
 ```
+(실기기에서는 `EXPO_PUBLIC_SUPABASE_URL`이 `127.0.0.1`이면 폰이 PC에 못 닿는다 — 같은 와이파이의 PC 내부 IP로 바꿔야 함.)
 
 - [ ] **Step 4: 프로필 화면 (RLS 왕복 증명)**
 

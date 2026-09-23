@@ -1,61 +1,38 @@
 // supabase/functions/kakao-custom-token/index.ts
 //
-// Exchanges a Kakao OAuth authorization code for a real Supabase session.
-// POST { code, redirectUri } -> { access_token, refresh_token } | { error }
+// Exchanges a Kakao access token (from the native Kakao SDK) for a real Supabase session.
+// POST { kakaoAccessToken } -> { access_token, refresh_token } | { error }
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const KAKAO_REST_KEY = Deno.env.get('KAKAO_REST_KEY') ?? '';
-const KAKAO_CLIENT_SECRET = Deno.env.get('KAKAO_CLIENT_SECRET'); // optional
+const KAKAO_APP_ID = Number(Deno.env.get('KAKAO_APP_ID'));
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
-export interface KakaoTokenResponse {
-  access_token: string;
-  token_type: string;
-  refresh_token?: string;
+export interface KakaoTokenInfo {
+  id: number;
+  app_id: number;
   expires_in: number;
 }
 
-export interface KakaoUserResponse {
-  id: number;
-}
-
-export async function exchangeKakaoCode(
-  code: string,
-  redirectUri: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<KakaoTokenResponse> {
-  const params = new URLSearchParams({
-    grant_type: 'authorization_code',
-    client_id: KAKAO_REST_KEY,
-    redirect_uri: redirectUri,
-    code,
-  });
-  if (KAKAO_CLIENT_SECRET) params.set('client_secret', KAKAO_CLIENT_SECRET);
-
-  const res = await fetchImpl('https://kauth.kakao.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
-  if (!res.ok) {
-    throw new Error(`kakao token exchange failed: ${res.status} ${await res.text()}`);
-  }
-  return res.json();
-}
-
-export async function fetchKakaoProfile(
+// The client hands us a Kakao access token from the native SDK. Any Kakao app can mint a
+// token for the same user, so the token must be proven to belong to OUR app (app_id) —
+// otherwise a token from some unrelated Kakao app would log its holder in as that user.
+export async function verifyKakaoAccessToken(
   accessToken: string,
+  appId: number,
   fetchImpl: typeof fetch = fetch,
-): Promise<KakaoUserResponse> {
-  const res = await fetchImpl('https://kapi.kakao.com/v2/user/me', {
+): Promise<number> {
+  if (!Number.isFinite(appId) || appId <= 0) throw new Error('KAKAO_APP_ID is not configured');
+  const res = await fetchImpl('https://kapi.kakao.com/v1/user/access_token_info', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) {
-    throw new Error(`kakao profile fetch failed: ${res.status} ${await res.text()}`);
+    throw new Error(`kakao token check failed: ${res.status} ${await res.text()}`);
   }
-  return res.json();
+  const info: KakaoTokenInfo = await res.json();
+  if (info.app_id !== appId) throw new Error('kakao token was issued to a different app');
+  return info.id;
 }
 
 // The synthesized email is only a lookup key; ownership is proven by app_metadata,
@@ -131,13 +108,12 @@ export async function upsertSupabaseUser(kakaoId: number) {
 
 Deno.serve(async (req) => {
   try {
-    const { code, redirectUri } = await req.json();
-    if (!code || !redirectUri) {
-      return new Response(JSON.stringify({ error: 'code and redirectUri required' }), { status: 400 });
+    const { kakaoAccessToken } = await req.json();
+    if (!kakaoAccessToken) {
+      return new Response(JSON.stringify({ error: 'kakaoAccessToken required' }), { status: 400 });
     }
-    const tokenRes = await exchangeKakaoCode(code, redirectUri);
-    const profile = await fetchKakaoProfile(tokenRes.access_token);
-    const session = await upsertSupabaseUser(profile.id);
+    const kakaoId = await verifyKakaoAccessToken(kakaoAccessToken, KAKAO_APP_ID);
+    const session = await upsertSupabaseUser(kakaoId);
 
     return new Response(
       JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token }),
