@@ -6,7 +6,7 @@
 
 **Architecture:** `mobile/`(Expo 최신 안정 SDK/TS strict, expo-router root=`src/app`)와 `supabase/`(Postgres+PostGIS, RLS)를 리포 루트에 나란히 둔다. 성장 데이터(체크인·아지트·안개·영역)는 `service_role`(Edge Function)만 쓸 수 있고 클라이언트는 읽기만 가능하도록 RLS로 원천 차단 — 이 규칙이 지켜지는지 pgTAP으로 매 커밋마다 검증한다.
 
-**Tech Stack:** Expo SDK 57 / RN 0.86 / React 19 / TypeScript strict / expo-router ~57 / Supabase CLI / Postgres 15 + PostGIS / pgTAP / GitHub Actions. (2026-09-23 결정: 실사용자 0명의 완전 신규 빌드라 "기존 코드 승계" 전제가 적용되지 않음 — SDK54/RN0.81 고정을 폐기하고 스캐폴드 시점의 최신 안정 버전을 채택. 근거는 Global Constraints 아래 참조.)
+**Tech Stack:** Expo SDK 57 / RN 0.86 / React 19 / TypeScript strict / expo-router ~57 / Supabase CLI / Postgres 17 + PostGIS / pgTAP / GitHub Actions. (2026-09-23 결정: 실사용자 0명의 완전 신규 빌드라 "기존 코드 승계" 전제가 적용되지 않음 — SDK54/RN0.81 고정을 폐기하고 스캐폴드 시점의 최신 안정 버전을 채택. 근거는 Global Constraints 아래 참조.)
 
 **Spec:** `docs/기술-아키텍처-v1.md` §1(스택), §3(클라이언트 모듈 구조), §5(데이터 모델), §8(RLS 보안 전략). 앱 이름·범위는 `docs/README.md`, `docs/출시용-v1-범위정의.md` 참조.
 
