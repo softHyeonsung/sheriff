@@ -26,8 +26,8 @@ create table public.aidut (
   id uuid primary key default gen_random_uuid(),
   road_address text not null,
   coord geography(Point,4326) not null,
-  owner_uid uuid not null references public.users(uid) on delete cascade,
-  footprint_count int not null default 0,
+  owner_uid uuid not null references public.users(uid) on delete restrict,
+  footprint_count int not null default 0 check (footprint_count >= 0),
   grade text not null default 'paw' check (grade in ('paw','box','hut','tower','palace')),
   created_at timestamptz not null default now()
 );
@@ -79,7 +79,7 @@ create table public.fog_cells (
 create table public.territory (
   uid uuid primary key references public.users(uid) on delete cascade,
   dong_stats jsonb not null default '{}'::jsonb,
-  explored_ratio numeric not null default 0
+  explored_ratio numeric not null default 0 check (explored_ratio >= 0 and explored_ratio <= 1)
 );
 
 -- 무배포 튜닝 상수
