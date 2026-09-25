@@ -6,7 +6,8 @@ import { router } from 'expo-router';
 
 import { color, font, kakao, radius, space, type } from '@/constants/tokens';
 import { FogReveal } from '@/features/auth/FogReveal';
-import { signInWithKakao } from '@/features/auth/kakaoLogin';
+import { exchangeKakaoToken, loginWithKakao } from '@/features/auth/kakaoLogin';
+import { TermsSheet } from '@/features/auth/TermsSheet';
 
 // The native Kakao SDKs report a user-dismissed login as a "Cancelled" error. Backing out
 // is a choice, not a failure, so it gets no error message.
@@ -26,13 +27,15 @@ function KakaoSymbol() {
 export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // A first-time user: we hold the Kakao token while the terms sheet is open, so agreeing
+  // doesn't send them through Kakao login a second time.
+  const [pending, setPending] = useState<{ token: string; termsVersion: string } | null>(null);
 
-  const onPress = async () => {
+  const run = async (step: () => Promise<void>) => {
     setBusy(true);
     setFailed(false);
     try {
-      await signInWithKakao();
-      router.replace('/profile');
+      await step();
     } catch (e) {
       if (!isCancel(e)) {
         console.error('카카오 로그인 실패', e);
@@ -41,6 +44,32 @@ export default function LoginScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const onKakao = () =>
+    run(async () => {
+      const token = await loginWithKakao();
+      const result = await exchangeKakaoToken(token);
+      if (result.status === 'terms_required') setPending({ token, termsVersion: result.termsVersion });
+      else router.replace('/profile');
+    });
+
+  const onAgree = () =>
+    run(async () => {
+      if (!pending) return;
+      const result = await exchangeKakaoToken(pending.token, pending.termsVersion);
+      // The server bumped the version while the sheet was open: keep the sheet, fail visibly.
+      if (result.status === 'terms_required') {
+        setPending({ ...pending, termsVersion: result.termsVersion });
+        throw new Error('terms version changed during consent');
+      }
+      setPending(null);
+      router.replace('/profile');
+    });
+
+  const onCloseSheet = () => {
+    setPending(null);
+    setFailed(false);
   };
 
   return (
@@ -53,20 +82,32 @@ export default function LoginScreen() {
         <Text style={styles.lede}>다녀온 곳마다 발자국이 남고,{'\n'}그 자리부터 안개가 걷혀요.</Text>
 
         <Pressable
-          onPress={onPress}
+          onPress={onKakao}
           disabled={busy}
           accessibilityRole="button"
           accessibilityLabel="카카오로 시작하기"
           accessibilityState={{ busy, disabled: busy }}
           style={({ pressed }) => [styles.kakao, pressed && styles.kakaoPressed]}>
-          {busy ? <ActivityIndicator color={kakao.symbol} /> : <KakaoSymbol />}
+          {busy && !pending ? <ActivityIndicator color={kakao.symbol} /> : <KakaoSymbol />}
           <Text style={styles.kakaoLabel}>카카오로 시작하기</Text>
         </Pressable>
 
         <Text style={styles.error} accessibilityLiveRegion="polite">
-          {failed ? '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' : ' '}
+          {failed && !pending ? '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' : ' '}
         </Text>
       </View>
+
+      {/* key: a fresh sheet (all boxes empty) for every Kakao login. Without it, a sheet hidden after
+          a successful agreement keeps its ticks, and the next new user on this device would see
+          consent pre-checked — which isn't consent. */}
+      <TermsSheet
+        key={pending?.token ?? 'none'}
+        visible={!!pending}
+        busy={busy}
+        failed={failed}
+        onAgree={onAgree}
+        onClose={onCloseSheet}
+      />
     </SafeAreaView>
   );
 }
