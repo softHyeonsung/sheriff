@@ -16,20 +16,28 @@ export async function loginWithKakao(): Promise<string> {
   return token.accessToken;
 }
 
-// Kakao login -> kakao-custom-token Edge Function -> Supabase session (persisted in SecureStore
-// by the client's storage adapter; onAuthStateChange then updates authStore).
-export async function signInWithKakao(): Promise<void> {
-  const kakaoAccessToken = await loginWithKakao();
+export type ExchangeResult = { status: 'signed_in' } | { status: 'terms_required'; termsVersion: string };
+
+// Kakao token -> kakao-custom-token -> Supabase session. A first-time user gets
+// terms_required back (nothing created server-side) and must resend with the version they agreed to.
+export async function exchangeKakaoToken(
+  kakaoAccessToken: string,
+  agreedTermsVersion?: string,
+): Promise<ExchangeResult> {
   const res = await fetch(EDGE_FUNCTION_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kakaoAccessToken }),
+    body: JSON.stringify({ kakaoAccessToken, agreedTermsVersion }),
   });
   const body = await res.json();
+  if (res.status === 412 && body.error === 'terms_required') {
+    return { status: 'terms_required', termsVersion: body.termsVersion };
+  }
   if (!res.ok) throw new Error(`kakao-custom-token failed: ${body.error ?? res.status}`);
   const { error } = await supabase.auth.setSession({
     access_token: body.access_token,
     refresh_token: body.refresh_token,
   });
   if (error) throw error;
+  return { status: 'signed_in' };
 }
