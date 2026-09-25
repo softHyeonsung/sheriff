@@ -25,7 +25,12 @@ async function signedInClient() {
   const { data: s, error: verifyError } = await anon.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' });
   if (verifyError || !s.session) throw verifyError ?? new Error('no session');
   const db = createClient(url!, anonKey!, { global: { headers: { Authorization: `Bearer ${s.session.access_token}` } } });
-  return { db, cleanup: () => admin.auth.admin.deleteUser(uid) };
+  // A failed delete (e.g. an FK blocking account deletion) must fail the test, not leave a user behind.
+  const cleanup = async () => {
+    const { error } = await admin.auth.admin.deleteUser(uid);
+    if (error) throw error;
+  };
+  return { db, cleanup };
 }
 
 const fakeKakao = { kakaoNearby: () => Promise.resolve([]), kakaoAddress: () => Promise.resolve('서울 통합로 1') };

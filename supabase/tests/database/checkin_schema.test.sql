@@ -12,6 +12,12 @@ select is(public.aidut_grade(10), 'tower', '10 → tower');
 select is(public.aidut_grade(19), 'tower', '19 → tower');
 select is(public.aidut_grade(20), 'palace', '20 → palace');
 
+-- 등급 설정 키가 하나라도 빠지면 조용히 그 등급이 사라지는 게 아니라 오류
+update public.app_config set value = '{"box":2,"hut":5,"tower":10}' where key = 'grade_thresholds';
+select throws_ok($$select public.aidut_grade(20)$$, 'P0001', 'missing app_config grade_thresholds',
+  'grade_thresholds에 palace가 빠지면 오류(20회가 조용히 tower에 머물지 않음)');
+update public.app_config set value = '{"box":2,"hut":5,"tower":10,"palace":20}' where key = 'grade_thresholds';
+
 -- 설정
 select is(public.cfg_num('checkin_radius_m'), 150::numeric, 'checkin_radius_m = 150');
 select throws_ok($$select public.cfg_num('no_such_key')$$, 'P0001', 'missing app_config no_such_key',
@@ -36,6 +42,16 @@ insert into public.aidut (id, owner_uid, name, coord) values
    st_setsrid(st_makepoint(126.94, 37.5), 4326)::geography);
 insert into public.aidut_memories (aidut_id, user_id, photo_url) values
   ('b1b1b1b1-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'https://example.com/b.jpg');
+
+-- 탈퇴: 아지트가 있는 사용자도 계정을 지울 수 있고, 아지트·발자국도 함께 지워진다
+insert into auth.users (id) values ('dddddddd-dddd-dddd-dddd-dddddddddddd');
+insert into public.users (uid, provider) values ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'kakao');
+insert into public.aidut (owner_uid, name, coord) values
+  ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'D의 아지트', st_setsrid(st_makepoint(126.94, 37.5), 4326)::geography);
+select lives_ok($$delete from auth.users where id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'$$,
+  '아지트가 있는 사용자도 탈퇴(계정 삭제)할 수 있다');
+select is((select count(*)::int from public.aidut where owner_uid = 'dddddddd-dddd-dddd-dddd-dddddddddddd'), 0,
+  '탈퇴하면 그 사용자의 아지트도 지워진다');
 
 set local role authenticated;
 select set_config('request.jwt.claims',
