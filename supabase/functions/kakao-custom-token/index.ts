@@ -96,12 +96,11 @@ export async function upsertSupabaseUser(kakaoId: number, recordTerms: boolean) 
   if (!hashedToken) throw new Error('generateLink response missing properties.hashed_token');
 
   const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  // Verified against auth-js types.ts (2026-09-23): the email-based VerifyOtpParams
-  // variant takes { email, token, type }, not { token_hash } (token_hash is a
-  // separate union member used without an email). The brief's shape is correct.
+  // hashed_token is already the stored hash: it goes in `token_hash`. Passing it as `token`
+  // (with email) makes GoTrue hash it again -> "Token has expired or is invalid" for every login.
+  // Pinned by session.integration.test.ts against the real local GoTrue.
   const { data: sessionData, error: verifyError } = await anon.auth.verifyOtp({
-    email,
-    token: hashedToken,
+    token_hash: hashedToken,
     type: 'magiclink',
   });
   if (verifyError) throw verifyError;
@@ -129,30 +128,44 @@ export async function upsertSupabaseUser(kakaoId: number, recordTerms: boolean) 
   return sessionData.session;
 }
 
-const json = (body: unknown, status = 200) =>
+export interface HandlerDeps {
+  verify: (kakaoAccessToken: string) => Promise<number>;
+  lookupTerms: (kakaoId: number) => Promise<{ terms_agreed_at: string | null } | null>;
+  createSession: (kakaoId: number, recordTerms: boolean) => Promise<{ access_token: string; refresh_token: string }>;
+}
+
+// The whole request flow, with I/O injected so its ORDER is testable: consent is decided
+// before anything is created — no account exists without agreement.
+export async function handleRequest(
+  { kakaoAccessToken, agreedTermsVersion }: { kakaoAccessToken?: string; agreedTermsVersion?: string },
+  deps: HandlerDeps,
+): Promise<{ status: number; body: unknown }> {
+  if (!kakaoAccessToken) return { status: 400, body: { error: 'kakaoAccessToken required' } };
+  const kakaoId = await deps.verify(kakaoAccessToken);
+  const decision = termsDecision(await deps.lookupTerms(kakaoId), agreedTermsVersion, TERMS_VERSION);
+  if (decision === 'required') return { status: 412, body: { error: 'terms_required', termsVersion: TERMS_VERSION } };
+  const session = await deps.createSession(kakaoId, decision === 'record');
+  return { status: 200, body: { access_token: session.access_token, refresh_token: session.refresh_token } };
+}
+
+const liveDeps: HandlerDeps = {
+  verify: (token) => verifyKakaoAccessToken(token, KAKAO_APP_ID),
+  lookupTerms: async (kakaoId) => {
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data, error } = await admin.from('users').select('terms_agreed_at').eq('kakao_id', kakaoId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  createSession: upsertSupabaseUser,
+};
+
+const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 Deno.serve(async (req) => {
   try {
-    const { kakaoAccessToken, agreedTermsVersion } = await req.json();
-    if (!kakaoAccessToken) return json({ error: 'kakaoAccessToken required' }, 400);
-
-    const kakaoId = await verifyKakaoAccessToken(kakaoAccessToken, KAKAO_APP_ID);
-
-    // Consent is checked BEFORE anything is created: no account exists without agreement.
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: row, error: lookupError } = await admin
-      .from('users')
-      .select('terms_agreed_at')
-      .eq('kakao_id', kakaoId)
-      .maybeSingle();
-    if (lookupError) throw lookupError;
-
-    const decision = termsDecision(row, agreedTermsVersion, TERMS_VERSION);
-    if (decision === 'required') return json({ error: 'terms_required', termsVersion: TERMS_VERSION }, 412);
-
-    const session = await upsertSupabaseUser(kakaoId, decision === 'record');
-    return json({ access_token: session.access_token, refresh_token: session.refresh_token });
+    const { status, body } = await handleRequest(await req.json(), liveDeps);
+    return json(body, status);
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

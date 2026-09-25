@@ -1,6 +1,6 @@
 // supabase/functions/kakao-custom-token/index.test.ts
 import { assertEquals, assertRejects, assertThrows } from 'jsr:@std/assert';
-import { assertKakaoOwner, termsDecision, verifyKakaoAccessToken } from './index.ts';
+import { assertKakaoOwner, handleRequest, termsDecision, verifyKakaoAccessToken } from './index.ts';
 
 const OUR_APP_ID = 1234567;
 const tokenInfo = (body: unknown, status = 200) => () =>
@@ -63,4 +63,49 @@ Deno.test('termsDecision: 이미 동의한 사용자는 무엇을 보내든 ok (
   assertEquals(termsDecision(agreed, undefined, '2026-09-25'), 'ok');
   assertEquals(termsDecision(agreed, '2020-01-01', '2026-09-25'), 'ok');
   assertEquals(termsDecision(agreed, '2026-09-25', '2026-09-25'), 'ok');
+});
+
+// Handler order: consent is decided BEFORE anything is created. A refactor that moved the
+// lookup after account creation would pass every pure-function test — this one catches it.
+const fakeSession = { access_token: 'sb-a', refresh_token: 'sb-r' };
+const makeDeps = (row: { terms_agreed_at: string | null } | null) => {
+  const calls: string[] = [];
+  return {
+    calls,
+    deps: {
+      verify: (_t: string) => (calls.push('verify'), Promise.resolve(123456)),
+      lookupTerms: (_id: number) => (calls.push('lookup'), Promise.resolve(row)),
+      createSession: (_id: number, record: boolean) => (calls.push(`create:${record}`), Promise.resolve(fakeSession)),
+    },
+  };
+};
+
+Deno.test('handleRequest: 동의 없는 신규 요청은 412이고 아무것도 만들지 않는다', async () => {
+  const { calls, deps } = makeDeps(null);
+  const res = await handleRequest({ kakaoAccessToken: 't' }, deps);
+  assertEquals(res.status, 412);
+  assertEquals(res.body, { error: 'terms_required', termsVersion: '2026-09-25' });
+  assertEquals(calls, ['verify', 'lookup']);
+});
+
+Deno.test('handleRequest: 현재 버전으로 동의하면 계정을 만들며 동의를 기록한다', async () => {
+  const { calls, deps } = makeDeps(null);
+  const res = await handleRequest({ kakaoAccessToken: 't', agreedTermsVersion: '2026-09-25' }, deps);
+  assertEquals(res.status, 200);
+  assertEquals(res.body, fakeSession);
+  assertEquals(calls, ['verify', 'lookup', 'create:true']);
+});
+
+Deno.test('handleRequest: 이미 동의한 사용자는 기록 없이 세션만', async () => {
+  const { calls, deps } = makeDeps({ terms_agreed_at: '2026-09-25T00:00:00Z' });
+  const res = await handleRequest({ kakaoAccessToken: 't', agreedTermsVersion: '2020-01-01' }, deps);
+  assertEquals(res.status, 200);
+  assertEquals(calls, ['verify', 'lookup', 'create:false']);
+});
+
+Deno.test('handleRequest: 토큰이 없으면 400이고 카카오도 부르지 않는다', async () => {
+  const { calls, deps } = makeDeps(null);
+  const res = await handleRequest({}, deps);
+  assertEquals(res.status, 400);
+  assertEquals(calls, []);
 });
