@@ -53,7 +53,7 @@ select throws_ok(
 
 select lives_ok(
   $$select * from public.aidut$$,
-  '인증된 사용자는 aidut 전체를 읽을 수 있다(공개 읽기)'
+  '인증된 사용자는 aidut를 읽을 수 있다(본인 것만 — checkin_schema.test.sql이 검증)'
 );
 
 -- update/delete는 매칭 정책이 없으면 예외가 아니라 USING(false)로 조용히 0행 처리된다
