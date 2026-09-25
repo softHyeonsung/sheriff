@@ -1,13 +1,30 @@
 // supabase/functions/kakao-custom-token/index.ts
 //
 // Exchanges a Kakao access token (from the native Kakao SDK) for a real Supabase session.
-// POST { kakaoAccessToken } -> { access_token, refresh_token } | { error }
+// POST { kakaoAccessToken, agreedTermsVersion? } -> { access_token, refresh_token } | 412 { error: 'terms_required', termsVersion } | { error }
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const KAKAO_APP_ID = Number(Deno.env.get('KAKAO_APP_ID'));
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+// Single source of truth for the current terms version. The app never hardcodes it:
+// it echoes back whatever the 412 response said.
+export const TERMS_VERSION = '2026-09-25';
+
+export type TermsDecision = 'ok' | 'record' | 'required';
+
+// ok: already agreed (never overwrite the record) · record: agreeing to the current version now ·
+// required: must agree first — nothing may be created.
+export function termsDecision(
+  row: { terms_agreed_at: string | null } | null,
+  agreedVersion: string | undefined,
+  currentVersion: string,
+): TermsDecision {
+  if (row?.terms_agreed_at) return 'ok';
+  return agreedVersion === currentVersion ? 'record' : 'required';
+}
 
 export interface KakaoTokenInfo {
   id: number;
@@ -47,7 +64,7 @@ export function assertKakaoOwner(
   }
 }
 
-export async function upsertSupabaseUser(kakaoId: number) {
+export async function upsertSupabaseUser(kakaoId: number, recordTerms: boolean) {
   const email = `kakao-${kakaoId}@users.sanchaeknyang.app`;
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -90,9 +107,15 @@ export async function upsertSupabaseUser(kakaoId: number) {
   if (verifyError) throw verifyError;
   if (!sessionData.session || !sessionData.user) throw new Error('failed to establish session');
 
-  const { error: usersError } = await admin
-    .from('users')
-    .upsert({ uid: sessionData.user.id, provider: 'kakao' }, { onConflict: 'uid' });
+  const { error: usersError } = await admin.from('users').upsert(
+    {
+      uid: sessionData.user.id,
+      provider: 'kakao',
+      kakao_id: kakaoId,
+      ...(recordTerms ? { terms_agreed_at: new Date().toISOString(), terms_version: TERMS_VERSION } : {}),
+    },
+    { onConflict: 'uid' },
+  );
   if (usersError) throw usersError;
   // ignoreDuplicates: seed the default nickname once, never overwrite a user-chosen one on re-login.
   const { error: profileError } = await admin
@@ -106,20 +129,31 @@ export async function upsertSupabaseUser(kakaoId: number) {
   return sessionData.session;
 }
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
 Deno.serve(async (req) => {
   try {
-    const { kakaoAccessToken } = await req.json();
-    if (!kakaoAccessToken) {
-      return new Response(JSON.stringify({ error: 'kakaoAccessToken required' }), { status: 400 });
-    }
-    const kakaoId = await verifyKakaoAccessToken(kakaoAccessToken, KAKAO_APP_ID);
-    const session = await upsertSupabaseUser(kakaoId);
+    const { kakaoAccessToken, agreedTermsVersion } = await req.json();
+    if (!kakaoAccessToken) return json({ error: 'kakaoAccessToken required' }, 400);
 
-    return new Response(
-      JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token }),
-      { headers: { 'Content-Type': 'application/json' } },
-    );
+    const kakaoId = await verifyKakaoAccessToken(kakaoAccessToken, KAKAO_APP_ID);
+
+    // Consent is checked BEFORE anything is created: no account exists without agreement.
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: row, error: lookupError } = await admin
+      .from('users')
+      .select('terms_agreed_at')
+      .eq('kakao_id', kakaoId)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+
+    const decision = termsDecision(row, agreedTermsVersion, TERMS_VERSION);
+    if (decision === 'required') return json({ error: 'terms_required', termsVersion: TERMS_VERSION }, 412);
+
+    const session = await upsertSupabaseUser(kakaoId, decision === 'record');
+    return json({ access_token: session.access_token, refresh_token: session.refresh_token });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return json({ error: String(e) }, 500);
   }
 });

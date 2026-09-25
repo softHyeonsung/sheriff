@@ -1,6 +1,6 @@
 // supabase/functions/kakao-custom-token/index.test.ts
 import { assertEquals, assertRejects, assertThrows } from 'jsr:@std/assert';
-import { assertKakaoOwner, verifyKakaoAccessToken } from './index.ts';
+import { assertKakaoOwner, termsDecision, verifyKakaoAccessToken } from './index.ts';
 
 const OUR_APP_ID = 1234567;
 const tokenInfo = (body: unknown, status = 200) => () =>
@@ -38,4 +38,29 @@ Deno.test('assertKakaoOwner rejects pre-registered or foreign accounts', () => {
   ]) {
     assertThrows(() => assertKakaoOwner(user, 123456));
   }
+});
+
+Deno.test('termsDecision: 처음 온 사용자가 동의 없이 오면 required', () => {
+  assertEquals(termsDecision(null, undefined, '2026-09-25'), 'required');
+});
+
+Deno.test('termsDecision: 처음 온 사용자가 현재 버전으로 동의하면 record', () => {
+  assertEquals(termsDecision(null, '2026-09-25', '2026-09-25'), 'record');
+});
+
+Deno.test('termsDecision: 옛 버전/엉뚱한 값으로 동의하면 required', () => {
+  assertEquals(termsDecision(null, '2020-01-01', '2026-09-25'), 'required');
+  assertEquals(termsDecision({ terms_agreed_at: null }, '', '2026-09-25'), 'required');
+});
+
+Deno.test('termsDecision: 행은 있는데 미동의(마이그레이션 전 계정)면 동의가 필요하다', () => {
+  assertEquals(termsDecision({ terms_agreed_at: null }, undefined, '2026-09-25'), 'required');
+  assertEquals(termsDecision({ terms_agreed_at: null }, '2026-09-25', '2026-09-25'), 'record');
+});
+
+Deno.test('termsDecision: 이미 동의한 사용자는 무엇을 보내든 ok (기록을 덮어쓰지 않음)', () => {
+  const agreed = { terms_agreed_at: '2026-09-25T00:00:00Z' };
+  assertEquals(termsDecision(agreed, undefined, '2026-09-25'), 'ok');
+  assertEquals(termsDecision(agreed, '2020-01-01', '2026-09-25'), 'ok');
+  assertEquals(termsDecision(agreed, '2026-09-25', '2026-09-25'), 'ok');
 });
