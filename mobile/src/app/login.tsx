@@ -51,7 +51,7 @@ export default function LoginScreen() {
       const token = await loginWithKakao();
       const result = await exchangeKakaoToken(token);
       if (result.status === 'terms_required') setPending({ token, termsVersion: result.termsVersion });
-      else router.replace('/profile');
+      else router.replace('/');
     });
 
   const onAgree = () =>
@@ -64,7 +64,7 @@ export default function LoginScreen() {
         throw new Error('terms version changed during consent');
       }
       setPending(null);
-      router.replace('/profile');
+      router.replace('/');
     });
 
   const onCloseSheet = () => {

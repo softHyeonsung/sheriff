@@ -25,11 +25,11 @@ const agreeAll = async () => {
   await fireEvent.press(screen.getByRole('button', { name: '동의하고 시작하기' }));
 };
 
-test('이미 동의한 사용자는 시트 없이 프로필로', async () => {
+test('이미 동의한 사용자는 시트 없이 지도로', async () => {
   exchange.mockResolvedValue({ status: 'signed_in' });
   await render(<LoginScreen />);
   await tapKakao();
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/profile'));
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
   expect(screen.queryByText(SHEET_TITLE)).toBeNull();
 });
 
@@ -39,7 +39,7 @@ test('신규 사용자는 시트 → 동의하면 같은 토큰+서버 버전으
   await tapKakao();
   expect(await screen.findByText(SHEET_TITLE)).toBeTruthy();
   await agreeAll();
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/profile'));
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
   expect(exchange).toHaveBeenLastCalledWith('kakao-token', '2026-09-25');
   expect(login).toHaveBeenCalledTimes(1); // 카카오 재로그인 없음
 });
@@ -57,7 +57,7 @@ test('재요청 실패 — 시트는 열린 채 안내가 보이고, 다시 누�
   expect(await screen.findByText(ERROR)).toBeTruthy();
   expect(screen.getByText(SHEET_TITLE)).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '동의하고 시작하기' })); // 체크 유지됨
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/profile'));
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
   expect(exchange).toHaveBeenLastCalledWith('kakao-token', '2026-09-25');
 });
 
@@ -83,7 +83,7 @@ test('동의 후 다음 신규 로그인에서는 체크가 비어 있다 (미�
   await tapKakao();
   await screen.findByText(SHEET_TITLE);
   await agreeAll();
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/profile'));
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
   await tapKakao();
   await screen.findByText(SHEET_TITLE);
   expect(screen.getByRole('checkbox', { name: '모두 동의할게요', checked: false })).toBeTruthy();

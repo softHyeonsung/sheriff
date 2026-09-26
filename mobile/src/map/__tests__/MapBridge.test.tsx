@@ -1,4 +1,5 @@
 // mobile/src/map/__tests__/MapBridge.test.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed test doubles for native components */
 import { createRef } from 'react';
 import { act, render } from '@testing-library/react-native';
 import { MapBridge, type MapBridgeHandle } from '../MapBridge';
@@ -9,7 +10,7 @@ jest.mock('react-native-webview', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
-    WebView: React.forwardRef((props: any, ref: any) => {
+    WebView: React.forwardRef(function MockWebView(props: any, ref: any) {
       mockWebProps = props;
       React.useImperativeHandle(ref, () => ({ injectJavaScript: mockInject }));
       return <View testID="webview" />;

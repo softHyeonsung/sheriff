@@ -1,98 +1,162 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+// mobile/src/app/(tabs)/index.tsx
+import { useEffect, useRef, useState } from 'react';
+import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { color, font, radius, space, type } from '@/constants/tokens';
+import { nextStageHint } from '@/features/map/nextStageHint';
+import { useMyHideouts } from '@/features/map/useMyHideouts';
+import { useMyLocation } from '@/features/map/useMyLocation';
+import { GRADE_LABEL } from '@/map/grades';
+import { MapBridge, type MapBridgeHandle } from '@/map/MapBridge';
+import { markerFor } from '@/map/markers';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+const CITY_HALL = { lat: 37.5665, lng: 126.978 };
+
+function Pill({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.pill} hitSlop={8}>
+      <Text style={styles.pillText}>{label}</Text>
+    </Pressable>
   );
 }
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+export default function MapScreen() {
+  const { hideouts, thresholds, status, retry } = useMyHideouts();
+  const { location, permission } = useMyLocation();
+  const bridge = useRef<MapBridgeHandle>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mapFailed, setMapFailed] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
+  const centered = useRef(false); // a ref, not state: flipping it must not re-render
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+  // A selected hideout that vanished on refresh closes the card instead of rendering a broken one.
+  const selected = hideouts.find((h) => h.id === selectedId) ?? null;
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+  // Center once on what we have first: me, else my first hideout. Later it's the user's map.
+  useEffect(() => {
+    if (centered.current) return;
+    const target = location ?? hideouts[0];
+    if (target) {
+      bridge.current?.panTo(target.lat, target.lng);
+      centered.current = true;
+    }
+  }, [location, hideouts]);
 
-        {Platform.OS === 'web' && <WebBadge />}
+  if (mapFailed) {
+    return (
+      <SafeAreaView style={[styles.screen, styles.centerBox]}>
+        <Text style={styles.body}>지도를 불러오지 못했어요. 다시 해볼까요?</Text>
+        <Pill
+          label="다시 시도"
+          onPress={() => {
+            setMapFailed(false);
+            centered.current = false;
+            setMapKey((k) => k + 1);
+          }}
+        />
       </SafeAreaView>
-    </ThemedView>
+    );
+  }
+
+  return (
+    <View style={styles.screen}>
+      <MapBridge
+        key={mapKey}
+        ref={bridge}
+        hideouts={hideouts.map(({ id, lat, lng, grade }) => ({ id, lat, lng, grade }))}
+        myLocation={location}
+        center={CITY_HALL}
+        onHideoutTap={setSelectedId}
+        onError={(reason) => {
+          console.warn('지도 오류', reason);
+          setMapFailed(true);
+        }}
+      />
+
+      <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
+        {permission === 'denied' && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>위치를 켜두시면 지금 있는 곳을 보여드릴게요</Text>
+            <Pill label="설정 열기" onPress={() => Linking.openSettings()} />
+          </View>
+        )}
+        {status === 'error' && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>아지트를 불러오지 못했어요</Text>
+            <Pill label="다시 시도" onPress={retry} />
+          </View>
+        )}
+        {status === 'ready' && hideouts.length === 0 && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>아직 발자국이 없어요. 가까운 곳부터 같이 가볼까요?</Text>
+          </View>
+        )}
+      </SafeAreaView>
+
+      {location && (
+        <View style={styles.locate}>
+          <Pill label="내 위치로" onPress={() => bridge.current?.panTo(location.lat, location.lng)} />
+        </View>
+      )}
+
+      {selected && (
+        <View style={styles.card}>
+          <Image source={{ uri: markerFor(selected.grade).uri }} style={styles.cardArt} />
+          <View style={styles.cardText}>
+            <Text style={styles.cardTitle}>{selected.name}</Text>
+            <Text style={styles.caption}>{GRADE_LABEL[selected.grade]}</Text>
+            <Text style={styles.body}>지금까지 {selected.footprintCount}번 다녀왔어요</Text>
+            {thresholds && <Text style={styles.caption}>{nextStageHint(selected.footprintCount, thresholds)}</Text>}
+          </View>
+          <Pill label="닫기" onPress={() => setSelectedId(null)} />
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  screen: { flex: 1, backgroundColor: color.surface },
+  centerBox: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: space.gutter },
+  top: { position: 'absolute', left: space.gutter, right: space.gutter, top: 0, gap: 8 },
+  banner: {
+    marginTop: 8,
+    backgroundColor: color.surfaceCard,
+    borderRadius: radius.card,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: color.line,
+  },
+  bannerText: { ...type.body, color: color.ink },
+  locate: { position: 'absolute', right: space.gutter, bottom: 180 },
+  pill: {
+    alignSelf: 'flex-start',
+    minHeight: space.tapMin,
     justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
+    backgroundColor: color.primary,
+  },
+  pillText: { fontFamily: font.semibold, fontSize: 15, color: color.onPrimary },
+  card: {
+    position: 'absolute',
+    left: space.gutter,
+    right: space.gutter,
+    bottom: 24,
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    gap: 12,
+    padding: 16,
+    borderRadius: radius.sheet,
+    backgroundColor: color.surfaceCard,
+    borderWidth: 1,
+    borderColor: color.line,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  cardArt: { width: 56, height: 56 },
+  cardText: { flex: 1, gap: 2 },
+  cardTitle: { ...type.subtitle, color: color.ink },
+  body: { ...type.body, color: color.ink },
+  caption: { ...type.caption, color: color.inkSub },
 });
