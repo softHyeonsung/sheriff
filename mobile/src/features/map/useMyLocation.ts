@@ -10,6 +10,9 @@ export function useMyLocation() {
   const [location, setLocation] = useState<MyLocation | null>(null);
   const [permission, setPermission] = useState<Permission>('undetermined');
   const sub = useRef<{ remove: () => void } | null>(null);
+  // Set synchronously: the permission reply and the AppState 'active' after the dialog
+  // arrive together, and both must not start a watch.
+  const starting = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -17,14 +20,20 @@ export function useMyLocation() {
     const start = async (status: string) => {
       if (!alive) return;
       setPermission(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined');
-      if (status !== 'granted' || sub.current) return;
+      if (status !== 'granted' || sub.current || starting.current) return;
+      starting.current = true;
       try {
-        sub.current = await Location.watchPositionAsync(
+        const s = await Location.watchPositionAsync(
           { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
           (p) => alive && setLocation({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy ?? 999 }),
         );
+        // Unmounted while the watch was starting: release it instead of leaking GPS.
+        if (alive) sub.current = s;
+        else s.remove();
       } catch (e) {
         console.warn('위치 추적 실패', e); // the map still works without the dot
+      } finally {
+        starting.current = false;
       }
     };
 

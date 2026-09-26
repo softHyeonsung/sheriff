@@ -52,3 +52,33 @@ test('앱이 다시 활성화되면 권한을 다시 확인한다(설정에서 �
   await waitFor(() => expect(result.current.permission).toBe('granted'));
   await waitFor(() => expect(result.current.location).not.toBeNull());
 });
+
+test('첫 허용 때 권한 응답과 앱 활성화가 겹쳐도 위치 추적은 하나만', async () => {
+  let onChange: (s: string) => void = () => {};
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_e, h) => {
+    onChange = h as (s: string) => void;
+    return { remove: jest.fn() } as never;
+  });
+  let resolveReq: (v: { status: string }) => void = () => {};
+  req.mockReturnValue(new Promise((r) => (resolveReq = r)));
+  get.mockResolvedValue({ status: 'granted' });
+  await renderHook(() => useMyLocation());
+  await act(async () => {
+    onChange('active');
+    resolveReq({ status: 'granted' });
+  });
+  await waitFor(() => expect(watch).toHaveBeenCalled());
+  expect(watch).toHaveBeenCalledTimes(1);
+});
+
+test('추적 시작 중에 화면이 사라져도 나중에 온 구독을 해제한다', async () => {
+  const remove = jest.fn();
+  let resolveWatch: (v: { remove: () => void }) => void = () => {};
+  watch.mockReturnValue(new Promise((r) => (resolveWatch = r)));
+  req.mockResolvedValue({ status: 'granted' });
+  const { unmount } = await renderHook(() => useMyLocation());
+  await waitFor(() => expect(watch).toHaveBeenCalled());
+  await unmount();
+  await act(async () => resolveWatch({ remove }));
+  expect(remove).toHaveBeenCalled();
+});

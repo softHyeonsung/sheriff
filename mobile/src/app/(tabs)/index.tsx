@@ -1,5 +1,5 @@
 // mobile/src/app/(tabs)/index.tsx
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,20 +28,29 @@ export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
   const [mapKey, setMapKey] = useState(0);
-  const centered = useRef(false); // a ref, not state: flipping it must not re-render
+  // What the map was last centered on. A ref, not state: updating it must not re-render.
+  const centeredOn = useRef<'none' | 'hideout' | 'me'>('none');
 
   // A selected hideout that vanished on refresh closes the card instead of rendering a broken one.
   const selected = hideouts.find((h) => h.id === selectedId) ?? null;
 
-  // Center once on what we have first: me, else my first hideout. Later it's the user's map.
+  // Center on me once I'm located; until then (or if location is denied) on my first hideout.
+  // The first fix wins over the hideout fallback exactly once — after that it's the user's map.
+  // mapKey: a remounted map (after 다시 시도) starts back at the default and needs centering again.
   useEffect(() => {
-    if (centered.current) return;
-    const target = location ?? hideouts[0];
-    if (target) {
-      bridge.current?.panTo(target.lat, target.lng);
-      centered.current = true;
+    if (!bridge.current || centeredOn.current === 'me') return;
+    if (location) {
+      bridge.current.panTo(location.lat, location.lng);
+      centeredOn.current = 'me';
+    } else if (centeredOn.current === 'none' && hideouts[0]) {
+      bridge.current.panTo(hideouts[0].lat, hideouts[0].lng);
+      centeredOn.current = 'hideout';
     }
-  }, [location, hideouts]);
+  }, [location, hideouts, mapKey]);
+
+  // Same array across unrelated re-renders (marker taps, location ticks), so the map doesn't
+  // tear down and rebuild every marker each time.
+  const pins = useMemo(() => hideouts.map(({ id, lat, lng, grade }) => ({ id, lat, lng, grade })), [hideouts]);
 
   if (mapFailed) {
     return (
@@ -51,7 +60,7 @@ export default function MapScreen() {
           label="다시 시도"
           onPress={() => {
             setMapFailed(false);
-            centered.current = false;
+            centeredOn.current = 'none';
             setMapKey((k) => k + 1);
           }}
         />
@@ -64,7 +73,7 @@ export default function MapScreen() {
       <MapBridge
         key={mapKey}
         ref={bridge}
-        hideouts={hideouts.map(({ id, lat, lng, grade }) => ({ id, lat, lng, grade }))}
+        hideouts={pins}
         myLocation={location}
         center={CITY_HALL}
         onHideoutTap={setSelectedId}

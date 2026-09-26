@@ -7,13 +7,14 @@ import { useMyLocation } from '@/features/map/useMyLocation';
 import MapScreen from '../index';
 
 let mockBridgeProps: Record<string, any> = {};
+const mockPanTo = jest.fn();
 jest.mock('@/map/MapBridge', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
     MapBridge: React.forwardRef(function MockMapBridge(props: any, ref: any) {
       mockBridgeProps = props;
-      React.useImperativeHandle(ref, () => ({ panTo: jest.fn() }));
+      React.useImperativeHandle(ref, () => ({ panTo: mockPanTo }));
       return <View testID="map" />;
     }),
   };
@@ -84,4 +85,32 @@ test('지도 로드 실패 → 재시도 화면 → 다시 지도', async () => 
   expect(screen.queryByTestId('map')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
   expect(screen.getByTestId('map')).toBeTruthy();
+});
+
+test('위치 허용 사용자는 아지트가 먼저 와도 위치가 오면 내 위치로 맞춘다', async () => {
+  (useMyLocation as jest.Mock).mockReturnValue({ location: null, permission: 'granted' });
+  const { rerender } = await render(<MapScreen />);
+  expect(mockPanTo).toHaveBeenLastCalledWith(37.5, 126.9); // hideout fallback first
+  (useMyLocation as jest.Mock).mockReturnValue({ location: { lat: 37.61, lng: 127.02, accuracy: 10 }, permission: 'granted' });
+  await rerender(<MapScreen />);
+  expect(mockPanTo).toHaveBeenLastCalledWith(37.61, 127.02);
+  (useMyLocation as jest.Mock).mockReturnValue({ location: { lat: 37.62, lng: 127.03, accuracy: 10 }, permission: 'granted' });
+  await rerender(<MapScreen />);
+  expect(mockPanTo).toHaveBeenCalledTimes(2); // later fixes don't yank the map around
+});
+
+test('지도 실패 후 다시 시도하면 다시 중심을 맞춘다', async () => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  await render(<MapScreen />);
+  const before = mockPanTo.mock.calls.length;
+  await act(async () => mockBridgeProps.onError('sdk_load_failed'));
+  await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
+  expect(mockPanTo.mock.calls.length).toBeGreaterThan(before);
+});
+
+test('마커 탭 같은 재렌더에서는 지도에 같은 목록을 넘긴다(마커를 매번 다시 만들지 않음)', async () => {
+  await render(<MapScreen />);
+  const first = mockBridgeProps.hideouts;
+  await act(async () => mockBridgeProps.onHideoutTap('a1'));
+  expect(mockBridgeProps.hideouts).toBe(first);
 });

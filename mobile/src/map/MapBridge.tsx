@@ -86,6 +86,10 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
       source={{ html, baseUrl: ORIGIN }}
       onMessage={onMessage}
       onError={() => onError('webview_load_failed')}
+      // The page process can die (iOS kills it in the background, Android on low memory): route
+      // it to the failure screen, whose retry remounts us, instead of leaving a white map.
+      onContentProcessDidTerminate={() => onError('content_process_gone')}
+      onRenderProcessGone={() => onError('render_process_gone')}
       // Kakao logo / copyright links would navigate the WebView away and lose the map.
       onShouldStartLoadWithRequest={(req) => req.url.startsWith(ORIGIN) || req.url.startsWith('about:')}
       style={{ flex: 1 }}

@@ -92,3 +92,11 @@ test('WebView 자체 로드 실패도 오류로', async () => {
   await act(async () => mockWebProps.onError({ nativeEvent: { description: 'offline' } }));
   expect(base.onError).toHaveBeenCalledWith('webview_load_failed');
 });
+
+test('WebView 프로세스가 죽으면(iOS 백그라운드 등) 흰 화면 대신 오류로', async () => {
+  await render(<MapBridge {...base} />);
+  await act(async () => mockWebProps.onContentProcessDidTerminate?.({ nativeEvent: {} }));
+  await act(async () => mockWebProps.onRenderProcessGone?.({ nativeEvent: { didCrash: true } }));
+  expect(base.onError).toHaveBeenCalledWith('content_process_gone');
+  expect(base.onError).toHaveBeenCalledWith('render_process_gone');
+});
