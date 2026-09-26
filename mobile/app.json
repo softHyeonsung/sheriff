@@ -50,6 +50,12 @@
             "./assets/fonts/Pretendard-Bold.otf"
           ]
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "지금 있는 곳을 지도에 보여주고 발자국을 남기려면 위치가 필요해요."
+        }
       ]
     ],
     "experiments": {
