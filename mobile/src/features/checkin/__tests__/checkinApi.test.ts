@@ -28,7 +28,7 @@ test('새 위치: 권한 있으면 정확한 위치, 없으면 denied', async ()
 test('suggestPlace는 로그인 세션으로 Edge Function을 부르고 결과를 그대로 준다', async () => {
   invoke.mockResolvedValue({ data: { status: 'ok', hereAddress: '서울 테스트로 1', candidates: [] }, error: null });
   await expect(suggestPlace(fix)).resolves.toEqual({ status: 'ok', hereAddress: '서울 테스트로 1', candidates: [] });
-  expect(invoke).toHaveBeenCalledWith('suggest-place', { body: { lat: 37.5, lng: 126.9, accuracy: 12 } });
+  expect(invoke).toHaveBeenCalledWith('suggest-place', { body: { lat: 37.5, lng: 126.9, accuracy: 12 }, timeout: 10000 });
 });
 
 test('suggestPlace 실패는 unknown', async () => {

@@ -100,3 +100,47 @@ test('진행 중 두 번째 요청 무시(연타)', async () => {
   });
   expect(getFix).toHaveBeenCalledTimes(1);
 });
+
+test('위치가 응답 없이 멈추면 제한 시간 뒤 다시 시도할 수 있는 안내', async () => {
+  jest.useFakeTimers();
+  try {
+    getFix.mockReturnValue(new Promise(() => {}));
+    const { result: h } = await renderHook(() => useCheckin());
+    await act(async () => {
+      void h.current.start();
+    });
+    expect(h.current.state).toEqual({ name: 'locating' });
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
+    });
+    expect(h.current.state).toEqual({ name: 'failed', message: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?', needsSettings: false });
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('위치 확인 중에 닫으면 늦게 온 결과는 무시하고 다시 시작할 수 있다', async () => {
+  let resolveFix: (v: typeof fix) => void = () => {};
+  getFix.mockReturnValueOnce(new Promise((r) => (resolveFix = r)));
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => {
+    void h.current.start();
+  });
+  await act(async () => h.current.close());
+  await act(async () => resolveFix(fix));
+  expect(h.current.state).toEqual({ name: 'idle' });
+  await act(async () => h.current.start());
+  expect(h.current.state.name).toBe('choosing');
+});
+
+test('거절 뒤 다시 누르면 새 위치로 보낸다(가까이 걸어온 경우)', async () => {
+  const closer = { lat: 37.5009, lng: 126.9, accuracy: 8 };
+  submit.mockRejectedValueOnce(new CheckinError('too_far')).mockResolvedValueOnce(result);
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
+  getFix.mockResolvedValue(closer);
+  await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
+  expect(submit).toHaveBeenLastCalledWith(closer, { kind: 'mine', aidutId: 'a1' });
+  expect(h.current.state.name).toBe('celebrating');
+});

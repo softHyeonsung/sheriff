@@ -120,6 +120,11 @@ export default function MapScreen() {
           <Text style={styles.bannerText}>
             {checkin.state.name === 'failed' ? checkin.state.message : '잠깐, 위치를 확인하고 있어요…'}
           </Text>
+          {locating && (
+            <View style={styles.row}>
+              <Pill label="닫기" onPress={checkin.close} />
+            </View>
+          )}
           {checkin.state.name === 'failed' && (
             <View style={styles.row}>
               <Pill label="다시 해볼게요" onPress={checkin.start} />
@@ -132,7 +137,10 @@ export default function MapScreen() {
 
       <View style={styles.stampWrap} pointerEvents="box-none">
         <Pressable
-          onPress={checkin.start}
+          onPress={() => {
+            setSelectedId(null); // the card sits where the check-in messages appear
+            checkin.start();
+          }}
           disabled={locating}
           accessibilityRole="button"
           accessibilityLabel="발자국 남기기"

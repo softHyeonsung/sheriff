@@ -181,3 +181,20 @@ test('실패 안내 + 다시 시도, 권한 문제면 설정 열기', async () =
   expect(api.start).toHaveBeenCalled();
 });
 
+
+test('카드가 열린 채 발자국 남기기를 누르면 카드를 닫아 안내가 가려지지 않게', async () => {
+  const api = checkin({ name: 'idle' });
+  await render(<MapScreen />);
+  await act(async () => mockBridgeProps.onHideoutTap('a1'));
+  expect(screen.getByText('테스트 카페')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
+  expect(api.start).toHaveBeenCalled();
+  expect(screen.queryByText('테스트 카페')).toBeNull();
+});
+
+test('위치 확인 중에도 닫을 수 있다', async () => {
+  const api = checkin({ name: 'locating' });
+  await render(<MapScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(api.close).toHaveBeenCalled();
+});

@@ -47,6 +47,7 @@ export async function getFreshFix(): Promise<Fix | 'denied'> {
 export async function suggestPlace(fix: Fix): Promise<SuggestResult> {
   const { data, error } = await supabase.functions.invoke('suggest-place', {
     body: { lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy },
+    timeout: 10000, // RN fetch has no default timeout; a stalled request must not hang the flow
   });
   if (error) {
     console.error('suggest-place 실패', error);
