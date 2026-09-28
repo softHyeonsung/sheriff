@@ -11,7 +11,7 @@ import collections
 import io
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 
 AMBER = (0xE6, 0xA5, 0x52)  # color.primary
 AMBER_DEEP = (0xC9, 0x8A, 0x3C)  # color.primaryDeep
@@ -66,6 +66,24 @@ def cut_background(path, tol):
     return img
 
 
+def harden_alpha(path, threshold=128):
+    """Art whose background was already removed but left a faint coloured fringe: drop everything
+    under half opacity, make the rest opaque, then an opening pass removes stray specks."""
+    img = shrink(Image.open(path).convert("RGBA"))
+    mask = img.getchannel("A").point(lambda v: 255 if v >= threshold else 0)
+    mask = mask.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))
+    img.putalpha(mask)
+    return img
+
+
+def cut(path, tol):
+    """Pick the background remover: sources with a transparent corner already have alpha."""
+    src = Image.open(path)
+    if src.mode in ("RGBA", "LA") and src.convert("RGBA").getpixel((0, 0))[3] == 0:
+        return harden_alpha(path)
+    return cut_background(path, tol)
+
+
 def square(img):
     img = img.crop(img.getchannel("A").getbbox())
     side = max(img.size)
@@ -99,8 +117,8 @@ def main():
         "paw": square(recolor_silhouette(a.paw)),
         "box": square(cut_background(a.box, a.tol)),
         "hut": square(cut_background(a.hut, a.tol)),
-        "tower": square(cut_background(a.tower, a.tol)) if a.tower else placeholder(1),
-        "palace": square(cut_background(a.palace, a.tol)) if a.palace else placeholder(2),
+        "tower": square(cut(a.tower, a.tol)) if a.tower else placeholder(1),
+        "palace": square(cut(a.palace, a.tol)) if a.palace else placeholder(2),
     }
 
     out_dir = MOBILE / "assets" / "markers"
