@@ -6,6 +6,7 @@ import type { Grade } from '@/map/grades';
 import { CheckinError, type CheckinErrorCode } from './errors';
 
 export { CheckinError, type CheckinErrorCode };
+export { targetFor } from './candidates';
 
 export type Fix = { lat: number; lng: number; accuracy: number };
 export type MineCandidate = { kind: 'mine'; aidutId: string; name: string; grade: Grade; distanceM: number };
@@ -69,7 +70,3 @@ export async function submitCheckin(fix: Fix, target: CheckinTarget): Promise<Ch
   return data as CheckinResult;
 }
 
-export function targetFor(c: Candidate): CheckinTarget {
-  if (c.kind === 'mine') return { kind: 'mine', aidutId: c.aidutId };
-  return { kind: 'kakao', placeId: c.placeId, name: c.name, lat: c.lat, lng: c.lng, roadAddress: c.roadAddress };
-}
