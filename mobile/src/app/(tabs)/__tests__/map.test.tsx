@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
+import { useCheckin } from '@/features/checkin/useCheckin';
 import MapScreen from '../index';
 
 let mockBridgeProps: Record<string, any> = {};
@@ -21,6 +22,18 @@ jest.mock('@/map/MapBridge', () => {
 });
 jest.mock('@/features/map/useMyHideouts', () => ({ useMyHideouts: jest.fn() }));
 jest.mock('@/features/map/useMyLocation', () => ({ useMyLocation: jest.fn() }));
+let mockSheetProps: Record<string, any> = {};
+let mockCelebrationProps: Record<string, any> = {};
+jest.mock('@/features/checkin/useCheckin', () => ({ useCheckin: jest.fn() }));
+jest.mock('@/features/checkin/CheckinSheet', () => {
+  const { View } = require('react-native');
+  return { CheckinSheet: function MockSheet(props: any) { mockSheetProps = props; return <View testID="checkin-sheet" />; } };
+});
+jest.mock('@/features/checkin/Celebration', () => {
+  const { View } = require('react-native');
+  return { Celebration: function MockCelebration(props: any) { mockCelebrationProps = props; return <View testID="celebration" />; } };
+});
+
 
 const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const cafe = { id: 'a1', name: '테스트 카페', grade: 'box' as const, footprintCount: 3, lat: 37.5, lng: 126.9 };
@@ -30,6 +43,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState());
   (useMyLocation as jest.Mock).mockReturnValue({ location: { lat: 37.5, lng: 126.9, accuracy: 10 }, permission: 'granted' });
+  (useCheckin as jest.Mock).mockReturnValue({ state: { name: 'idle' }, start: jest.fn(), choose: jest.fn(), close: jest.fn() });
+
 });
 
 test('지도에는 이름 없이 위치·등급만 넘긴다', async () => {
@@ -114,3 +129,55 @@ test('마커 탭 같은 재렌더에서는 지도에 같은 목록을 넘긴다(
   await act(async () => mockBridgeProps.onHideoutTap('a1'));
   expect(mockBridgeProps.hideouts).toBe(first);
 });
+
+const checkin = (state: object, over = {}) => {
+  const api = { state, start: jest.fn(), choose: jest.fn(), close: jest.fn(), ...over };
+  (useCheckin as jest.Mock).mockReturnValue(api);
+  return api;
+};
+
+test('발자국 남기기 → 체크인 시작', async () => {
+  const api = checkin({ name: 'idle' });
+  await render(<MapScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
+  expect(api.start).toHaveBeenCalled();
+});
+
+test('위치 확인 중엔 안내가 뜨고 버튼이 비활성', async () => {
+  checkin({ name: 'locating' });
+  await render(<MapScreen />);
+  expect(screen.getByText('잠깐, 위치를 확인하고 있어요…')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '발자국 남기기', disabled: true })).toBeTruthy();
+});
+
+test('후보 고르기 → 시트(발자국 수 전달)', async () => {
+  checkin({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], busy: false, error: null });
+  await render(<MapScreen />);
+  expect(screen.getByTestId('checkin-sheet')).toBeTruthy();
+  expect(mockSheetProps.footprintsById).toEqual({ a1: 3 });
+});
+
+test('축하 닫기 → 새로고침(마커가 자란 모습으로)', async () => {
+  const retry = jest.fn();
+  (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState({ retry }));
+  const result = { aidutId: 'a1', name: '테스트 카페', footprintCount: 5, grade: 'hut', gradeChanged: true, newCellsCleared: 0 };
+  const api = checkin({ name: 'celebrating', result });
+  await render(<MapScreen />);
+  expect(mockCelebrationProps.result).toEqual(result);
+  expect(mockCelebrationProps.thresholds).toEqual(T);
+  await act(async () => mockCelebrationProps.onClose());
+  expect(api.close).toHaveBeenCalled();
+  expect(retry).toHaveBeenCalled();
+});
+
+test('실패 안내 + 다시 시도, 권한 문제면 설정 열기', async () => {
+  const api = checkin({ name: 'failed', message: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.', needsSettings: true });
+  const open = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+  await render(<MapScreen />);
+  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.')).toBeTruthy();
+  await fireEvent.press(screen.getAllByRole('button', { name: '설정 열기' }).at(-1)!);
+  expect(open).toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '다시 해볼게요' }));
+  expect(api.start).toHaveBeenCalled();
+});
+

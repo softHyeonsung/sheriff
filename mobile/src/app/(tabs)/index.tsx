@@ -4,6 +4,9 @@ import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { color, font, radius, space, type } from '@/constants/tokens';
+import { Celebration } from '@/features/checkin/Celebration';
+import { CheckinSheet } from '@/features/checkin/CheckinSheet';
+import { useCheckin } from '@/features/checkin/useCheckin';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
@@ -24,6 +27,9 @@ function Pill({ label, onPress }: { label: string; onPress: () => void }) {
 export default function MapScreen() {
   const { hideouts, thresholds, status, retry } = useMyHideouts();
   const { location, permission } = useMyLocation();
+  const checkin = useCheckin();
+  const footprintsById = useMemo(() => Object.fromEntries(hideouts.map((h) => [h.id, h.footprintCount])), [hideouts]);
+  const locating = checkin.state.name === 'locating';
   const bridge = useRef<MapBridgeHandle>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
@@ -109,6 +115,33 @@ export default function MapScreen() {
         </View>
       )}
 
+      {(locating || checkin.state.name === 'failed') && (
+        <View style={styles.checkinNote}>
+          <Text style={styles.bannerText}>
+            {checkin.state.name === 'failed' ? checkin.state.message : '잠깐, 위치를 확인하고 있어요…'}
+          </Text>
+          {checkin.state.name === 'failed' && (
+            <View style={styles.row}>
+              <Pill label="다시 해볼게요" onPress={checkin.start} />
+              {checkin.state.needsSettings && <Pill label="설정 열기" onPress={() => Linking.openSettings()} />}
+              <Pill label="닫기" onPress={checkin.close} />
+            </View>
+          )}
+        </View>
+      )}
+
+      <View style={styles.stampWrap} pointerEvents="box-none">
+        <Pressable
+          onPress={checkin.start}
+          disabled={locating}
+          accessibilityRole="button"
+          accessibilityLabel="발자국 남기기"
+          accessibilityState={{ disabled: locating }}
+          style={[styles.stamp, locating && styles.stampBusy]}>
+          <Text style={styles.stampText}>발자국 남기기</Text>
+        </Pressable>
+      </View>
+
       {selected && (
         <View style={styles.card}>
           <Image source={{ uri: markerFor(selected.grade).uri }} style={styles.cardArt} />
@@ -121,11 +154,49 @@ export default function MapScreen() {
           <Pill label="닫기" onPress={() => setSelectedId(null)} />
         </View>
       )}
+
+      {checkin.state.name === 'choosing' && (
+        <CheckinSheet state={checkin.state} footprintsById={footprintsById} onChoose={checkin.choose} onClose={checkin.close} />
+      )}
+      {checkin.state.name === 'celebrating' && (
+        <Celebration
+          result={checkin.state.result}
+          thresholds={thresholds}
+          onClose={() => {
+            checkin.close();
+            retry(); // the marker should show the grown hideout
+          }}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  checkinNote: {
+    position: 'absolute',
+    left: space.gutter,
+    right: space.gutter,
+    bottom: 96,
+    backgroundColor: color.surfaceCard,
+    borderRadius: radius.card,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: color.line,
+  },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  stampWrap: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center' },
+  stamp: {
+    minHeight: 52,
+    paddingHorizontal: 28,
+    borderRadius: radius.pill,
+    backgroundColor: color.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stampBusy: { opacity: 0.6 },
+  stampText: { fontFamily: font.semibold, fontSize: 16, color: color.onPrimary },
   screen: { flex: 1, backgroundColor: color.surface },
   centerBox: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: space.gutter },
   top: { position: 'absolute', left: space.gutter, right: space.gutter, top: 0, gap: 8 },
@@ -153,7 +224,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: space.gutter,
     right: space.gutter,
-    bottom: 24,
+    bottom: 96,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
