@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { syncArrivalRegions } from '@/features/arrival/register';
+import { readMapCache, saveHideouts } from '@/features/map/mapCache';
 import { supabase } from '@/services/supabase';
 import { type Grade, isGrade } from '@/map/grades';
 
@@ -21,7 +22,7 @@ type Row = { id: string; name: string; grade: string; footprint_count: number; l
 export function useMyHideouts() {
   const [hideouts, setHideouts] = useState<MyHideout[]>([]);
   const [thresholds, setThresholds] = useState<GradeThresholds | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'offline' | 'error'>('loading');
 
   const load = useCallback(async () => {
     try {
@@ -47,10 +48,20 @@ export function useMyHideouts() {
       // 도착 알림 감시 목록도 같이 갱신. 실패해도 지도는 그대로(다음 포커스에 다시).
       syncArrivalRegions(list).catch((e) => console.warn('도착 알림 등록 실패', e));
       setThresholds(cfg.data.value as GradeThresholds);
+      saveHideouts(list, cfg.data.value as GradeThresholds).catch((e) => console.warn('지도 저장 실패', e));
       setStatus('ready');
     } catch (e) {
-      console.error('아지트 불러오기 실패', e);
-      setStatus('error');
+      // 끊겼으면 마지막으로 본 지도를. 저장본도 없으면 지금처럼 오류.
+      const cache = await readMapCache().catch(() => null);
+      if (cache?.thresholds) {
+        console.warn('아지트 불러오기 실패 — 저장본 사용', e);
+        setHideouts(cache.hideouts);
+        setThresholds(cache.thresholds);
+        setStatus('offline');
+      } else {
+        console.error('아지트 불러오기 실패', e);
+        setStatus('error');
+      }
     }
   }, []);
 

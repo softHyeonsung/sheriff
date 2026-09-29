@@ -1,11 +1,13 @@
 // mobile/src/features/map/__tests__/useMyHideouts.test.ts
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { syncArrivalRegions } from '@/features/arrival/register';
+import { readMapCache, saveHideouts } from '@/features/map/mapCache';
 import { supabase } from '@/services/supabase';
 import { useMyHideouts } from '../useMyHideouts';
 
 jest.mock('@/services/supabase', () => ({ supabase: { rpc: jest.fn(), from: jest.fn() } }));
 jest.mock('@/features/arrival/register', () => ({ syncArrivalRegions: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('@/features/map/mapCache', () => ({ readMapCache: jest.fn(), saveHideouts: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('expo-router', () => ({ useFocusEffect: (cb: () => void) => require('react').useEffect(cb, [cb]) }));
 
 const rpc = supabase.rpc as jest.Mock;
@@ -17,6 +19,7 @@ const thresholdsQuery = (value: unknown) => ({
 beforeEach(() => {
   jest.clearAllMocks();
   from.mockReturnValue(thresholdsQuery({ box: 2, hut: 5, tower: 10, palace: 20 }));
+  (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [], thresholds: null, fog: null });
 });
 
 test('내 아지트와 등급 임계값을 불러온다', async () => {
@@ -35,6 +38,7 @@ test('내 아지트와 등급 임계값을 불러온다', async () => {
   ]);
   expect(result.current.thresholds).toEqual({ box: 2, hut: 5, tower: 10, palace: 20 });
   expect(syncArrivalRegions).toHaveBeenCalledWith(result.current.hideouts);
+  expect(saveHideouts).toHaveBeenCalledWith(result.current.hideouts, { box: 2, hut: 5, tower: 10, palace: 20 });
 });
 
 test('실패하면 error, retry로 다시 부른다', async () => {
@@ -54,4 +58,16 @@ test('등록이 실패해도 지도는 ready', async () => {
   const { result } = await renderHook(() => useMyHideouts());
   await waitFor(() => expect(result.current.status).toBe('ready'));
   await waitFor(() => expect(console.warn).toHaveBeenCalled());
+});
+
+test('실패했는데 저장본이 있으면 저장본을 보여주고 offline', async () => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  const cached = { id: 'c1', name: '저장된 곳', grade: 'hut', footprintCount: 5, lat: 37.5, lng: 126.9, lastVisitedAt: null };
+  (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [cached], thresholds: { box: 2, hut: 5, tower: 10, palace: 20 }, fog: null });
+  rpc.mockResolvedValue({ data: null, error: new Error('network') });
+  const { result } = await renderHook(() => useMyHideouts());
+  await waitFor(() => expect(result.current.status).toBe('offline'));
+  expect(result.current.hideouts).toEqual([cached]);
+  expect(result.current.thresholds).toEqual({ box: 2, hut: 5, tower: 10, palace: 20 });
+  expect(syncArrivalRegions).not.toHaveBeenCalled(); // 도착 알림은 서버 목록으로만 등록
 });
