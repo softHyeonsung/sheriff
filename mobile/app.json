@@ -54,7 +54,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "지금 있는 곳을 지도에 보여주고 발자국을 남기려면 위치가 필요해요."
+          "locationWhenInUsePermission": "지금 있는 곳을 지도에 보여주고 발자국을 남기려면 위치가 필요해요.",
+          "locationAlwaysAndWhenInUsePermission": "아지트 근처에 도착하면 알려드리려고 앱을 안 켜도 위치를 확인해요.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ]
     ],
