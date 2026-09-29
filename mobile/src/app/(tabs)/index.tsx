@@ -1,9 +1,12 @@
 // mobile/src/app/(tabs)/index.tsx
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { color, font, radius, space, type } from '@/constants/tokens';
+import { ArrivalOffer } from '@/features/arrival/ArrivalOffer';
+import { answerArrivalOffer, shouldOfferArrival } from '@/features/arrival/register';
+import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { Celebration } from '@/features/checkin/Celebration';
 import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { useCheckin } from '@/features/checkin/useCheckin';
@@ -45,6 +48,17 @@ export default function MapScreen() {
   const [mapKey, setMapKey] = useState(0);
   // What the map was last centered on. A ref, not state: updating it must not re-render.
   const centeredOn = useRef<'none' | 'hideout' | 'me'>('none');
+  const [arrivalOffer, setArrivalOffer] = useState(false);
+  const celebrated = checkin.state.name === 'celebrating' ? checkin.state.result : null;
+
+  // 도착 알림을 누르고 들어오면 바로 체크인. 가까운 내 아지트가 첫 후보로 나온다.
+  const { start } = checkin;
+  useArrivalTap(
+    useCallback(() => {
+      setSelectedId(null);
+      start();
+    }, [start]),
+  );
 
   // A selected hideout that vanished on refresh closes the card instead of rendering a broken one.
   const selected = hideouts.find((h) => h.id === selectedId) ?? null;
@@ -180,15 +194,30 @@ export default function MapScreen() {
       {checkin.state.name === 'choosing' && (
         <CheckinSheet state={checkin.state} footprintsById={footprintsById} onChoose={checkin.choose} onClose={checkin.close} />
       )}
-      {checkin.state.name === 'celebrating' && (
+      {celebrated && (
         <Celebration
-          result={checkin.state.result}
+          result={celebrated}
           thresholds={thresholds}
           onClose={() => {
             checkin.close();
             retry(); // the marker should show the grown hideout
             fog.refresh(); // the new footprint's cell clears
             dongAt.refresh(); // ratio and stage move with it
+            shouldOfferArrival(celebrated.footprintCount)
+              .then(setArrivalOffer)
+              .catch((e) => console.warn('도착 알림 카드 확인 실패', e));
+          }}
+        />
+      )}
+      {arrivalOffer && (
+        <ArrivalOffer
+          onAnswer={(accept) => {
+            setArrivalOffer(false);
+            answerArrivalOffer(accept)
+              .then((granted) => {
+                if (granted) retry(); // 다시 불러오면서 감시 목록을 등록한다
+              })
+              .catch((e) => console.warn('도착 알림 켜기 실패', e));
           }}
         />
       )}

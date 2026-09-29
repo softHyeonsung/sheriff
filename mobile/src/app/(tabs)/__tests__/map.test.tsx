@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed test doubles for native components */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
+import { answerArrivalOffer, shouldOfferArrival } from '@/features/arrival/register';
+import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
 import { useCheckin } from '@/features/checkin/useCheckin';
@@ -13,6 +15,8 @@ import MapScreen from '../index';
 let mockBridgeProps: Record<string, any> = {};
 const mockPanTo = jest.fn();
 const mockCatSay = jest.fn();
+jest.mock('@/features/arrival/register', () => ({ shouldOfferArrival: jest.fn(), answerArrivalOffer: jest.fn() }));
+jest.mock('@/features/arrival/useArrivalTap', () => ({ useArrivalTap: jest.fn() }));
 jest.mock('@/features/territory/useMyFog', () => ({ useMyFog: jest.fn() }));
 jest.mock('@/features/territory/useDongAt', () => ({ useDongAt: jest.fn() }));
 jest.mock('@/map/MapBridge', () => {
@@ -53,6 +57,7 @@ beforeEach(() => {
   (useMyFog as jest.Mock).mockReturnValue({ cells: [], refresh: jest.fn() });
   useMeStore.setState({ me: null });
   (useDongAt as jest.Mock).mockReturnValue({ dong: null, onIdle: jest.fn(), refresh: jest.fn() });
+  (shouldOfferArrival as jest.Mock).mockResolvedValue(false);
 
 });
 
@@ -183,6 +188,31 @@ test('축하 닫기 → 새로고침(마커가 자란 모습으로)', async () =
   expect(retry).toHaveBeenCalled();
   expect(fogRefresh).toHaveBeenCalled();
   expect(dongRefresh).toHaveBeenCalled();
+});
+
+test('재방문 축하를 닫으면 도착 알림 카드, 좋아요 → 허용되면 다시 불러와 등록', async () => {
+  const retry = jest.fn();
+  (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState({ retry }));
+  (shouldOfferArrival as jest.Mock).mockResolvedValue(true);
+  (answerArrivalOffer as jest.Mock).mockResolvedValue(true);
+  checkin({ name: 'celebrating', result: { aidutId: 'a1', name: '테스트 카페', footprintCount: 2, grade: 'box', gradeChanged: true, newCellsCleared: 0 } });
+  await render(<MapScreen />);
+  expect(screen.queryByText('다음에 여기 오면 제가 알려드릴까요?')).toBeNull();
+  await act(async () => mockCelebrationProps.onClose());
+  expect(shouldOfferArrival).toHaveBeenCalledWith(2);
+  retry.mockClear();
+  await fireEvent.press(screen.getByRole('button', { name: '좋아요' }));
+  expect(answerArrivalOffer).toHaveBeenCalledWith(true);
+  expect(screen.queryByText('다음에 여기 오면 제가 알려드릴까요?')).toBeNull();
+  expect(retry).toHaveBeenCalled();
+});
+
+test('도착 알림을 누르고 들어오면 체크인 시작', async () => {
+  const api = checkin({ name: 'idle' });
+  await render(<MapScreen />);
+  const onArrive = (useArrivalTap as jest.Mock).mock.calls.at(-1)![0];
+  await act(async () => onArrive());
+  expect(api.start).toHaveBeenCalled();
 });
 
 test('실패 안내 + 다시 시도, 권한 문제면 설정 열기', async () => {
