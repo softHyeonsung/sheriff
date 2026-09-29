@@ -6,13 +6,28 @@ import type { Grade } from './grades';
 export type LatLng = { lat: number; lng: number };
 export type HideoutPin = { id: string; lat: number; lng: number; grade: Grade };
 export type MyLocation = { lat: number; lng: number; accuracy: number };
+// 걷힌 칸 하나: 남서·북동 모서리.
+export type FogCell = { sw: LatLng; ne: LatLng };
 
 export type AppToMap =
   | { type: 'setHideouts'; hideouts: HideoutPin[] }
   | ({ type: 'setMyLocation' } & MyLocation)
-  | ({ type: 'panTo' } & LatLng);
+  | ({ type: 'panTo' } & LatLng)
+  | { type: 'setFog'; cells: FogCell[] }
+  | { type: 'catSay'; text: string };
 
-export type MapToApp = { type: 'ready' } | { type: 'hideoutTap'; id: string } | { type: 'error'; reason: string };
+export type MapToApp =
+  | { type: 'ready' }
+  | { type: 'hideoutTap'; id: string }
+  | { type: 'error'; reason: string }
+  | { type: 'idle'; center: LatLng }
+  | { type: 'catTap' };
+
+function isLatLng(v: unknown): v is LatLng {
+  if (typeof v !== 'object' || v === null) return false;
+  const { lat, lng } = v as Record<string, unknown>;
+  return typeof lat === 'number' && typeof lng === 'number' && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+}
 
 export function parseMapMessage(raw: string): MapToApp | null {
   let m: unknown;
@@ -30,6 +45,10 @@ export function parseMapMessage(raw: string): MapToApp | null {
       return typeof o.id === 'string' ? { type: 'hideoutTap', id: o.id } : null;
     case 'error':
       return typeof o.reason === 'string' ? { type: 'error', reason: o.reason } : null;
+    case 'idle':
+      return isLatLng(o.center) ? { type: 'idle', center: { lat: o.center.lat, lng: o.center.lng } } : null;
+    case 'catTap':
+      return { type: 'catTap' };
     default:
       return null;
   }

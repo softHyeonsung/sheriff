@@ -3,12 +3,14 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
+import { color } from '@/constants/tokens';
+import { CAT_IMAGE } from './cat-image.generated';
 import { GRADES } from './grades';
 import { markerFor } from './markers';
-import { type AppToMap, type HideoutPin, type LatLng, type MyLocation, parseMapMessage, toMapScript } from './protocol';
+import { type AppToMap, type FogCell, type HideoutPin, type LatLng, type MyLocation, parseMapMessage, toMapScript } from './protocol';
 import { buildMapHtml } from './webview-template';
 
-export type MapBridgeHandle = { panTo: (lat: number, lng: number) => void };
+export type MapBridgeHandle = { panTo: (lat: number, lng: number) => void; catSay: (text: string) => void };
 
 type Props = {
   hideouts: HideoutPin[];
@@ -16,12 +18,15 @@ type Props = {
   center: LatLng;
   onHideoutTap: (id: string) => void;
   onError: (reason: string) => void;
+  fog: FogCell[];
+  onIdle: (center: LatLng) => void;
+  onCatTap: () => void;
 };
 
 const ORIGIN = 'http://localhost'; // registered as a Web platform domain in the Kakao console
 
 export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
-  { hideouts, myLocation, center, onHideoutTap, onError },
+  { hideouts, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap },
   ref,
 ) {
   const jsKey = process.env.EXPO_PUBLIC_KAKAO_JS_KEY ?? '';
@@ -30,7 +35,7 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   // The page is built once; later center changes go through panTo, not a reload.
   const [initialCenter] = useState(center);
   const html = useMemo(
-    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter }),
+    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: CAT_IMAGE, fogColor: color.fog }),
     [jsKey, initialCenter],
   );
 
@@ -45,6 +50,10 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   useEffect(() => {
     if (ready) send({ type: 'setHideouts', hideouts });
   }, [ready, hideouts]);
+
+  useEffect(() => {
+    if (ready) send({ type: 'setFog', cells: fog });
+  }, [ready, fog]);
 
   useEffect(() => {
     if (ready && myLocation) send({ type: 'setMyLocation', ...myLocation });
@@ -66,6 +75,10 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
         if (ready) send({ type: 'panTo', lat, lng });
         else pendingPan.current = { lat, lng };
       },
+      // A line said before the map is ready has no cat to say it — dropped.
+      catSay: (text) => {
+        if (ready) send({ type: 'catSay', text });
+      },
     }),
     [ready],
   );
@@ -75,6 +88,8 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
     if (!msg) return;
     if (msg.type === 'ready') setReady(true);
     else if (msg.type === 'hideoutTap') onHideoutTap(msg.id);
+    else if (msg.type === 'idle') onIdle(msg.center);
+    else if (msg.type === 'catTap') onCatTap();
     else onError(msg.reason);
   };
 

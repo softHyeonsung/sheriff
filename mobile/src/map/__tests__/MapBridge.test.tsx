@@ -19,7 +19,7 @@ jest.mock('react-native-webview', () => {
 });
 
 const pins = [{ id: 'a1', lat: 37.5, lng: 126.9, grade: 'hut' as const }];
-const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn() };
+const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn() };
 const send = async (data: string) => act(async () => mockWebProps.onMessage({ nativeEvent: { data } }));
 
 beforeEach(() => {
@@ -31,9 +31,10 @@ test('지도 준비 전엔 보내지 않고, ready 이후에 보낸다', async (
   await render(<MapBridge {...base} />);
   expect(mockInject).not.toHaveBeenCalled();
   await send('{"type":"ready"}');
-  expect(mockInject).toHaveBeenCalledTimes(1);
+  expect(mockInject).toHaveBeenCalledTimes(2);
   expect(mockInject.mock.calls[0][0]).toContain('setHideouts');
   expect(mockInject.mock.calls[0][0]).toContain('a1');
+  expect(mockInject.mock.calls[1][0]).toContain('setFog');
 });
 
 test('위치가 오면 setMyLocation을 보낸다', async () => {
@@ -99,4 +100,37 @@ test('WebView 프로세스가 죽으면(iOS 백그라운드 등) 흰 화면 대�
   await act(async () => mockWebProps.onRenderProcessGone?.({ nativeEvent: { didCrash: true } }));
   expect(base.onError).toHaveBeenCalledWith('content_process_gone');
   expect(base.onError).toHaveBeenCalledWith('render_process_gone');
+});
+
+const cell = { sw: { lat: 37.5, lng: 126.9 }, ne: { lat: 37.501, lng: 126.901 } };
+
+test('걷힌 칸이 바뀌면 setFog를 보낸다', async () => {
+  const { rerender } = await render(<MapBridge {...base} />);
+  await send('{"type":"ready"}');
+  mockInject.mockClear();
+  await rerender(<MapBridge {...base} fog={[cell]} />);
+  expect(mockInject).toHaveBeenCalledTimes(1);
+  expect(mockInject.mock.calls[0][0]).toContain('setFog');
+  expect(mockInject.mock.calls[0][0]).toContain('37.501');
+});
+
+test('idle·catTap을 콜백으로 넘긴다', async () => {
+  const onIdle = jest.fn();
+  const onCatTap = jest.fn();
+  await render(<MapBridge {...base} onIdle={onIdle} onCatTap={onCatTap} />);
+  await send('{"type":"idle","center":{"lat":37.5,"lng":126.9}}');
+  await send('{"type":"catTap"}');
+  expect(onIdle).toHaveBeenCalledWith({ lat: 37.5, lng: 126.9 });
+  expect(onCatTap).toHaveBeenCalled();
+});
+
+test('catSay는 준비된 뒤에만 보낸다', async () => {
+  const ref = createRef<MapBridgeHandle>();
+  await render(<MapBridge {...base} ref={ref} />);
+  await act(async () => ref.current!.catSay('안녕'));
+  expect(mockInject).not.toHaveBeenCalled();
+  await send('{"type":"ready"}');
+  mockInject.mockClear();
+  await act(async () => ref.current!.catSay('안녕'));
+  expect(mockInject.mock.calls[0][0]).toContain('catSay');
 });

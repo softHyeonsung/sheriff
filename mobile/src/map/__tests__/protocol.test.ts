@@ -5,6 +5,8 @@ test('정상 메시지는 통과한다', () => {
   expect(parseMapMessage('{"type":"ready"}')).toEqual({ type: 'ready' });
   expect(parseMapMessage('{"type":"hideoutTap","id":"a1"}')).toEqual({ type: 'hideoutTap', id: 'a1' });
   expect(parseMapMessage('{"type":"error","reason":"sdk_load_failed"}')).toEqual({ type: 'error', reason: 'sdk_load_failed' });
+  expect(parseMapMessage('{"type":"idle","center":{"lat":37.5,"lng":126.9}}')).toEqual({ type: 'idle', center: { lat: 37.5, lng: 126.9 } });
+  expect(parseMapMessage('{"type":"catTap"}')).toEqual({ type: 'catTap' });
 });
 
 test('이상한 메시지는 버린다', () => {
@@ -16,6 +18,11 @@ test('이상한 메시지는 버린다', () => {
     '{"type":"hideoutTap"}',
     '{"type":"hideoutTap","id":7}',
     '{"type":"error"}',
+    '{"type":"idle"}',
+    '{"type":"idle","center":null}',
+    '{"type":"idle","center":{"lat":"37.5","lng":126.9}}',
+    '{"type":"idle","center":{"lat":95,"lng":126.9}}',
+    '{"type":"idle","center":{"lat":37.5,"lng":-181}}',
   ]) {
     expect(parseMapMessage(raw)).toBeNull();
   }
