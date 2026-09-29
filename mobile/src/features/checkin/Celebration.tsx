@@ -18,7 +18,7 @@ import { color, font, radius, space, type } from '@/constants/tokens';
 import type { GradeThresholds } from '@/features/map/useMyHideouts';
 import { markerFor } from '@/map/markers';
 import type { CheckinResult } from './checkinApi';
-import { celebrationCopy } from './copy';
+import { celebrationCopy, dongStageLine } from './copy';
 
 const PARTICLES = 8;
 
@@ -39,6 +39,7 @@ export function Celebration({ result, thresholds, onClose }: { result: CheckinRe
   const pop = useSharedValue(reduceMotion ? 1 : 0);
   const burst = useSharedValue(reduceMotion ? 1 : 0);
   const { title, hint } = celebrationCopy(result, thresholds);
+  const dongLine = dongStageLine(result);
 
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -65,6 +66,7 @@ export function Celebration({ result, thresholds, onClose }: { result: CheckinRe
             {title}
           </Text>
           {hint && <Text style={styles.hint}>{hint}</Text>}
+          {dongLine && <Text style={styles.hint}>{dongLine}</Text>}
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="좋아요" style={styles.cta}>
             <Text style={styles.ctaText}>좋아요</Text>
           </Pressable>

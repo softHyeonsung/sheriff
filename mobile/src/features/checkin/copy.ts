@@ -1,6 +1,7 @@
 // mobile/src/features/checkin/copy.ts
 import type { GradeThresholds } from '@/features/map/useMyHideouts';
 import { nextStageHint } from '@/features/map/nextStageHint';
+import type { DongStage } from '@/features/territory/stages';
 import type { Grade } from '@/map/grades';
 import type { CheckinResult } from './checkinApi';
 import { CheckinError } from './errors';
@@ -40,4 +41,16 @@ export function celebrationCopy(r: CheckinResult, t: GradeThresholds | null): { 
   if (r.footprintCount === 1) return { title: '🐾 첫 발자국이 찍혔어요. 여기서부터 시작이에요.', hint: null };
   if (r.gradeChanged && r.grade !== 'paw') return { title: GRADE_UP[r.grade], hint: null };
   return { title: '🐾 발자국을 남겼어요', hint: t ? nextStageHint(r.footprintCount, t) : null };
+}
+
+const DONG_UP: Record<Exclude<DongStage, 'fog'>, string> = {
+  sprout: '우리 동네가 이제 개척지가 됐어요 🌱',
+  cozy: '우리 동네가 이제 아늑한 동네가 됐어요 🏘️',
+  cat: '여기, 이제 고양이 영역이에요 🐾 당신이 이만큼 누볐어요.',
+  kingdom: '우리 동네가 이제 고양이 왕국이 됐어요 👑',
+};
+
+export function dongStageLine(r: CheckinResult): string | null {
+  if (!r.dong?.stageChanged || r.dong.stage === 'fog') return null;
+  return DONG_UP[r.dong.stage];
 }

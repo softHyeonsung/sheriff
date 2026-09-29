@@ -1,6 +1,6 @@
 // mobile/src/features/checkin/__tests__/copy.test.ts
 import { CheckinError } from '../errors';
-import { celebrationCopy, messageFor } from '../copy';
+import { celebrationCopy, dongStageLine, messageFor } from '../copy';
 
 const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const r = (over: object) => ({ aidutId: 'a', name: 'x', footprintCount: 3, grade: 'box', gradeChanged: false, newCellsCleared: 0, ...over }) as never;
@@ -33,4 +33,17 @@ test('축하 문구: 첫 발자국 / 등급업 4종 / 같은 등급', () => {
   expect(celebrationCopy(r({ footprintCount: 20, grade: 'palace', gradeChanged: true }), T).title).toBe('🏰 캣 팰리스. 여긴 당신의 인생 장소예요.');
   expect(celebrationCopy(r({ footprintCount: 3, grade: 'box' }), T)).toEqual({ title: '🐾 발자국을 남겼어요', hint: '2번 더 오면 작은 집이 돼요' });
   expect(celebrationCopy(r({ footprintCount: 3, grade: 'box' }), null)).toEqual({ title: '🐾 발자국을 남겼어요', hint: null });
+});
+
+const dongBase = { aidutId: 'a', name: '카페', footprintCount: 1, grade: 'paw' as const, gradeChanged: false, newCellsCleared: 1 };
+
+test('동네 단계가 오르면 거시 문구', () => {
+  expect(dongStageLine({ ...dongBase, dong: { name: '사직동', stage: 'cozy', stageChanged: true } })).toBe('우리 동네가 이제 아늑한 동네가 됐어요 🏘️');
+  expect(dongStageLine({ ...dongBase, dong: { name: '사직동', stage: 'cat', stageChanged: true } })).toBe('여기, 이제 고양이 영역이에요 🐾 당신이 이만큼 누볐어요.');
+});
+
+test('안 올랐거나 동을 모르면 없음', () => {
+  expect(dongStageLine({ ...dongBase, dong: { name: '사직동', stage: 'cozy', stageChanged: false } })).toBeNull();
+  expect(dongStageLine({ ...dongBase, dong: null })).toBeNull();
+  expect(dongStageLine(dongBase)).toBeNull();
 });

@@ -33,3 +33,10 @@ test('모션 줄이기면 애니메이션 없이도 같은 내용', async () => 
   await render(<Celebration result={up} thresholds={T} onClose={jest.fn()} />);
   expect(screen.getByText('작은 집이 됐어요 🛖 자주 오시는군요.')).toBeTruthy();
 });
+
+test('동네 단계가 오르면 한 줄 더', async () => {
+  await render(
+    <Celebration result={{ ...up, dong: { name: '사직동', stage: 'sprout', stageChanged: true } }} thresholds={T} onClose={jest.fn()} />,
+  );
+  expect(screen.getByText('우리 동네가 이제 개척지가 됐어요 🌱')).toBeTruthy();
+});

@@ -10,6 +10,10 @@ import { useCheckin } from '@/features/checkin/useCheckin';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
+import { pickCatLine } from '@/features/territory/catLine';
+import { DongBadge } from '@/features/territory/DongBadge';
+import { useDongAt } from '@/features/territory/useDongAt';
+import { useMyFog } from '@/features/territory/useMyFog';
 import { GRADE_LABEL } from '@/map/grades';
 import { MapBridge, type MapBridgeHandle } from '@/map/MapBridge';
 import { markerFor } from '@/map/markers';
@@ -28,6 +32,9 @@ export default function MapScreen() {
   const { hideouts, thresholds, status, retry } = useMyHideouts();
   const { location, permission } = useMyLocation();
   const checkin = useCheckin();
+  const fog = useMyFog();
+  const dongAt = useDongAt();
+  const catTaps = useRef(0);
   const footprintsById = useMemo(() => Object.fromEntries(hideouts.map((h) => [h.id, h.footprintCount])), [hideouts]);
   const locating = checkin.state.name === 'locating';
   const bridge = useRef<MapBridgeHandle>(null);
@@ -83,6 +90,9 @@ export default function MapScreen() {
         myLocation={location}
         center={CITY_HALL}
         onHideoutTap={setSelectedId}
+        fog={fog.cells}
+        onIdle={dongAt.onIdle}
+        onCatTap={() => bridge.current?.catSay(pickCatLine(dongAt.dong?.ratio ?? null, catTaps.current++))}
         onError={(reason) => {
           console.warn('지도 오류', reason);
           setMapFailed(true);
@@ -90,6 +100,7 @@ export default function MapScreen() {
       />
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
+        <DongBadge dong={dongAt.dong} />
         {permission === 'denied' && (
           <View style={styles.banner}>
             <Text style={styles.bannerText}>위치를 켜두시면 지금 있는 곳을 보여드릴게요</Text>
@@ -173,6 +184,8 @@ export default function MapScreen() {
           onClose={() => {
             checkin.close();
             retry(); // the marker should show the grown hideout
+            fog.refresh(); // the new footprint's cell clears
+            dongAt.refresh(); // ratio and stage move with it
           }}
         />
       )}

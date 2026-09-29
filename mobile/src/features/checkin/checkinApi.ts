@@ -2,6 +2,7 @@
 // The only place the check-in flow talks to the outside world: GPS, suggest-place, submit_checkin.
 import * as Location from 'expo-location';
 import { supabase } from '@/services/supabase';
+import type { DongStage } from '@/features/territory/stages';
 import type { Grade } from '@/map/grades';
 import { CheckinError, type CheckinErrorCode } from './errors';
 
@@ -32,6 +33,8 @@ export type CheckinResult = {
   grade: Grade;
   gradeChanged: boolean;
   newCellsCleared: number;
+  // 아지트가 동 경계 밖이거나 경계 데이터가 없으면 null.
+  dong?: { name: string; stage: DongStage; stageChanged: boolean } | null;
 };
 
 const KNOWN: CheckinErrorCode[] = ['too_far', 'weak_gps', 'cooldown', 'not_yours'];

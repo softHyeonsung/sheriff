@@ -5,17 +5,22 @@ import { Linking } from 'react-native';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
 import { useCheckin } from '@/features/checkin/useCheckin';
+import { useMyFog } from '@/features/territory/useMyFog';
+import { useDongAt } from '@/features/territory/useDongAt';
 import MapScreen from '../index';
 
 let mockBridgeProps: Record<string, any> = {};
 const mockPanTo = jest.fn();
+const mockCatSay = jest.fn();
+jest.mock('@/features/territory/useMyFog', () => ({ useMyFog: jest.fn() }));
+jest.mock('@/features/territory/useDongAt', () => ({ useDongAt: jest.fn() }));
 jest.mock('@/map/MapBridge', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
     MapBridge: React.forwardRef(function MockMapBridge(props: any, ref: any) {
       mockBridgeProps = props;
-      React.useImperativeHandle(ref, () => ({ panTo: mockPanTo }));
+      React.useImperativeHandle(ref, () => ({ panTo: mockPanTo, catSay: mockCatSay }));
       return <View testID="map" />;
     }),
   };
@@ -44,6 +49,8 @@ beforeEach(() => {
   (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState());
   (useMyLocation as jest.Mock).mockReturnValue({ location: { lat: 37.5, lng: 126.9, accuracy: 10 }, permission: 'granted' });
   (useCheckin as jest.Mock).mockReturnValue({ state: { name: 'idle' }, start: jest.fn(), choose: jest.fn(), close: jest.fn() });
+  (useMyFog as jest.Mock).mockReturnValue({ cells: [], refresh: jest.fn() });
+  (useDongAt as jest.Mock).mockReturnValue({ dong: null, onIdle: jest.fn(), refresh: jest.fn() });
 
 });
 
@@ -160,6 +167,10 @@ test('후보 고르기 → 시트(발자국 수 전달)', async () => {
 test('축하 닫기 → 새로고침(마커가 자란 모습으로)', async () => {
   const retry = jest.fn();
   (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState({ retry }));
+  const fogRefresh = jest.fn();
+  const dongRefresh = jest.fn();
+  (useMyFog as jest.Mock).mockReturnValue({ cells: [], refresh: fogRefresh });
+  (useDongAt as jest.Mock).mockReturnValue({ dong: null, onIdle: jest.fn(), refresh: dongRefresh });
   const result = { aidutId: 'a1', name: '테스트 카페', footprintCount: 5, grade: 'hut', gradeChanged: true, newCellsCleared: 0 };
   const api = checkin({ name: 'celebrating', result });
   await render(<MapScreen />);
@@ -168,6 +179,8 @@ test('축하 닫기 → 새로고침(마커가 자란 모습으로)', async () =
   await act(async () => mockCelebrationProps.onClose());
   expect(api.close).toHaveBeenCalled();
   expect(retry).toHaveBeenCalled();
+  expect(fogRefresh).toHaveBeenCalled();
+  expect(dongRefresh).toHaveBeenCalled();
 });
 
 test('실패 안내 + 다시 시도, 권한 문제면 설정 열기', async () => {
@@ -197,4 +210,25 @@ test('위치 확인 중에도 닫을 수 있다', async () => {
   await render(<MapScreen />);
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(api.close).toHaveBeenCalled();
+});
+
+const cell = { sw: { lat: 37.5, lng: 126.9 }, ne: { lat: 37.501, lng: 126.901 } };
+const sajik = { code: '1', name: '사직동', stage: 'sprout', hideoutCount: 3, exploredCells: 12, totalCells: 100, ratio: 12 };
+
+test('걷힌 칸·idle을 지도에 연결하고 동네 배지를 보여준다', async () => {
+  const onIdle = jest.fn();
+  (useMyFog as jest.Mock).mockReturnValue({ cells: [cell], refresh: jest.fn() });
+  (useDongAt as jest.Mock).mockReturnValue({ dong: sajik, onIdle, refresh: jest.fn() });
+  await render(<MapScreen />);
+  expect(mockBridgeProps.fog).toEqual([cell]);
+  expect(mockBridgeProps.onIdle).toBe(onIdle);
+  expect(screen.getByLabelText('사직동 · 🌱 개척지 · 개척률 12%')).toBeTruthy();
+});
+
+test('고양이를 누르면 말풍선을 보낸다(권유 → 인사 번갈아)', async () => {
+  (useDongAt as jest.Mock).mockReturnValue({ dong: sajik, onIdle: jest.fn(), refresh: jest.fn() });
+  await render(<MapScreen />);
+  await act(async () => mockBridgeProps.onCatTap());
+  await act(async () => mockBridgeProps.onCatTap());
+  expect(mockCatSay.mock.calls).toEqual([['저쪽 골목은 아직 안개예요. 같이 가볼까요?'], ['우리 동네, 오늘도 조용하고 좋네요.']]);
 });

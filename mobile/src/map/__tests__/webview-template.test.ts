@@ -26,6 +26,5 @@ test('설정 값이 </script>를 품어도 스크립트 블록이 깨지지 않�
 test('페이지 스크립트는 문법 오류가 없다', () => {
   const html = buildMapHtml({ jsKey: 'k', markers, center: { lat: 37.5, lng: 126.9 }, cat: 'data:image/png;base64,CAT', fogColor: '#CFC8BA' });
   const body = html.slice(html.indexOf('<script>') + '<script>'.length, html.lastIndexOf('</script>'));
-  // eslint-disable-next-line no-new-func
   expect(() => new Function(body)).not.toThrow();
 });
