@@ -98,7 +98,7 @@ select lives_ok($$select public.save_cat('🐱', 'cheese')$$, '이모지 1개 = 
 select lives_ok($$select public.save_cat('나비', 'gray')$$, '다시 저장');
 select throws_ok($$select public.save_cat('', 'gray')$$, 'P0001', 'invalid_cat', '빈 이름');
 select throws_ok($$select public.save_cat('   ', 'gray')$$, 'P0001', 'invalid_cat', '공백만 → invalid_cat');
-select throws_ok($$select public.save_cat('열한글자이름입니다요', 'gray')$$, 'P0001', 'invalid_cat', '11자');
+select throws_ok($$select public.save_cat('열한글자짜리이름입니다', 'gray')$$, 'P0001', 'invalid_cat', '11자');
 select throws_ok($$select public.save_cat('나비', 'pink')$$, 'P0001', 'invalid_cat', '없는 색');
 select throws_ok($$select public.save_cat(null, 'gray')$$, 'P0001', 'invalid_cat', 'null 이름');
 
@@ -897,7 +897,7 @@ test('공백만이면 비활성 + 안내, 10자 넘어도', async () => {
   await fireEvent.changeText(name(), '   ');
   expect(submit().props.accessibilityState).toMatchObject({ disabled: true });
   expect(screen.getByText('이름은 1~10자로 지어주세요')).toBeTruthy();
-  await fireEvent.changeText(name(), '열한글자이름입니다요');
+  await fireEvent.changeText(name(), '열한글자짜리이름입니다');
   expect(submit().props.accessibilityState).toMatchObject({ disabled: true });
   await fireEvent.changeText(name(), '🐱');
   expect(submit().props.accessibilityState).toMatchObject({ disabled: false });
