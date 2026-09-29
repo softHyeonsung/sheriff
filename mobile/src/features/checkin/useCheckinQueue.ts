@@ -3,6 +3,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { cancelArrivalAlert } from '@/features/arrival/task';
 import { onOnline } from '@/lib/network';
 import { type CheckinResult, submitCheckin } from './checkinApi';
 import { flushQueue, readQueue } from './queue';
@@ -30,6 +31,9 @@ export function useCheckinQueue(onSynced: () => void) {
     flushing.current = true;
     try {
       const { results, dropped: d } = await flushQueue(submitCheckin);
+      for (const r of results) {
+        cancelArrivalAlert(r.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
+      }
       if (results.length) {
         setCelebrations((c) => [...c, ...results]);
         synced.current();
@@ -65,5 +69,5 @@ export function useCheckinQueue(onSynced: () => void) {
   const next = useCallback(() => setCelebrations((c) => c.slice(1)), []);
   const clearDropped = useCallback(() => setDropped(0), []);
 
-  return { pending, celebrations, dropped, next, clearDropped, refresh };
+  return { pending, celebrations, dropped, next, clearDropped, refresh, flush };
 }

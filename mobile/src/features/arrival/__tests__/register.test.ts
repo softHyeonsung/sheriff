@@ -1,8 +1,9 @@
 // mobile/src/features/arrival/__tests__/register.test.ts
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { askNotifications, ensureArrivalChannel } from '@/features/onboarding/permissions';
-import { readArrival, updateArrival, type ArrivalData } from '../store';
-import { answerArrivalOffer, shouldOfferArrival, syncArrivalRegions } from '../register';
+import { clearArrival, readArrival, updateArrival, type ArrivalData } from '../store';
+import { answerArrivalOffer, clearArrivalData, shouldOfferArrival, syncArrivalRegions } from '../register';
 
 jest.mock('expo-location', () => ({
   getBackgroundPermissionsAsync: jest.fn(),
@@ -14,7 +15,8 @@ jest.mock('expo-location', () => ({
   hasStartedGeofencingAsync: jest.fn(),
 }));
 jest.mock('../task', () => ({ ARRIVAL_TASK: 'arrival-geofence' }));
-jest.mock('../store', () => ({ readArrival: jest.fn(), updateArrival: jest.fn() }));
+jest.mock('../store', () => ({ readArrival: jest.fn(), updateArrival: jest.fn(), clearArrival: jest.fn() }));
+jest.mock('expo-notifications', () => ({ cancelAllScheduledNotificationsAsync: jest.fn() }));
 jest.mock('@/features/onboarding/permissions', () => ({ askNotifications: jest.fn(), ensureArrivalChannel: jest.fn() }));
 
 const L = Location as jest.Mocked<typeof Location>;
@@ -124,4 +126,12 @@ test('좋아요인데 위치를 거절하면 항상 허용은 안 묻는다', as
   L.requestForegroundPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
   expect(await answerArrivalOffer(true)).toBe(false);
   expect(L.requestBackgroundPermissionsAsync).not.toHaveBeenCalled();
+});
+
+test('로그아웃 정리: 감시를 멈추고 예약 알림·기록을 지운다', async () => {
+  L.hasStartedGeofencingAsync.mockResolvedValue(true);
+  await clearArrivalData();
+  expect(L.stopGeofencingAsync).toHaveBeenCalledWith('arrival-geofence');
+  expect(Notifications.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
+  expect(clearArrival).toHaveBeenCalled();
 });

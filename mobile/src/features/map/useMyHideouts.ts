@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { syncArrivalRegions } from '@/features/arrival/register';
 import { readMapCache, saveHideouts } from '@/features/map/mapCache';
+import { isNetworkError } from '@/lib/networkError';
 import { supabase } from '@/services/supabase';
 import { type Grade, isGrade } from '@/map/grades';
 
@@ -51,12 +52,15 @@ export function useMyHideouts() {
       saveHideouts(list, cfg.data.value as GradeThresholds).catch((e) => console.warn('지도 저장 실패', e));
       setStatus('ready');
     } catch (e) {
-      // 끊겼으면 마지막으로 본 지도를. 저장본도 없으면 지금처럼 오류.
+      // 저장본이 있으면 빈 지도 대신 보여준다. "끊겼어요"는 정말 연결 문제일 때만 —
+      // 서버 오류면 오류 배너와 다시 시도를 그대로 둔다.
       const cache = await readMapCache().catch(() => null);
       if (cache?.thresholds) {
-        console.warn('아지트 불러오기 실패 — 저장본 사용', e);
         setHideouts(cache.hideouts);
         setThresholds(cache.thresholds);
+      }
+      if (cache?.thresholds && isNetworkError(e)) {
+        console.warn('아지트 불러오기 실패 — 저장본 사용', e);
         setStatus('offline');
       } else {
         console.error('아지트 불러오기 실패', e);

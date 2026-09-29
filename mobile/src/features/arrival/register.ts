@@ -1,10 +1,11 @@
 // mobile/src/features/arrival/register.ts
 // 감시할 아지트 등록과 "항상 허용" 권한 카드.
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import type { MyHideout } from '@/features/map/useMyHideouts';
 import { askNotifications, ensureArrivalChannel } from '@/features/onboarding/permissions';
 import { ARRIVAL, pickNearest } from './rules';
-import { readArrival, updateArrival } from './store';
+import { clearArrival, readArrival, updateArrival } from './store';
 import { ARRIVAL_TASK } from './task';
 
 async function backgroundGranted(): Promise<boolean> {
@@ -55,4 +56,11 @@ export async function answerArrivalOffer(accept: boolean): Promise<boolean> {
   await askNotifications();
   if ((await Location.requestForegroundPermissionsAsync()).status !== 'granted') return false;
   return (await Location.requestBackgroundPermissionsAsync()).status === 'granted';
+}
+
+// 로그아웃: 이 계정의 아지트 감시를 멈추고 예약된 도착 알림·기록을 지운다(다음 사람에게 울리지 않게).
+export async function clearArrivalData(): Promise<void> {
+  if (await Location.hasStartedGeofencingAsync(ARRIVAL_TASK)) await Location.stopGeofencingAsync(ARRIVAL_TASK);
+  await Notifications.cancelAllScheduledNotificationsAsync(); // 이 앱이 예약하는 알림은 도착 알림뿐
+  await clearArrival();
 }

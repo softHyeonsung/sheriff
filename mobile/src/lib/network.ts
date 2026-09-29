@@ -13,12 +13,11 @@ export async function isOffline(): Promise<boolean> {
   }
 }
 
+// 온라인 소식마다 부른다. 안드로이드는 구독할 때 처음 상태를 안 보내서 "끊김→연결" 변화만 보면
+// 비행기 모드로 켠 앱이 연결돼도 모른다. 부르는 쪽(올리기)이 중복 실행을 막는다.
 export function onOnline(cb: () => void): () => void {
-  let wasOffline = false;
   const sub = Network.addNetworkStateListener((s) => {
-    const now = offline(s);
-    if (wasOffline && !now) cb();
-    wasOffline = now;
+    if (!offline(s)) cb();
   });
   return () => sub.remove();
 }

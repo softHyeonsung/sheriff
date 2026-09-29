@@ -15,6 +15,8 @@ const file = jsonFile<{ items: QueuedCheckin[] }>('checkin-queue.json', (raw) =>
   return { items: Array.isArray(items) ? items : [] };
 });
 
+export const clearQueue = () => file.clear();
+
 export async function readQueue(): Promise<QueuedCheckin[]> {
   return (await file.read()).items;
 }

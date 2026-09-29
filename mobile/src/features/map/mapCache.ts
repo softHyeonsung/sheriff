@@ -16,6 +16,7 @@ const file = jsonFile<MapCache>('map-cache.json', (raw) => {
 });
 
 export const readMapCache = file.read;
+export const clearMapCache = file.clear;
 export const saveHideouts = (hideouts: MyHideout[], thresholds: GradeThresholds) =>
   file.update(async (d) => ({ ...d, hideouts, thresholds }));
 export const saveFog = (fog: FogCell[]) => file.update(async (d) => ({ ...d, fog }));

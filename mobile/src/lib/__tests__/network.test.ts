@@ -19,7 +19,7 @@ test('끊겼거나 인터넷에 못 닿으면 오프라인, 모르면 온라인'
   expect(await isOffline()).toBe(false);
 });
 
-test('onOnline은 오프라인→온라인으로 바뀔 때만 부른다', () => {
+test('onOnline은 온라인 소식마다 부른다(안드로이드는 처음 상태를 안 보내므로 첫 소식도)', () => {
   const remove = jest.fn();
   let emit: (s: object) => void = () => {};
   addListener.mockImplementation((l: (s: object) => void) => {
@@ -28,13 +28,12 @@ test('onOnline은 오프라인→온라인으로 바뀔 때만 부른다', () =>
   });
   const cb = jest.fn();
   const off = onOnline(cb);
-  emit({ isConnected: true, isInternetReachable: true }); // 처음부터 온라인
-  expect(cb).not.toHaveBeenCalled();
+  emit({ isConnected: true, isInternetReachable: true }); // 비행기 모드로 켠 뒤 첫 소식이 "연결됨"
+  expect(cb).toHaveBeenCalledTimes(1);
   emit({ isConnected: false, isInternetReachable: false });
-  emit({ isConnected: true, isInternetReachable: true });
   expect(cb).toHaveBeenCalledTimes(1);
   emit({ isConnected: true, isInternetReachable: true });
-  expect(cb).toHaveBeenCalledTimes(1);
+  expect(cb).toHaveBeenCalledTimes(2);
   off();
   expect(remove).toHaveBeenCalled();
 });

@@ -1,6 +1,7 @@
 // mobile/src/features/checkin/useCheckin.ts
 import { useCallback, useRef, useState } from 'react';
 import { cancelArrivalAlert } from '@/features/arrival/task';
+import { isOffline } from '@/lib/network';
 import {
   type Candidate,
   type CheckinResult,
@@ -106,11 +107,14 @@ export function useCheckin() {
     // 끊겨 있으면 챙겨 두고, 연결되면 지도 화면이 올린다.
     const keep = async () => {
       await enqueueCheckin({ fix, target, name: nameFor(target, c.candidates) });
+      // 여기 왔으니 곧 울릴 "발자국 남길까요?" 알림은 거둔다(새 아지트는 올라간 뒤 id가 생긴다).
+      if (target.kind === 'mine') cancelArrivalAlert(target.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
       sheet.current = null;
       setState({ name: 'queued' });
     };
     try {
-      if (c.offline) {
+      // 느린 서버 때문에 오프라인 후보가 떴을 수도 있다: 지금 연결돼 있으면 그냥 보낸다.
+      if (c.offline && (await isOffline())) {
         await keep();
         return;
       }

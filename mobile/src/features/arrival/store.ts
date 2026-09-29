@@ -15,6 +15,7 @@ const file = jsonFile<ArrivalData>('arrival.json', (raw) => {
 });
 
 export const readArrival = file.read;
+export const clearArrival = file.clear;
 
 // 7일 넘은 기록은 쓸 때 버린다.
 export function updateArrival(fn: (d: ArrivalData) => Promise<ArrivalData | null>, now = Date.now()): Promise<void> {

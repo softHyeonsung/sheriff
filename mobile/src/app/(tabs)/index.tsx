@@ -12,6 +12,7 @@ import { Celebration } from '@/features/checkin/Celebration';
 import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
+import { onOnline } from '@/lib/network';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
@@ -51,10 +52,25 @@ export default function MapScreen() {
       refreshDong();
     }, [retry, refreshFog, refreshDong]),
   );
-  const { refresh: refreshQueue } = queue;
+  // 저장본을 보고 있다가 다시 연결되면 지도를 새로 불러온다(챙긴 발자국이 없어도).
+  const offlineRef = useRef(offline);
   useEffect(() => {
-    if (checkin.state.name === 'queued') refreshQueue();
-  }, [checkin.state.name, refreshQueue]);
+    offlineRef.current = offline;
+  }, [offline]);
+  useEffect(
+    () =>
+      onOnline(() => {
+        if (!offlineRef.current) return;
+        retry();
+        refreshFog();
+      }),
+    [retry, refreshFog],
+  );
+  const { flush: flushQueue } = queue;
+  // 챙기자마자 한 번 올려 본다: 연결이 살아 있으면(서버만 느렸던 경우) 바로 올라간다.
+  useEffect(() => {
+    if (checkin.state.name === 'queued') flushQueue();
+  }, [checkin.state.name, flushQueue]);
   const catTaps = useRef(0);
   const catColor = useMeStore((s) => s.me?.catColor) ?? 'cheese';
   const footprintsById = useMemo(() => Object.fromEntries(hideouts.map((h) => [h.id, h.footprintCount])), [hideouts]);

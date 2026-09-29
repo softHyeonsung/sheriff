@@ -4,6 +4,7 @@ import { cancelArrivalAlert } from '@/features/arrival/task';
 import * as api from '../checkinApi';
 import { suggestOrOffline } from '../offline';
 import { enqueueCheckin } from '../queue';
+import { isOffline } from '@/lib/network';
 import { CheckinError } from '../errors';
 import { useCheckin } from '../useCheckin';
 
@@ -11,6 +12,7 @@ import { useCheckin } from '../useCheckin';
 jest.mock('../checkinApi', () => ({ getFreshFix: jest.fn(), submitCheckin: jest.fn() }));
 jest.mock('../offline', () => ({ suggestOrOffline: jest.fn() }));
 jest.mock('../queue', () => ({ enqueueCheckin: jest.fn() }));
+jest.mock('@/lib/network', () => ({ isOffline: jest.fn() }));
 
 jest.mock('@/features/arrival/task', () => ({ cancelArrivalAlert: jest.fn() }));
 
@@ -28,6 +30,7 @@ beforeEach(() => {
   suggest.mockResolvedValue(ok);
   submit.mockResolvedValue(result);
   (enqueueCheckin as jest.Mock).mockResolvedValue(undefined);
+  (isOffline as jest.Mock).mockResolvedValue(true);
   (cancelArrivalAlert as jest.Mock).mockResolvedValue(undefined);
 });
 
@@ -205,4 +208,23 @@ test('챙기기(파일 쓰기)가 실패하면 시트에 안내', async () => {
   await act(async () => h.current.start());
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
   expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' });
+});
+
+test('오프라인 후보였어도 고를 때 연결돼 있으면 바로 보낸다(느린 서버로 오프라인 후보가 뜬 경우)', async () => {
+  suggest.mockResolvedValue({ status: 'ok', hereAddress: null, candidates: [mine], offline: true });
+  (isOffline as jest.Mock).mockResolvedValue(false);
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
+  expect(submit).toHaveBeenCalledWith(fix, { kind: 'mine', aidutId: 'a1' });
+  expect(enqueueCheckin).not.toHaveBeenCalled();
+  expect(h.current.state).toEqual({ name: 'celebrating', result });
+});
+
+test('내 아지트를 챙기면 그곳 도착 알림 예약도 거둔다', async () => {
+  suggest.mockResolvedValue({ status: 'ok', hereAddress: null, candidates: [mine], offline: true });
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
+  expect(cancelArrivalAlert).toHaveBeenCalledWith('a1');
 });

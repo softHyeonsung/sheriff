@@ -64,10 +64,20 @@ test('실패했는데 저장본이 있으면 저장본을 보여주고 offline',
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   const cached = { id: 'c1', name: '저장된 곳', grade: 'hut', footprintCount: 5, lat: 37.5, lng: 126.9, lastVisitedAt: null };
   (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [cached], thresholds: { box: 2, hut: 5, tower: 10, palace: 20 }, fog: null });
-  rpc.mockResolvedValue({ data: null, error: new Error('network') });
+  rpc.mockResolvedValue({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
   const { result } = await renderHook(() => useMyHideouts());
   await waitFor(() => expect(result.current.status).toBe('offline'));
   expect(result.current.hideouts).toEqual([cached]);
   expect(result.current.thresholds).toEqual({ box: 2, hut: 5, tower: 10, palace: 20 });
   expect(syncArrivalRegions).not.toHaveBeenCalled(); // 도착 알림은 서버 목록으로만 등록
+});
+
+test('연결은 되는데 서버가 실패하면 저장본을 보여주되 error(다시 시도 가능)', async () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  const cached = { id: 'c1', name: '저장된 곳', grade: 'hut', footprintCount: 5, lat: 37.5, lng: 126.9, lastVisitedAt: null };
+  (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [cached], thresholds: { box: 2, hut: 5, tower: 10, palace: 20 }, fog: null });
+  rpc.mockResolvedValue({ data: null, error: { message: 'JWT expired', code: 'PGRST301' } });
+  const { result } = await renderHook(() => useMyHideouts());
+  await waitFor(() => expect(result.current.status).toBe('error'));
+  expect(result.current.hideouts).toEqual([cached]);
 });

@@ -9,6 +9,7 @@ import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
+import { onOnline } from '@/lib/network';
 import { useMyFog } from '@/features/territory/useMyFog';
 import { useDongAt } from '@/features/territory/useDongAt';
 import { useMeStore } from '@/stores/meStore';
@@ -39,6 +40,7 @@ let mockSheetProps: Record<string, any> = {};
 let mockCelebrationProps: Record<string, any> = {};
 jest.mock('@/features/checkin/useCheckin', () => ({ useCheckin: jest.fn() }));
 jest.mock('@/features/checkin/useCheckinQueue', () => ({ useCheckinQueue: jest.fn() }));
+jest.mock('@/lib/network', () => ({ onOnline: jest.fn(() => () => {}) }));
 jest.mock('@/features/checkin/CheckinSheet', () => {
   const { View } = require('react-native');
   return { CheckinSheet: function MockSheet(props: any) { mockSheetProps = props; return <View testID="checkin-sheet" />; } };
@@ -51,7 +53,7 @@ jest.mock('@/features/checkin/Celebration', () => {
 
 const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const cafe = { id: 'a1', name: '테스트 카페', grade: 'box' as const, footprintCount: 3, lat: 37.5, lng: 126.9 };
-const queueState = (over = {}) => ({ pending: 0, celebrations: [], dropped: 0, next: jest.fn(), clearDropped: jest.fn(), refresh: jest.fn(), ...over });
+const queueState = (over = {}) => ({ pending: 0, celebrations: [], dropped: 0, next: jest.fn(), clearDropped: jest.fn(), refresh: jest.fn(), flush: jest.fn(), ...over });
 const hideoutsState = (over = {}) => ({ hideouts: [cafe], thresholds: T, status: 'ready', retry: jest.fn(), ...over });
 
 beforeEach(() => {
@@ -296,13 +298,13 @@ test('오프라인이면 저장본 배지·챙긴 개수, 동 배지는 숨긴�
   expect(screen.queryByText(/사직동/)).toBeNull();
 });
 
-test('챙기면 안내 + 닫기, 대기 개수 새로 셈', async () => {
+test('챙기면 안내 + 닫기, 바로 올리기를 시도(연결이 살아 있으면 올라감)', async () => {
   const api = checkin({ name: 'queued' });
   const q = queueState();
   (useCheckinQueue as jest.Mock).mockReturnValue(q);
   await render(<MapScreen />);
   expect(screen.getByText('발자국을 챙겨뒀어요. 연결되면 남길게요 🐾')).toBeTruthy();
-  expect(q.refresh).toHaveBeenCalled();
+  expect(q.flush).toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(api.close).toHaveBeenCalled();
 });
@@ -330,4 +332,27 @@ test('거절된 발자국 안내 + 닫기', async () => {
   expect(screen.getByText('챙겨둔 발자국 2개는 남기지 못했어요. 너무 멀었거나 위치가 흐렸어요.')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(q.clearDropped).toHaveBeenCalled();
+});
+
+test('저장본을 보다가 다시 연결되면 지도를 새로 불러온다(챙긴 게 없어도)', async () => {
+  const retry = jest.fn();
+  const fogRefresh = jest.fn();
+  (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState({ status: 'offline', retry }));
+  (useMyFog as jest.Mock).mockReturnValue({ cells: [], refresh: fogRefresh });
+  await render(<MapScreen />);
+  const online = (onOnline as jest.Mock).mock.calls.at(-1)![0];
+  retry.mockClear();
+  await act(async () => online());
+  expect(retry).toHaveBeenCalled();
+  expect(fogRefresh).toHaveBeenCalled();
+});
+
+test('온라인 상태에서 온 연결 소식으로는 다시 불러오지 않는다', async () => {
+  const retry = jest.fn();
+  (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState({ retry }));
+  await render(<MapScreen />);
+  const online = (onOnline as jest.Mock).mock.calls.at(-1)![0];
+  retry.mockClear();
+  await act(async () => online());
+  expect(retry).not.toHaveBeenCalled();
 });
