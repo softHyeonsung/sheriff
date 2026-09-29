@@ -22,7 +22,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
   function post(m) { window.ReactNativeWebView.postMessage(JSON.stringify(m)); }
   window.onerror = function (msg) { post({ type: 'error', reason: String(msg) }); };
   var map = null, pins = [], me = null, meAt = null;
-  var fog = null, cells = [], cat = null, catImg = null, bubble = null, catAt = null, bubbleTimer = null;
+  var fog = null, cells = [], cat = null, catImg = null, bubble = null, catAt = null, catCell = null, bubbleTimer = null;
   // 한국 전체를 넉넉히 덮는 바깥 사각형(시계 방향). 구멍은 반대 방향이어야 채움 규칙과 무관하게 뚫린다.
   var KOREA = [[39.5, 124], [39.5, 132], [32, 132], [32, 124]];
 
@@ -67,11 +67,17 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
     });
     // ponytail: 칸마다 구멍 하나 — 수천 칸에서 느리면 서버에서 인접 칸 합치기(ST_Union).
     fog = new kakao.maps.Polygon({ map: map, path: paths, strokeWeight: 0, fillColor: cfg.fogColor, fillOpacity: 0.6, zIndex: 1 });
+    if (!list.length && cat) {
+      cat.setMap(null); // no cleared ground, no cat — and the wander loop stops on !cat
+      cat = catImg = bubble = catCell = null;
+    }
     showCat();
   }
 
   // 고양이는 걷힌 칸 안에서만: 다음 목적지는 지금 칸의 이웃(대각선 포함) 칸 중에서.
-  function neighbours(at) {
+  // 칸 중심끼리 재야 한다 — 고양이 위치(칸 가장자리일 수 있음)로 재면 두 칸 건너 칸이 이웃으로 잡혀 안개를 가로지른다.
+  function neighbours(from) {
+    var at = center(from);
     return cells.filter(function (c) {
       var m = center(c);
       return Math.abs(m.lat - at.lat) < 0.0014 && Math.abs(m.lng - at.lng) < 0.0018;
@@ -84,8 +90,9 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
 
   function wander() {
     if (!cat) return;
-    var near = neighbours(catAt);
-    var to = randomIn(near.length ? near[Math.floor(Math.random() * near.length)] : cells[0]);
+    var near = neighbours(catCell);
+    var next = near.length ? near[Math.floor(Math.random() * near.length)] : catCell;
+    var to = randomIn(next);
     var from = catAt, t0 = Date.now(), dur = 4000;
     catImg.style.transform = to.lng < from.lng ? 'scaleX(-1)' : '';
     (function step() {
@@ -94,7 +101,10 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
       catAt = { lat: from.lat + (to.lat - from.lat) * k, lng: from.lng + (to.lng - from.lng) * k };
       cat.setPosition(latLng(catAt));
       if (k < 1) requestAnimationFrame(step);
-      else setTimeout(wander, 3000 + Math.random() * 5000);
+      else {
+        catCell = next;
+        setTimeout(wander, 3000 + Math.random() * 5000);
+      }
     })();
   }
 
@@ -107,6 +117,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
         return Math.hypot(a.lat - meAt.lat, a.lng - meAt.lng) < Math.hypot(b.lat - meAt.lat, b.lng - meAt.lng) ? c : best;
       }, cells[0]);
     }
+    catCell = start;
     catAt = center(start);
     var el = document.createElement('div');
     el.className = 'cat';

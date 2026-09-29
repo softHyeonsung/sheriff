@@ -4,7 +4,7 @@
   python supabase/scripts/load_admin_dongs.py HangJeongDong.geojson supabase/.admin_dongs.sql
 로컬:  Get-Content supabase/.admin_dongs.sql -Raw -Encoding UTF8 | docker exec -i supabase_db_sanchaeknyang psql -U postgres -d postgres
 배포:  psql "<DB 연결 문자열>" -f supabase/.admin_dongs.sql
-재실행 안전(code 기준 upsert). 경계가 바뀐 해에는 새 파일로 다시 돌리면 된다.
+통째로 교체(한 트랜잭션): 경계가 바뀐 해에 새 파일로 다시 돌리면 없어진 동은 사라진다.
 """
 import json
 import sys
@@ -15,7 +15,7 @@ def q(v):
 
 
 def to_sql(fc):
-    out = ["begin;", "set local search_path = public, extensions;"]
+    out = ["begin;", "set local search_path = public, extensions;", "delete from public.admin_dongs;"]
     for f in fc["features"]:
         g, p = f.get("geometry"), f.get("properties") or {}
         if not g:
@@ -26,9 +26,7 @@ def to_sql(fc):
                 f"st_setsrid(st_geomfromgeojson({q(json.dumps(g))}), 4326), 5179)), 3))")
         out.append(
             "insert into public.admin_dongs (code, name, sido, sigungu, geom) values "
-            f"({q(p.get('adm_cd2'))}, {q(name)}, {q(p.get('sidonm'))}, {q(p.get('sggnm'))}, {geom}) "
-            "on conflict (code) do update set name = excluded.name, sido = excluded.sido, "
-            "sigungu = excluded.sigungu, geom = excluded.geom;"
+            f"({q(p.get('adm_cd2'))}, {q(name)}, {q(p.get('sidonm'))}, {q(p.get('sggnm'))}, {geom});"
         )
     out.append("commit;")
     return "\n".join(out) + "\n"

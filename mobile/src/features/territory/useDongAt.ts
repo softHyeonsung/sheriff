@@ -31,6 +31,7 @@ export function useDongAt() {
   const onIdle = useCallback(
     (c: LatLng) => {
       last.current = c;
+      seq.current++; // an answer still in flight is for the old center now
       schedule();
     },
     [schedule],

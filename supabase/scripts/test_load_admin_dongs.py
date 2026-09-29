@@ -21,6 +21,7 @@ assert sql.startswith("begin;") and sql.rstrip().endswith("commit;"), sql[:80]
 assert "'1111053000', '사직동', '서울특별시', '종로구'" in sql
 assert "'o''dong'" in sql, "작은따옴표는 두 번 써서 이스케이프"
 assert "빈 도형" not in sql, "도형 없는 feature는 건너뜀"
-assert sql.count("on conflict (code) do update") == 2
+assert sql.count("insert into") == 2
+assert "delete from public.admin_dongs;" in sql and "on conflict" not in sql, "경계 교체: 없어진 동이 남지 않게 통째로 바꾼다"
 assert "st_transform(" in sql and ", 5179)" in sql
 print("ok")

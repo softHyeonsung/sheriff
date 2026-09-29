@@ -5,7 +5,8 @@ import type { FogCell } from '@/map/protocol';
 import { myFog } from './territoryApi';
 
 export function useMyFog() {
-  const [cells, setCells] = useState<FogCell[]>([]);
+  // null until the first load: a failed first load shows the map without fog, not all-fog.
+  const [cells, setCells] = useState<FogCell[] | null>(null);
 
   const refresh = useCallback(async () => {
     try {

@@ -134,3 +134,9 @@ test('catSay는 준비된 뒤에만 보낸다', async () => {
   await act(async () => ref.current!.catSay('안녕'));
   expect(mockInject.mock.calls[0][0]).toContain('catSay');
 });
+
+test('걷힌 칸을 아직 못 불러왔으면(null) 안개를 보내지 않는다 — 전국이 안개로 덮이지 않게', async () => {
+  await render(<MapBridge {...base} fog={null} />);
+  await send('{"type":"ready"}');
+  expect(mockInject.mock.calls.some(([s]) => s.includes('setFog'))).toBe(false);
+});

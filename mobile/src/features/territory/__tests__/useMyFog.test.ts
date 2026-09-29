@@ -24,3 +24,11 @@ test('실패하면 이전 칸 유지', async () => {
   await act(async () => result.current.refresh());
   expect(result.current.cells).toEqual([cell]);
 });
+
+test('불러오기 전·첫 실패 때는 null(안개 없이 지도만)', async () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  (myFog as jest.Mock).mockRejectedValueOnce(new Error('net'));
+  const { result } = await renderHook(() => useMyFog());
+  await waitFor(() => expect(myFog).toHaveBeenCalledTimes(1));
+  expect(result.current.cells).toBeNull();
+});

@@ -18,7 +18,7 @@ type Props = {
   center: LatLng;
   onHideoutTap: (id: string) => void;
   onError: (reason: string) => void;
-  fog: FogCell[];
+  fog: FogCell[] | null; // null = not loaded yet: draw no fog rather than fog over everything
   onIdle: (center: LatLng) => void;
   onCatTap: () => void;
 };
@@ -52,7 +52,7 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   }, [ready, hideouts]);
 
   useEffect(() => {
-    if (ready) send({ type: 'setFog', cells: fog });
+    if (ready && fog) send({ type: 'setFog', cells: fog });
   }, [ready, fog]);
 
   useEffect(() => {

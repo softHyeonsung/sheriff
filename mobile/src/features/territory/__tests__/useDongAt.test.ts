@@ -53,3 +53,14 @@ test('실패하면 이전 값 유지, refresh는 마지막 위치로 다시', as
   await settle();
   expect(dongAt).toHaveBeenLastCalledWith({ lat: 3, lng: 3 });
 });
+
+test('지도를 다시 움직이면 기다리던 옛 응답은 버린다(새 조회 전이라도)', async () => {
+  let resolveOld!: (v: unknown) => void;
+  (dongAt as jest.Mock).mockImplementationOnce(() => new Promise((r) => { resolveOld = r; }));
+  const { result } = await renderHook(() => useDongAt());
+  await act(async () => result.current.onIdle({ lat: 1, lng: 1 }));
+  await settle();
+  await act(async () => result.current.onIdle({ lat: 2, lng: 2 })); // 300ms 대기 중
+  await act(async () => { resolveOld(d('옛동')); await Promise.resolve(); });
+  expect(result.current.dong).toBeNull();
+});
