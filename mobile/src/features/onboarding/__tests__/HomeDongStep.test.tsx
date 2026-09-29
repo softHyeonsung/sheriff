@@ -1,5 +1,5 @@
 // mobile/src/features/onboarding/__tests__/HomeDongStep.test.tsx
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { getFreshFix } from '@/features/checkin/checkinApi';
 import { regionAt, searchRegion, setHomeDong } from '../onboardingApi';
 import { HomeDongStep } from '../HomeDongStep';
@@ -67,4 +67,22 @@ test('저장 실패 → 오류, 다시 누를 수 있음', async () => {
   expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '맞아요' }));
   expect(onDone).toHaveBeenCalled();
+});
+
+test.each([
+  ['GPS가 멈춤', () => (getFreshFix as jest.Mock).mockReturnValue(new Promise(() => {}))],
+  ['동네 조회가 멈춤', () => {
+    (getFreshFix as jest.Mock).mockResolvedValue({ lat: 37.5, lng: 126.9, accuracy: 10 });
+    (regionAt as jest.Mock).mockReturnValue(new Promise(() => {}));
+  }],
+])('%s → 10초 안에 검색 모드(무한 대기 없음)', async (_label, arrange) => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  jest.useFakeTimers();
+  arrange();
+  await render(<HomeDongStep onDone={jest.fn()} />);
+  await act(async () => {
+    jest.advanceTimersByTime(10000);
+  });
+  expect(screen.getByText('우리 동네 이름을 알려주세요')).toBeTruthy();
+  jest.useRealTimers();
 });

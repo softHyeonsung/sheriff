@@ -6,6 +6,7 @@ import { Celebration } from '@/features/checkin/Celebration';
 import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { MSG } from '@/features/checkin/copy';
 import { useCheckin } from '@/features/checkin/useCheckin';
+import { askLocation, locationAsked } from './permissions';
 import { PrimaryButton, StepScreen, TextButton } from './ui';
 
 export function FirstFootprintStep({ onDone }: { onDone: (made: boolean) => void }) {
@@ -13,11 +14,22 @@ export function FirstFootprintStep({ onDone }: { onDone: (made: boolean) => void
   const { state } = checkin;
   const locating = state.name === 'locating';
 
+  // "나중에" at the location step leaves it undetermined: ask now (the OS popup) instead of sending
+  // the user to Settings, where iOS may not even list the app yet.
+  const start = async () => {
+    try {
+      if (!(await locationAsked())) await askLocation();
+    } catch (e) {
+      console.warn('위치 권한 요청 실패', e);
+    }
+    checkin.start();
+  };
+
   return (
     <StepScreen
       footer={
         <>
-          <PrimaryButton label="발자국 남기기" onPress={checkin.start} disabled={locating} />
+          <PrimaryButton label="발자국 남기기" onPress={start} disabled={locating} />
           {state.name === 'failed' && state.needsSettings && <TextButton label="설정 열기" onPress={() => Linking.openSettings()} />}
           <TextButton label="나중에 할게요" onPress={() => onDone(false)} />
         </>

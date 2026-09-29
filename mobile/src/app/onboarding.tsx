@@ -1,7 +1,7 @@
 // mobile/src/app/onboarding.tsx
 // 온보딩 조립: 단계 규칙(nextStep) + 조각들. 끝나면 스토어를 onboarded로 → 레이아웃 가드가 지도로.
 import { useEffect, useState } from 'react';
-import { BackHandler, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, BackHandler, StyleSheet, Text } from 'react-native';
 import { color, type } from '@/constants/tokens';
 import { MSG } from '@/features/checkin/copy';
 import { CatStep } from '@/features/onboarding/CatStep';
@@ -38,7 +38,7 @@ export default function Onboarding() {
       );
   }, [me]);
 
-  if (!me || !progress) return null;
+  if (!me || !progress) return <StepScreen><ActivityIndicator color={color.primary} /></StepScreen>;
 
   const finish = async () => {
     setSaveFailed(false);
@@ -98,7 +98,7 @@ export default function Onboarding() {
     default:
       return (
         <StepScreen footer={saveFailed ? <PrimaryButton label="다시 시도" onPress={finish} /> : undefined}>
-          {saveFailed && <Text style={styles.body}>{MSG.unknown}</Text>}
+          {saveFailed ? <Text style={styles.body}>{MSG.unknown}</Text> : <ActivityIndicator testID="saving" color={color.primary} />}
         </StepScreen>
       );
   }

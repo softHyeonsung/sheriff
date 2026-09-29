@@ -1,6 +1,6 @@
 // supabase/functions/home-region/index.test.ts
 import { assertEquals } from 'jsr:@std/assert';
-import { parseInput, regionAt, searchRegion } from './index.ts';
+import { handle, parseInput, regionAt, searchRegion } from './index.ts';
 
 const fakeFetch = (docs: unknown, ok = true) =>
   ((_url: string) => Promise.resolve(new Response(JSON.stringify({ documents: docs }), { status: ok ? 200 : 500 }))) as unknown as typeof fetch;
@@ -36,4 +36,20 @@ Deno.test('입력 검사', () => {
   for (const bad of [null, {}, { query: '' }, { query: '   ' }, { query: 'x'.repeat(21) }, { lat: 95, lng: 0 }, { lat: '37', lng: 126 }]) {
     assertEquals(parseInput(bad), null);
   }
+});
+
+Deno.test('로그인 안 한 요청은 401, 카카오를 부르지 않는다', async () => {
+  let kakao = 0;
+  const deps = { signedIn: () => Promise.resolve(false), regionAt: () => (kakao++, Promise.resolve({ dongs: [] })), searchRegion: () => (kakao++, Promise.resolve({ dongs: [] })) };
+  const res = await handle(new Request('http://x', { method: 'POST', body: JSON.stringify({ query: '사직동' }) }), deps);
+  assertEquals(res.status, 401);
+  assertEquals(kakao, 0);
+});
+
+Deno.test('로그인한 요청: 잘못된 입력 400, 검색은 200', async () => {
+  const deps = { signedIn: () => Promise.resolve(true), regionAt: () => Promise.resolve({ dongs: [] }), searchRegion: (q: string) => Promise.resolve({ dongs: [{ name: q }] }) };
+  assertEquals((await handle(new Request('http://x', { method: 'POST', body: '{}' }), deps)).status, 400);
+  const ok = await handle(new Request('http://x', { method: 'POST', body: JSON.stringify({ query: '사직동' }) }), deps);
+  assertEquals(ok.status, 200);
+  assertEquals(await ok.json(), { dongs: [{ name: '사직동' }] });
 });

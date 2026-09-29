@@ -30,8 +30,11 @@ export function HomeDongStep({ onDone }: { onDone: (name: string) => void }) {
     let alive = true;
     (async () => {
       try {
-        const fix = await within(getFreshFix(), GUESS_TIMEOUT_MS);
-        const dongs = fix === 'denied' ? [] : await regionAt(fix);
+        // One deadline for the whole guess (GPS + lookup), not just the fix.
+        const dongs = await within(
+          getFreshFix().then((fix) => (fix === 'denied' ? [] : regionAt(fix))),
+          GUESS_TIMEOUT_MS,
+        );
         if (alive) setMode(dongs[0] ? { name: 'confirm', dong: dongs[0] } : { name: 'search' });
       } catch (e) {
         console.warn('동네 추정 실패', e);

@@ -2,7 +2,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed test doubles */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useCheckin } from '@/features/checkin/useCheckin';
+import { askLocation, locationAsked } from '../permissions';
 import { FirstFootprintStep } from '../FirstFootprintStep';
+
+jest.mock('../permissions', () => ({ locationAsked: jest.fn(() => Promise.resolve(true)), askLocation: jest.fn() }));
 
 jest.mock('@/features/checkin/useCheckin', () => ({ useCheckin: jest.fn() }));
 let mockCelebrationProps: Record<string, any> = {};
@@ -14,6 +17,8 @@ jest.mock('@/features/checkin/Celebration', () => {
   const { View } = require('react-native');
   return { Celebration: (p: any) => { mockCelebrationProps = p; return <View testID="celebration" />; } };
 });
+
+beforeEach(() => jest.clearAllMocks());
 
 const api = (state: object) => {
   const a = { state, start: jest.fn(), choose: jest.fn(), close: jest.fn() };
@@ -52,4 +57,22 @@ test('후보 고르는 중엔 시트', async () => {
   api({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], busy: false, error: null });
   await render(<FirstFootprintStep onDone={jest.fn()} />);
   expect(screen.getByTestId('checkin-sheet')).toBeTruthy();
+});
+
+test('위치를 아직 안 물어봤으면(온보딩에서 나중에) 먼저 OS 팝업, 그다음 체크인', async () => {
+  (locationAsked as jest.Mock).mockResolvedValueOnce(false);
+  (askLocation as jest.Mock).mockResolvedValueOnce(true);
+  const a = api({ name: 'idle' });
+  await render(<FirstFootprintStep onDone={jest.fn()} />);
+  await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
+  expect(askLocation).toHaveBeenCalled();
+  expect((askLocation as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(a.start.mock.invocationCallOrder[0]);
+});
+
+test('이미 물어봤으면 팝업 없이 바로 체크인', async () => {
+  const a = api({ name: 'idle' });
+  await render(<FirstFootprintStep onDone={jest.fn()} />);
+  await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
+  expect(askLocation).not.toHaveBeenCalled();
+  expect(a.start).toHaveBeenCalled();
 });

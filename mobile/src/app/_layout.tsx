@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { color, font, radius, space, type } from '@/constants/tokens';
@@ -20,6 +20,11 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
       {/* Wait for the session and my onboarding state before routing, or the wrong screen flashes. */}
+      {!loading && route === 'loading' && (
+        <View style={styles.center}>
+          <ActivityIndicator color={color.primary} />
+        </View>
+      )}
       {!loading && route === 'error' && (
         <View style={styles.center}>
           <Text style={styles.body}>앗, 잠깐 문제가 생겼어요. 다시 해볼까요?</Text>

@@ -2,7 +2,11 @@
 //
 // 온보딩 "내 동네": 좌표 → 행정동 추정, 이름 → 동 검색. 카카오 키는 서버에만.
 // POST { lat, lng } | { query } -> { dongs: { name }[] }. 카카오 실패는 빈 목록(앱이 검색·"못 찾았어요"로).
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+
 const KAKAO_REST_KEY = Deno.env.get('KAKAO_REST_KEY') ?? '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const MAX = 10;
 
 export type RegionResult = { dongs: { name: string }[] };
@@ -69,8 +73,31 @@ export function parseInput(body: unknown): Input | null {
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-Deno.serve(async (req) => {
+export interface Deps {
+  signedIn(req: Request): Promise<boolean>;
+  regionAt(lat: number, lng: number): Promise<RegionResult>;
+  searchRegion(query: string): Promise<RegionResult>;
+}
+
+// The gateway's verify_jwt also accepts the app's public anon key: require a real signed-in user,
+// or this is a free proxy to our Kakao quota.
+export async function handle(req: Request, deps: Deps): Promise<Response> {
+  if (!(await deps.signedIn(req))) return json({ error: 'unauthorized' }, 401);
   const input = parseInput(await req.json().catch(() => null));
   if (!input) return json({ error: 'invalid_input' }, 400);
-  return json(input.kind === 'at' ? await regionAt(input.lat, input.lng) : await searchRegion(input.query), 200);
-});
+  return json(input.kind === 'at' ? await deps.regionAt(input.lat, input.lng) : await deps.searchRegion(input.query), 200);
+}
+
+const liveDeps: Deps = {
+  signedIn: async (req) => {
+    const auth = req.headers.get('Authorization');
+    if (!auth) return false;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: auth } } });
+    const { data, error } = await db.auth.getUser();
+    return !error && !!data.user;
+  },
+  regionAt: (lat, lng) => regionAt(lat, lng),
+  searchRegion: (q) => searchRegion(q),
+};
+
+Deno.serve((req) => handle(req, liveDeps));

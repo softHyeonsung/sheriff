@@ -84,3 +84,15 @@ test('완료 저장 실패 → 오류 + 다시 시도', async () => {
   await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
   expect(useMeStore.getState().me?.onboarded).toBe(true);
 });
+
+test('완료 저장 중엔 기다림 표시(빈 화면 아님)', async () => {
+  (locationAsked as jest.Mock).mockResolvedValue(true);
+  (notificationsAsked as jest.Mock).mockResolvedValue(true);
+  (completeOnboarding as jest.Mock).mockReturnValue(new Promise(() => {}));
+  useMeStore.setState({ me: { ...fresh, catName: '나비', homeDong: '사직동', hasHideout: true } });
+  await render(<Onboarding />);
+  await waitFor(() => expect(current()).toBe('welcome'));
+  await done();
+  await done();
+  expect(screen.getByTestId('saving')).toBeTruthy();
+});
