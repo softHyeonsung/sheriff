@@ -11,6 +11,7 @@ import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { Celebration } from '@/features/checkin/Celebration';
 import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { useCheckin } from '@/features/checkin/useCheckin';
+import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
@@ -39,6 +40,21 @@ export default function MapScreen() {
   const checkin = useCheckin();
   const fog = useMyFog();
   const dongAt = useDongAt();
+  const offline = status === 'offline';
+  const { refresh: refreshFog } = fog;
+  const { refresh: refreshDong } = dongAt;
+  // 챙겨둔 발자국이 올라가면 지도를 새로 불러온다(마커·안개·동).
+  const queue = useCheckinQueue(
+    useCallback(() => {
+      retry();
+      refreshFog();
+      refreshDong();
+    }, [retry, refreshFog, refreshDong]),
+  );
+  const { refresh: refreshQueue } = queue;
+  useEffect(() => {
+    if (checkin.state.name === 'queued') refreshQueue();
+  }, [checkin.state.name, refreshQueue]);
   const catTaps = useRef(0);
   const catColor = useMeStore((s) => s.me?.catColor) ?? 'cheese';
   const footprintsById = useMemo(() => Object.fromEntries(hideouts.map((h) => [h.id, h.footprintCount])), [hideouts]);
@@ -51,6 +67,9 @@ export default function MapScreen() {
   const centeredOn = useRef<'none' | 'hideout' | 'me'>('none');
   const [arrivalOffer, setArrivalOffer] = useState(false);
   const celebrated = checkin.state.name === 'celebrating' ? checkin.state.result : null;
+  // 직접 남긴 발자국이 먼저. 올라간 발자국 축하는 체크인이 쉬고 있을 때 차례로.
+  const synced = !celebrated && checkin.state.name === 'idle' ? (queue.celebrations[0] ?? null) : null;
+  const shown = celebrated ?? synced;
 
   // 도착 알림을 누르고 들어오면 바로 체크인. 가까운 내 아지트가 첫 후보로 나온다.
   // 프로필 탭에 있었어도 지도 탭으로 데려온다(이 화면은 탭 뒤에서도 살아 있다).
@@ -120,11 +139,21 @@ export default function MapScreen() {
       />
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
-        <DongBadge dong={dongAt.dong} />
+        <DongBadge dong={offline ? null : dongAt.dong} />
         {permission === 'denied' && (
           <View style={styles.banner}>
             <Text style={styles.bannerText}>위치를 켜두시면 지금 있는 곳을 보여드릴게요</Text>
             <Pill label="설정 열기" onPress={() => Linking.openSettings()} />
+          </View>
+        )}
+        {offline && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>연결이 끊겨 있어요. 마지막으로 본 지도예요.</Text>
+          </View>
+        )}
+        {queue.pending > 0 && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>챙겨둔 발자국 {queue.pending}개</Text>
           </View>
         )}
         {status === 'error' && (
@@ -146,6 +175,22 @@ export default function MapScreen() {
         </View>
       )}
 
+      {checkin.state.name === 'queued' && (
+        <View style={styles.checkinNote}>
+          <Text style={styles.bannerText}>발자국을 챙겨뒀어요. 연결되면 남길게요 🐾</Text>
+          <View style={styles.row}>
+            <Pill label="닫기" onPress={checkin.close} />
+          </View>
+        </View>
+      )}
+      {queue.dropped > 0 && checkin.state.name === 'idle' && (
+        <View style={styles.checkinNote}>
+          <Text style={styles.bannerText}>챙겨둔 발자국 {queue.dropped}개는 남기지 못했어요. 너무 멀었거나 위치가 흐렸어요.</Text>
+          <View style={styles.row}>
+            <Pill label="닫기" onPress={queue.clearDropped} />
+          </View>
+        </View>
+      )}
       {(locating || checkin.state.name === 'failed') && (
         <View style={styles.checkinNote}>
           <Text style={styles.bannerText}>
@@ -197,16 +242,20 @@ export default function MapScreen() {
       {checkin.state.name === 'choosing' && (
         <CheckinSheet state={checkin.state} footprintsById={footprintsById} onChoose={checkin.choose} onClose={checkin.close} />
       )}
-      {celebrated && (
+      {shown && (
         <Celebration
-          result={celebrated}
+          result={shown}
           thresholds={thresholds}
           onClose={() => {
-            checkin.close();
-            retry(); // the marker should show the grown hideout
-            fog.refresh(); // the new footprint's cell clears
-            dongAt.refresh(); // ratio and stage move with it
-            shouldOfferArrival(celebrated.footprintCount)
+            if (celebrated) {
+              checkin.close();
+              retry(); // the marker should show the grown hideout
+              fog.refresh(); // the new footprint's cell clears
+              dongAt.refresh(); // ratio and stage move with it
+            } else {
+              queue.next(); // 새로고침은 올라갈 때 이미 했다
+            }
+            shouldOfferArrival(shown.footprintCount)
               .then(setArrivalOffer)
               .catch((e) => console.warn('도착 알림 카드 확인 실패', e));
           }}

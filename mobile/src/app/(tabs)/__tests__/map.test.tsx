@@ -8,6 +8,7 @@ import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
 import { useCheckin } from '@/features/checkin/useCheckin';
+import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { useMyFog } from '@/features/territory/useMyFog';
 import { useDongAt } from '@/features/territory/useDongAt';
 import { useMeStore } from '@/stores/meStore';
@@ -37,6 +38,7 @@ jest.mock('@/features/map/useMyLocation', () => ({ useMyLocation: jest.fn() }));
 let mockSheetProps: Record<string, any> = {};
 let mockCelebrationProps: Record<string, any> = {};
 jest.mock('@/features/checkin/useCheckin', () => ({ useCheckin: jest.fn() }));
+jest.mock('@/features/checkin/useCheckinQueue', () => ({ useCheckinQueue: jest.fn() }));
 jest.mock('@/features/checkin/CheckinSheet', () => {
   const { View } = require('react-native');
   return { CheckinSheet: function MockSheet(props: any) { mockSheetProps = props; return <View testID="checkin-sheet" />; } };
@@ -49,6 +51,7 @@ jest.mock('@/features/checkin/Celebration', () => {
 
 const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const cafe = { id: 'a1', name: '테스트 카페', grade: 'box' as const, footprintCount: 3, lat: 37.5, lng: 126.9 };
+const queueState = (over = {}) => ({ pending: 0, celebrations: [], dropped: 0, next: jest.fn(), clearDropped: jest.fn(), refresh: jest.fn(), ...over });
 const hideoutsState = (over = {}) => ({ hideouts: [cafe], thresholds: T, status: 'ready', retry: jest.fn(), ...over });
 
 beforeEach(() => {
@@ -60,6 +63,7 @@ beforeEach(() => {
   useMeStore.setState({ me: null });
   (useDongAt as jest.Mock).mockReturnValue({ dong: null, onIdle: jest.fn(), refresh: jest.fn() });
   (shouldOfferArrival as jest.Mock).mockResolvedValue(false);
+  (useCheckinQueue as jest.Mock).mockReturnValue(queueState());
 
 });
 
@@ -274,4 +278,56 @@ test('지도 고양이는 내 털색, 모르면 치즈', async () => {
   useMeStore.setState({ me: { onboarded: true, catName: '나비', catColor: 'gray', homeDong: null, hasHideout: true } });
   await render(<MapScreen />);
   expect(mockBridgeProps.catColor).toBe('gray');
+});
+
+const synced = { aidutId: 'a1', name: '테스트 카페', footprintCount: 2, grade: 'box', gradeChanged: true, newCellsCleared: 0 };
+
+test('오프라인이면 저장본 배지·챙긴 개수, 동 배지는 숨긴다', async () => {
+  (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState({ status: 'offline' }));
+  (useCheckinQueue as jest.Mock).mockReturnValue(queueState({ pending: 2 }));
+  (useDongAt as jest.Mock).mockReturnValue({
+    dong: { code: '1', name: '사직동', stage: 'sprout', hideoutCount: 1, exploredCells: 1, totalCells: 10, ratio: 0.1 },
+    onIdle: jest.fn(),
+    refresh: jest.fn(),
+  });
+  await render(<MapScreen />);
+  expect(screen.getByText('연결이 끊겨 있어요. 마지막으로 본 지도예요.')).toBeTruthy();
+  expect(screen.getByText('챙겨둔 발자국 2개')).toBeTruthy();
+  expect(screen.queryByText(/사직동/)).toBeNull();
+});
+
+test('챙기면 안내 + 닫기, 대기 개수 새로 셈', async () => {
+  const api = checkin({ name: 'queued' });
+  const q = queueState();
+  (useCheckinQueue as jest.Mock).mockReturnValue(q);
+  await render(<MapScreen />);
+  expect(screen.getByText('발자국을 챙겨뒀어요. 연결되면 남길게요 🐾')).toBeTruthy();
+  expect(q.refresh).toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(api.close).toHaveBeenCalled();
+});
+
+test('올라간 발자국은 차례로 축하, 닫으면 다음 것', async () => {
+  const q = queueState({ celebrations: [synced] });
+  (useCheckinQueue as jest.Mock).mockReturnValue(q);
+  await render(<MapScreen />);
+  expect(mockCelebrationProps.result).toEqual(synced);
+  await act(async () => mockCelebrationProps.onClose());
+  expect(q.next).toHaveBeenCalled();
+});
+
+test('직접 체크인 중이면 올라간 축하는 미룬다', async () => {
+  (useCheckinQueue as jest.Mock).mockReturnValue(queueState({ celebrations: [synced] }));
+  checkin({ name: 'locating' });
+  await render(<MapScreen />);
+  expect(screen.queryByTestId('celebration')).toBeNull();
+});
+
+test('거절된 발자국 안내 + 닫기', async () => {
+  const q = queueState({ dropped: 2 });
+  (useCheckinQueue as jest.Mock).mockReturnValue(q);
+  await render(<MapScreen />);
+  expect(screen.getByText('챙겨둔 발자국 2개는 남기지 못했어요. 너무 멀었거나 위치가 흐렸어요.')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(q.clearDropped).toHaveBeenCalled();
 });
