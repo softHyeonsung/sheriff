@@ -44,6 +44,7 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
     <Modal visible transparent animationType="slide" onRequestClose={close}>
       <Pressable style={styles.backdrop} onPress={close} accessibilityRole="button" accessibilityLabel="닫기" />
       <SafeAreaView edges={['bottom']} style={styles.sheet}>
+        {state.offline && <Text style={styles.caption}>연결이 끊겨 있어서 내 아지트만 보여드려요</Text>}
         {view === 'confirm' && first ? (
           <View style={styles.confirm}>
             {first.kind === 'mine' && <Image source={{ uri: markerFor(first.grade).uri }} style={styles.art} />}

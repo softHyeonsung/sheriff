@@ -54,7 +54,7 @@ test('실패(권한 없음) → 안내 + 설정 열기 + 나중에 할게요', a
 });
 
 test('후보 고르는 중엔 시트', async () => {
-  api({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], busy: false, error: null });
+  api({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], offline: false, busy: false, error: null });
   await render(<FirstFootprintStep onDone={jest.fn()} />);
   expect(screen.getByTestId('checkin-sheet')).toBeTruthy();
 });
@@ -75,4 +75,14 @@ test('이미 물어봤으면 팝업 없이 바로 체크인', async () => {
   await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
   expect(askLocation).not.toHaveBeenCalled();
   expect(a.start).toHaveBeenCalled();
+});
+
+test('오프라인에서 챙긴 첫 발자국 → 안내 후 다음으로(막히지 않음)', async () => {
+  const onDone = jest.fn();
+  const h = api({ name: 'queued' });
+  await render(<FirstFootprintStep onDone={onDone} />);
+  expect(screen.getByText('발자국을 챙겨뒀어요. 연결되면 남길게요 🐾')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '다음' }));
+  expect(h.close).toHaveBeenCalled();
+  expect(onDone).toHaveBeenCalledWith(false);
 });

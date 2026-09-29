@@ -39,6 +39,18 @@ export function FirstFootprintStep({ onDone }: { onDone: (made: boolean) => void
       </Text>
       {locating && <Text style={styles.body}>{MSG.locating}</Text>}
       {state.name === 'failed' && <Text style={styles.body}>{state.message}</Text>}
+      {state.name === 'queued' && (
+        <>
+          <Text style={styles.body}>발자국을 챙겨뒀어요. 연결되면 남길게요 🐾</Text>
+          <PrimaryButton
+            label="다음"
+            onPress={() => {
+              checkin.close();
+              onDone(false); // 아지트는 연결된 뒤 지도에서 생긴다
+            }}
+          />
+        </>
+      )}
       {state.name === 'choosing' && <CheckinSheet state={state} footprintsById={{}} onChoose={checkin.choose} onClose={checkin.close} />}
       {state.name === 'celebrating' && (
         <Celebration

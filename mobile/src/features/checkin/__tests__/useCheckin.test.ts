@@ -2,20 +2,24 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { cancelArrivalAlert } from '@/features/arrival/task';
 import * as api from '../checkinApi';
+import { suggestOrOffline } from '../offline';
+import { enqueueCheckin } from '../queue';
 import { CheckinError } from '../errors';
 import { useCheckin } from '../useCheckin';
 
 // Not requireActual: the real module imports the Supabase client, which needs env vars.
-jest.mock('../checkinApi', () => ({ getFreshFix: jest.fn(), suggestPlace: jest.fn(), submitCheckin: jest.fn() }));
+jest.mock('../checkinApi', () => ({ getFreshFix: jest.fn(), submitCheckin: jest.fn() }));
+jest.mock('../offline', () => ({ suggestOrOffline: jest.fn() }));
+jest.mock('../queue', () => ({ enqueueCheckin: jest.fn() }));
 
 jest.mock('@/features/arrival/task', () => ({ cancelArrivalAlert: jest.fn() }));
 
 const fix = { lat: 37.5, lng: 126.9, accuracy: 12 };
 const cand = { kind: 'kakao' as const, placeId: 'p1', name: '카페', lat: 37.5, lng: 126.9, roadAddress: null, distanceM: 10 };
-const ok = { status: 'ok' as const, hereAddress: '서울 1', candidates: [cand] };
+const ok = { status: 'ok' as const, hereAddress: '서울 1', candidates: [cand], offline: false };
 const result = { aidutId: 'a1', name: '카페', footprintCount: 1, grade: 'paw' as const, gradeChanged: false, newCellsCleared: 1 };
 const getFix = api.getFreshFix as jest.Mock;
-const suggest = api.suggestPlace as jest.Mock;
+const suggest = suggestOrOffline as jest.Mock;
 const submit = api.submitCheckin as jest.Mock;
 
 beforeEach(() => {
@@ -23,13 +27,14 @@ beforeEach(() => {
   getFix.mockResolvedValue(fix);
   suggest.mockResolvedValue(ok);
   submit.mockResolvedValue(result);
+  (enqueueCheckin as jest.Mock).mockResolvedValue(undefined);
   (cancelArrivalAlert as jest.Mock).mockResolvedValue(undefined);
 });
 
 test('시작 → 후보 고르기 → 발자국 → 축하', async () => {
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
-  expect(h.current.state).toEqual({ name: 'choosing', fix, hereAddress: '서울 1', candidates: [cand], busy: false, error: null });
+  expect(h.current.state).toEqual({ name: 'choosing', fix, hereAddress: '서울 1', candidates: [cand], offline: false, busy: false, error: null });
   await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1' }));
   expect(submit).toHaveBeenCalledWith(fix, { kind: 'new', roadAddress: '서울 1' });
   expect(h.current.state).toEqual({ name: 'celebrating', result });
@@ -157,4 +162,47 @@ test('발자국을 남기면 그곳 도착 알림 예약을 취소한다(실패�
   await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1' }));
   expect(cancelArrivalAlert).toHaveBeenCalledWith('a1');
   expect(h.current.state).toEqual({ name: 'celebrating', result });
+});
+
+const mine = { kind: 'mine' as const, aidutId: 'a1', name: '단골 카페', grade: 'box' as const, distanceM: 20 };
+
+test('오프라인 후보에서 고르면 대기열에 챙기고 queued(서버엔 안 보냄)', async () => {
+  suggest.mockResolvedValue({ status: 'ok', hereAddress: null, candidates: [mine], offline: true });
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  expect(h.current.state).toMatchObject({ name: 'choosing', offline: true });
+  await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
+  expect(enqueueCheckin).toHaveBeenCalledWith({ fix, target: { kind: 'mine', aidutId: 'a1' }, name: '단골 카페' });
+  expect(submit).not.toHaveBeenCalled();
+  expect(h.current.state).toEqual({ name: 'queued' });
+});
+
+test('오프라인 새로 만들기는 "새 아지트"로 챙긴다', async () => {
+  suggest.mockResolvedValue({ status: 'ok', hereAddress: null, candidates: [], offline: true });
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'new', roadAddress: null }));
+  expect(enqueueCheckin).toHaveBeenCalledWith({ fix, target: { kind: 'new', roadAddress: null }, name: '새 아지트' });
+});
+
+test('온라인 제출이 연결 실패면 고른 발자국을 챙긴다', async () => {
+  submit.mockRejectedValue(new CheckinError('offline'));
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'kakao', placeId: 'p1', name: '카페', lat: 37.5, lng: 126.9, roadAddress: null }));
+  expect(enqueueCheckin).toHaveBeenCalledWith({
+    fix,
+    target: { kind: 'kakao', placeId: 'p1', name: '카페', lat: 37.5, lng: 126.9, roadAddress: null },
+    name: '카페',
+  });
+  expect(h.current.state).toEqual({ name: 'queued' });
+});
+
+test('챙기기(파일 쓰기)가 실패하면 시트에 안내', async () => {
+  suggest.mockResolvedValue({ status: 'ok', hereAddress: null, candidates: [mine], offline: true });
+  (enqueueCheckin as jest.Mock).mockRejectedValue(new Error('disk'));
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
+  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' });
 });

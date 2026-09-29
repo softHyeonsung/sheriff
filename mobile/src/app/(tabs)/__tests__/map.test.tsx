@@ -167,7 +167,7 @@ test('위치 확인 중엔 안내가 뜨고 버튼이 비활성', async () => {
 });
 
 test('후보 고르기 → 시트(발자국 수 전달)', async () => {
-  checkin({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], busy: false, error: null });
+  checkin({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], offline: false, busy: false, error: null });
   await render(<MapScreen />);
   expect(screen.getByTestId('checkin-sheet')).toBeTruthy();
   expect(mockSheetProps.footprintsById).toEqual({ a1: 3 });

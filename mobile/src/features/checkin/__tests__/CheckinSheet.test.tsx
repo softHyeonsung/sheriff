@@ -7,7 +7,7 @@ const mine = { kind: 'mine' as const, aidutId: 'a1', name: '단골 카페', grad
 const kakao = { kind: 'kakao' as const, placeId: 'p1', name: '공원', lat: 37.5, lng: 126.9, roadAddress: '서울 2', distanceM: 43.6 };
 const state = (over: Partial<Choosing> = {}): Choosing => ({
   name: 'choosing', fix: { lat: 37.5, lng: 126.9, accuracy: 10 }, hereAddress: '서울 테스트로 1',
-  candidates: [mine, kakao], busy: false, error: null, ...over,
+  candidates: [mine, kakao], offline: false, busy: false, error: null, ...over,
 });
 const props = { footprintsById: { a1: 3 }, onChoose: jest.fn(), onClose: jest.fn() };
 
@@ -52,4 +52,9 @@ test('저장 중엔 닫히지 않는다', async () => {
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(props.onClose).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: '발자국 남기기', disabled: true })).toBeTruthy();
+});
+
+test('오프라인이면 내 아지트만 보여준다고 알린다', async () => {
+  await render(<CheckinSheet state={state({ offline: true })} {...props} />);
+  expect(screen.getByText('연결이 끊겨 있어서 내 아지트만 보여드려요')).toBeTruthy();
 });

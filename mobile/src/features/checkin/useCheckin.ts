@@ -8,16 +8,18 @@ import {
   type Fix,
   getFreshFix,
   submitCheckin,
-  suggestPlace,
 } from './checkinApi';
 import { MSG, messageFor } from './copy';
 import { CheckinError } from './errors';
+import { suggestOrOffline } from './offline';
+import { enqueueCheckin } from './queue';
 
 export type Choosing = {
   name: 'choosing';
   fix: Fix;
   hereAddress: string | null;
   candidates: Candidate[];
+  offline: boolean;
   busy: boolean;
   error: string | null;
 };
@@ -26,7 +28,8 @@ export type CheckinState =
   | { name: 'locating' }
   | Choosing
   | { name: 'celebrating'; result: CheckinResult }
-  | { name: 'failed'; message: string; needsSettings: boolean };
+  | { name: 'failed'; message: string; needsSettings: boolean }
+  | { name: 'queued' };
 
 const ATTEMPTS = 2; // weak GPS gets one automatic retry before we ask the user
 // A fix can stall indefinitely (weak signal indoors, Android's location dialog). Give up and
@@ -39,6 +42,15 @@ function within<T>(p: Promise<T>, ms: number): Promise<T> {
     timer = setTimeout(() => reject(new CheckinError('unknown')), ms);
   });
   return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
+
+// 대기열에서 보여줄 이름.
+function nameFor(target: CheckinTarget, candidates: Candidate[]): string {
+  if (target.kind === 'mine') {
+    const c = candidates.find((x) => x.kind === 'mine' && x.aidutId === target.aidutId);
+    return c?.name ?? '내 아지트';
+  }
+  return target.kind === 'kakao' ? target.name : '새 아지트';
 }
 
 export function useCheckin() {
@@ -68,10 +80,10 @@ export function useCheckin() {
           setState({ name: 'failed', message: MSG.denied, needsSettings: true });
           return;
         }
-        const s = await suggestPlace(fix);
+        const s = await suggestOrOffline(fix);
         if (run.current !== id) return;
         if (s.status === 'ok') {
-          sheet.current = { fix, hereAddress: s.hereAddress, candidates: s.candidates };
+          sheet.current = { fix, hereAddress: s.hereAddress, candidates: s.candidates, offline: s.offline };
           fixIsStale.current = false;
           setState({ name: 'choosing', ...sheet.current, busy: false, error: null });
           return;
@@ -90,8 +102,18 @@ export function useCheckin() {
     if (inFlight.current || !c) return;
     inFlight.current = true;
     setState({ name: 'choosing', ...c, busy: true, error: null });
+    let fix = c.fix;
+    // 끊겨 있으면 챙겨 두고, 연결되면 지도 화면이 올린다.
+    const keep = async () => {
+      await enqueueCheckin({ fix, target, name: nameFor(target, c.candidates) });
+      sheet.current = null;
+      setState({ name: 'queued' });
+    };
     try {
-      let fix = c.fix;
+      if (c.offline) {
+        await keep();
+        return;
+      }
       if (fixIsStale.current) {
         const fresh = await within(getFreshFix(), LOCATE_TIMEOUT_MS);
         if (fresh === 'denied') {
@@ -102,11 +124,16 @@ export function useCheckin() {
         sheet.current = { ...c, fix };
         fixIsStale.current = false;
       }
-      const result = await submitCheckin(fix, target);
-      // 이미 남겼으니 곧 울릴 "발자국 남길까요?" 알림은 거둔다.
-      cancelArrivalAlert(result.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
-      sheet.current = null;
-      setState({ name: 'celebrating', result });
+      try {
+        const result = await submitCheckin(fix, target);
+        // 이미 남겼으니 곧 울릴 "발자국 남길까요?" 알림은 거둔다.
+        cancelArrivalAlert(result.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
+        sheet.current = null;
+        setState({ name: 'celebrating', result });
+      } catch (e) {
+        if (!(e instanceof CheckinError && e.code === 'offline')) throw e;
+        await keep(); // 보내다 끊겼다: 고른 발자국을 잃지 않게
+      }
     } catch (e) {
       fixIsStale.current = true;
       setState({ name: 'choosing', ...(sheet.current ?? c), busy: false, error: messageFor(e) });
