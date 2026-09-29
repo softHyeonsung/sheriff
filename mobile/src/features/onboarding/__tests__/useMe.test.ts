@@ -32,5 +32,5 @@ test('실패 → error, retry로 다시', async () => {
   const { result } = await renderHook(() => useMe('u1'));
   await waitFor(() => expect(result.current.status).toBe('error'));
   await act(async () => result.current.retry());
-  expect(result.current.status).toBe('ready');
+  await waitFor(() => expect(result.current.status).toBe('ready'));
 });
