@@ -7,6 +7,7 @@ import { useMyLocation } from '@/features/map/useMyLocation';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { useMyFog } from '@/features/territory/useMyFog';
 import { useDongAt } from '@/features/territory/useDongAt';
+import { useMeStore } from '@/stores/meStore';
 import MapScreen from '../index';
 
 let mockBridgeProps: Record<string, any> = {};
@@ -50,6 +51,7 @@ beforeEach(() => {
   (useMyLocation as jest.Mock).mockReturnValue({ location: { lat: 37.5, lng: 126.9, accuracy: 10 }, permission: 'granted' });
   (useCheckin as jest.Mock).mockReturnValue({ state: { name: 'idle' }, start: jest.fn(), choose: jest.fn(), close: jest.fn() });
   (useMyFog as jest.Mock).mockReturnValue({ cells: [], refresh: jest.fn() });
+  useMeStore.setState({ me: null });
   (useDongAt as jest.Mock).mockReturnValue({ dong: null, onIdle: jest.fn(), refresh: jest.fn() });
 
 });
@@ -231,4 +233,12 @@ test('고양이를 누르면 말풍선을 보낸다(권유 → 인사 번갈아)
   await act(async () => mockBridgeProps.onCatTap());
   await act(async () => mockBridgeProps.onCatTap());
   expect(mockCatSay.mock.calls).toEqual([['저쪽 골목은 아직 안개예요. 같이 가볼까요?'], ['우리 동네, 오늘도 조용하고 좋네요.']]);
+});
+
+test('지도 고양이는 내 털색, 모르면 치즈', async () => {
+  await render(<MapScreen />);
+  expect(mockBridgeProps.catColor).toBe('cheese');
+  useMeStore.setState({ me: { onboarded: true, catName: '나비', catColor: 'gray', homeDong: null, hasHideout: true } });
+  await render(<MapScreen />);
+  expect(mockBridgeProps.catColor).toBe('gray');
 });

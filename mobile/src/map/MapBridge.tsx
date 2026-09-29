@@ -4,7 +4,8 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { color } from '@/constants/tokens';
-import { CAT_IMAGE } from './cat-image.generated';
+import { CAT_IMAGES } from './cat-image.generated';
+import type { CatColor } from './catColors';
 import { GRADES } from './grades';
 import { markerFor } from './markers';
 import { type AppToMap, type FogCell, type HideoutPin, type LatLng, type MyLocation, parseMapMessage, toMapScript } from './protocol';
@@ -21,12 +22,13 @@ type Props = {
   fog: FogCell[] | null; // null = not loaded yet: draw no fog rather than fog over everything
   onIdle: (center: LatLng) => void;
   onCatTap: () => void;
+  catColor: CatColor;
 };
 
 const ORIGIN = 'http://localhost'; // registered as a Web platform domain in the Kakao console
 
 export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
-  { hideouts, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap },
+  { hideouts, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap, catColor },
   ref,
 ) {
   const jsKey = process.env.EXPO_PUBLIC_KAKAO_JS_KEY ?? '';
@@ -34,9 +36,10 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   const [ready, setReady] = useState(false);
   // The page is built once; later center changes go through panTo, not a reload.
   const [initialCenter] = useState(center);
+  const [initialCat] = useState(catColor); // the page is built once — the coat is chosen in onboarding, before the map
   const html = useMemo(
-    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: CAT_IMAGE, fogColor: color.fog }),
-    [jsKey, initialCenter],
+    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: CAT_IMAGES[initialCat], fogColor: color.fog }),
+    [jsKey, initialCenter, initialCat],
   );
 
   const send = (msg: AppToMap) => web.current?.injectJavaScript(toMapScript(msg));

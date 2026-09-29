@@ -17,6 +17,7 @@ import { useMyFog } from '@/features/territory/useMyFog';
 import { GRADE_LABEL } from '@/map/grades';
 import { MapBridge, type MapBridgeHandle } from '@/map/MapBridge';
 import { markerFor } from '@/map/markers';
+import { useMeStore } from '@/stores/meStore';
 
 const CITY_HALL = { lat: 37.5665, lng: 126.978 };
 
@@ -35,6 +36,7 @@ export default function MapScreen() {
   const fog = useMyFog();
   const dongAt = useDongAt();
   const catTaps = useRef(0);
+  const catColor = useMeStore((s) => s.me?.catColor) ?? 'cheese';
   const footprintsById = useMemo(() => Object.fromEntries(hideouts.map((h) => [h.id, h.footprintCount])), [hideouts]);
   const locating = checkin.state.name === 'locating';
   const bridge = useRef<MapBridgeHandle>(null);
@@ -92,6 +94,7 @@ export default function MapScreen() {
         onHideoutTap={setSelectedId}
         fog={fog.cells}
         onIdle={dongAt.onIdle}
+        catColor={catColor}
         onCatTap={() => bridge.current?.catSay(pickCatLine(dongAt.dong?.ratio ?? null, catTaps.current++))}
         onError={(reason) => {
           console.warn('지도 오류', reason);

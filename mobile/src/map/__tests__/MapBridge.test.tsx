@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed test doubles for native components */
 import { createRef } from 'react';
 import { act, render } from '@testing-library/react-native';
+import { CAT_IMAGES } from '../cat-image.generated';
 import { MapBridge, type MapBridgeHandle } from '../MapBridge';
 
 const mockInject = jest.fn();
@@ -19,7 +20,7 @@ jest.mock('react-native-webview', () => {
 });
 
 const pins = [{ id: 'a1', lat: 37.5, lng: 126.9, grade: 'hut' as const }];
-const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn() };
+const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn(), catColor: 'cheese' as const };
 const send = async (data: string) => act(async () => mockWebProps.onMessage({ nativeEvent: { data } }));
 
 beforeEach(() => {
@@ -139,4 +140,11 @@ test('걷힌 칸을 아직 못 불러왔으면(null) 안개를 보내지 않는�
   await render(<MapBridge {...base} fog={null} />);
   await send('{"type":"ready"}');
   expect(mockInject.mock.calls.some(([s]) => s.includes('setFog'))).toBe(false);
+});
+
+test('고른 털색의 고양이 그림을 싣는다', async () => {
+  await render(<MapBridge {...base} catColor="black" />);
+  // PNG 머리는 셋 다 같으니 끝부분으로 구분
+  expect(mockWebProps.source.html).toContain(CAT_IMAGES.black.slice(-80));
+  expect(mockWebProps.source.html).not.toContain(CAT_IMAGES.cheese.slice(-80));
 });
