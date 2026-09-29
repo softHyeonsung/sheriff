@@ -18,7 +18,7 @@ select set_config('request.jwt.claims',
 
 -- 새로 만들기
 select is(
-  public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","roadAddress":"서울 테스트로 1"}') - 'aidutId',
+  public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","roadAddress":"서울 테스트로 1"}') - 'aidutId' - 'dong',
   '{"name":"서울 테스트로 1","footprintCount":1,"grade":"paw","gradeChanged":false,"newCellsCleared":1}'::jsonb,
   '새로 만들기: 발자국 1, paw, 안개 1칸 (B의 같은 자리 아지트와 합쳐지지 않음)');
 
@@ -37,7 +37,7 @@ update public.checkins set created_at = created_at - interval '7 hours';
 set local role authenticated;
 select is(
   public.submit_checkin(37.5, 126.94, 10, jsonb_build_object('kind', 'mine',
-    'aidutId', (select id from public.aidut where name = '서울 테스트로 1'))) - 'aidutId',
+    'aidutId', (select id from public.aidut where name = '서울 테스트로 1'))) - 'aidutId' - 'dong',
   '{"name":"서울 테스트로 1","footprintCount":2,"grade":"box","gradeChanged":true,"newCellsCleared":0}'::jsonb,
   '기존 아지트: 2 → box, 같은 셀이라 안개 0칸');
 
