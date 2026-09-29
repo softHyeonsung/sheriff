@@ -8,13 +8,16 @@ export type ArrivalData = { regions: Record<string, ArrivalRegion>; log: Arrival
 const file = () => new File(Paths.document, 'arrival.json');
 const empty = (): ArrivalData => ({ regions: {}, log: [], offerSeen: false });
 
-// ponytail: 읽고-고쳐-쓰기에 잠금 없음. 태스크와 지도 재등록이 같은 순간에 쓰면 한쪽 변경이 사라질 수 있다
-// (최악: 알림 한 번 더). 문제가 되면 regions와 log를 파일 둘로 나눈다.
 export async function readArrival(): Promise<ArrivalData> {
   try {
     const f = file();
     if (!f.exists) return empty();
-    return { ...empty(), ...JSON.parse(await f.text()) };
+    const d = JSON.parse(await f.text());
+    return {
+      regions: d.regions && typeof d.regions === 'object' ? d.regions : {},
+      log: Array.isArray(d.log) ? d.log : [],
+      offerSeen: d.offerSeen === true,
+    };
   } catch {
     return empty(); // 깨진 파일: 알림 한 번 더 가는 게 앱이 멈추는 것보다 낫다
   }
@@ -24,4 +27,17 @@ export async function writeArrival(data: ArrivalData, now = Date.now()): Promise
   const f = file();
   if (!f.exists) f.create();
   f.write(JSON.stringify({ ...data, log: data.log.filter((e) => now - e.at < ARRIVAL.keepMs) }));
+}
+
+// 태스크(지오펜스 이벤트가 한꺼번에 몰려옴)와 지도 재등록이 같은 JS 안에서 파일을 고친다.
+// 읽고-고쳐-쓰기를 한 줄로 세워 서로의 변경을 덮어쓰지 않게 한다. fn이 null이면 안 쓴다.
+let queue: Promise<unknown> = Promise.resolve();
+
+export function updateArrival(fn: (d: ArrivalData) => Promise<ArrivalData | null>, now = Date.now()): Promise<void> {
+  const run = queue.then(async () => {
+    const next = await fn(await readArrival());
+    if (next) await writeArrival(next, now);
+  });
+  queue = run.catch(() => {}); // 앞 작업이 실패해도 줄은 계속
+  return run;
 }

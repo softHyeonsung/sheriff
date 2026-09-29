@@ -1,4 +1,3 @@
-import '@/features/arrival/task'; // 백그라운드에서 깨어나도 태스크가 정의돼 있어야 한다
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';

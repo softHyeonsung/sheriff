@@ -16,10 +16,15 @@ export async function notificationsAsked(): Promise<boolean> {
   return (await Notifications.getPermissionsAsync()).status !== 'undetermined';
 }
 
-export async function askNotifications(): Promise<boolean> {
-  // Android 13+: no channel, no permission prompt.
+// 도착 알림 채널. 없으면 안드로이드 8+에서 알림이 안 뜬다. 여러 번 불러도 된다.
+export async function ensureArrivalChannel(): Promise<void> {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('arrival', { name: '도착 알림', importance: Notifications.AndroidImportance.DEFAULT });
   }
+}
+
+export async function askNotifications(): Promise<boolean> {
+  // Android 13+: no channel, no permission prompt.
+  await ensureArrivalChannel();
   return (await Notifications.requestPermissionsAsync()).granted;
 }

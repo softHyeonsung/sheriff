@@ -1,4 +1,5 @@
 // mobile/src/app/(tabs)/index.tsx
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -52,9 +53,11 @@ export default function MapScreen() {
   const celebrated = checkin.state.name === 'celebrating' ? checkin.state.result : null;
 
   // 도착 알림을 누르고 들어오면 바로 체크인. 가까운 내 아지트가 첫 후보로 나온다.
+  // 프로필 탭에 있었어도 지도 탭으로 데려온다(이 화면은 탭 뒤에서도 살아 있다).
   const { start } = checkin;
   useArrivalTap(
     useCallback(() => {
+      router.navigate('/');
       setSelectedId(null);
       start();
     }, [start]),

@@ -46,10 +46,15 @@
 1. 기준점 = 마지막으로 알고 있는 내 위치(`getLastKnownPositionAsync`), 없으면 목록 첫 아지트.
 2. `pickNearest(hideouts, 기준점, 20)` → 가까운 순 20곳.
 3. 저장 파일의 `regions`를 `{id: {name, grade, lastVisitedAt}}`로 덮어쓴다.
-4. `Location.startGeofencingAsync(TASK, regions)` — 같은 태스크 이름으로 다시 부르면 목록이 교체된다. 아지트가 0곳이면 `stopGeofencingAsync`.
+4. `Location.startGeofencingAsync(TASK, regions)` — 같은 태스크 이름으로 다시 부르면 목록이 교체된다. 등록할 때마다 OS가 모든 원에 진입/이탈을 몰아 보내므로, **이미 감시 중이고 고른 곳이 같으면 다시 등록하지 않는다.** 아지트가 0곳이면 `stopGeofencingAsync`.
+5. 안드로이드 `arrival` 알림 채널을 만들어 둔다(온보딩에서 못 만들었어도).
 
 ### 3. 백그라운드 태스크 (`arrival-geofence`)
-`TaskManager.defineTask`는 앱 진입점(`_layout.tsx`) 최상단에서 import되는 모듈에서 정의한다(앱이 꺼진 채 깨어나도 정의돼 있어야 함).
+`TaskManager.defineTask`는 앱 진입점 `mobile/index.ts`(package.json `main`)에서 라우터보다 먼저 import한다. 안드로이드는 꺼진 앱을 화면 없이 깨우므로 라우트 파일(`_layout.tsx`)은 실행되지 않고, 정의 안 된 태스크는 OS 등록까지 해제된다.
+
+- 앱을 보고 있을 때(`AppState` active) 온 진입은 무시한다 — 등록 직후 "이미 안에 있음" 진입 포함.
+- 발자국을 남기면(체크인 성공) 그 아지트의 예약 알림을 취소한다. 기록은 남겨 하루 횟수에 센다.
+- 파일 읽고-고쳐-쓰기는 한 줄(큐)로 처리한다(등록 때 이벤트가 한꺼번에 몰려옴).
 
 - **진입**: 저장 파일을 읽어 `decideArrival(지금, 아지트, 기록)` → 보낼 거면 `scheduleNotificationAsync`(2분 뒤, `identifier = "arrival:<id>"`, 채널 `arrival`, `data: {hideoutId}`) 후 기록에 `예약` 남김.
 - **이탈**: `cancelScheduledNotificationAsync("arrival:<id>")`, 기록에서 그 예약 제거(보낸 걸로 세지 않음).
@@ -68,7 +73,7 @@
 - 찜 첫 방문 문구는 ⑥-5에서.
 
 ### 5. 알림을 누르면
-지도 탭(`(tabs)/index.tsx`)에서 `Notifications.useLastNotificationResponse()`를 본다. 도착 알림 응답이 새로 들어오면(같은 응답을 두 번 처리하지 않게 identifier+날짜로 기억) `checkin.start()`. 기존 흐름이 가까운 내 아지트를 첫 후보로 보여주므로 화면 추가 없음. 온보딩·로그인 화면이면 무시(지도 탭이 없으니 자연히 무시됨).
+지도 탭(`(tabs)/index.tsx`)에서 `Notifications.useLastNotificationResponse()`를 본다. 도착 알림 응답이 새로 들어오면(같은 응답을 두 번 처리하지 않게 identifier+날짜로 기억) 지도 탭으로 이동(`router.navigate('/')`) 후 `checkin.start()`. 기존 흐름이 가까운 내 아지트를 첫 후보로 보여주므로 화면 추가 없음. 온보딩·로그인 화면이면 무시(지도 탭이 없으니 자연히 무시됨).
 
 ## 서버
 
@@ -92,7 +97,8 @@
 | `features/arrival/ArrivalOffer.tsx` | 권한 카드 |
 | `features/map/useMyHideouts.ts` | `lastVisitedAt` 받기, 로드 후 `syncArrivalRegions` |
 | `app/(tabs)/index.tsx` | 카드 띄우기, 알림 탭 → `checkin.start()` |
-| `app/_layout.tsx` | `task.ts` import |
+| `mobile/index.ts` | 앱 진입점: `task.ts` → `expo-router/entry` 순서로 import |
+| `features/checkin/useCheckin.ts` | 체크인 성공 시 `cancelArrivalAlert` |
 
 ## 오류 처리
 

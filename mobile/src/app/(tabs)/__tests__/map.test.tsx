@@ -1,6 +1,7 @@
 // mobile/src/app/(tabs)/__tests__/map.test.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed test doubles for native components */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { Linking } from 'react-native';
 import { answerArrivalOffer, shouldOfferArrival } from '@/features/arrival/register';
 import { useArrivalTap } from '@/features/arrival/useArrivalTap';
@@ -15,6 +16,7 @@ import MapScreen from '../index';
 let mockBridgeProps: Record<string, any> = {};
 const mockPanTo = jest.fn();
 const mockCatSay = jest.fn();
+jest.mock('expo-router', () => ({ router: { navigate: jest.fn() } }));
 jest.mock('@/features/arrival/register', () => ({ shouldOfferArrival: jest.fn(), answerArrivalOffer: jest.fn() }));
 jest.mock('@/features/arrival/useArrivalTap', () => ({ useArrivalTap: jest.fn() }));
 jest.mock('@/features/territory/useMyFog', () => ({ useMyFog: jest.fn() }));
@@ -207,11 +209,12 @@ test('재방문 축하를 닫으면 도착 알림 카드, 좋아요 → 허용�
   expect(retry).toHaveBeenCalled();
 });
 
-test('도착 알림을 누르고 들어오면 체크인 시작', async () => {
+test('도착 알림을 누르고 들어오면 지도 탭으로 가서 체크인 시작(프로필 탭에 있었어도)', async () => {
   const api = checkin({ name: 'idle' });
   await render(<MapScreen />);
   const onArrive = (useArrivalTap as jest.Mock).mock.calls.at(-1)![0];
   await act(async () => onArrive());
+  expect(router.navigate).toHaveBeenCalledWith('/');
   expect(api.start).toHaveBeenCalled();
 });
 

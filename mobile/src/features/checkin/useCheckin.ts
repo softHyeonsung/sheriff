@@ -1,5 +1,6 @@
 // mobile/src/features/checkin/useCheckin.ts
 import { useCallback, useRef, useState } from 'react';
+import { cancelArrivalAlert } from '@/features/arrival/task';
 import {
   type Candidate,
   type CheckinResult,
@@ -102,6 +103,8 @@ export function useCheckin() {
         fixIsStale.current = false;
       }
       const result = await submitCheckin(fix, target);
+      // 이미 남겼으니 곧 울릴 "발자국 남길까요?" 알림은 거둔다.
+      cancelArrivalAlert(result.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
       sheet.current = null;
       setState({ name: 'celebrating', result });
     } catch (e) {

@@ -1,7 +1,7 @@
 // mobile/src/features/arrival/__tests__/register.test.ts
 import * as Location from 'expo-location';
-import { askNotifications } from '@/features/onboarding/permissions';
-import { readArrival, writeArrival } from '../store';
+import { askNotifications, ensureArrivalChannel } from '@/features/onboarding/permissions';
+import { readArrival, updateArrival, type ArrivalData } from '../store';
 import { answerArrivalOffer, shouldOfferArrival, syncArrivalRegions } from '../register';
 
 jest.mock('expo-location', () => ({
@@ -14,19 +14,24 @@ jest.mock('expo-location', () => ({
   hasStartedGeofencingAsync: jest.fn(),
 }));
 jest.mock('../task', () => ({ ARRIVAL_TASK: 'arrival-geofence' }));
-jest.mock('../store', () => ({ readArrival: jest.fn(), writeArrival: jest.fn() }));
-jest.mock('@/features/onboarding/permissions', () => ({ askNotifications: jest.fn() }));
+jest.mock('../store', () => ({ readArrival: jest.fn(), updateArrival: jest.fn() }));
+jest.mock('@/features/onboarding/permissions', () => ({ askNotifications: jest.fn(), ensureArrivalChannel: jest.fn() }));
 
 const L = Location as jest.Mocked<typeof Location>;
 const read = readArrival as jest.Mock;
-const write = writeArrival as jest.Mock;
-const EMPTY = { regions: {}, log: [], offerSeen: false };
+const EMPTY: ArrivalData = { regions: {}, log: [], offerSeen: false };
+// Fake store: updateArrival runs the updater against whatever read() returns; `write` records what it wrote.
+const write = jest.fn();
 const bg = (status: string) => L.getBackgroundPermissionsAsync.mockResolvedValue({ status } as never);
 const h = (id: string, lat: number) => ({ id, name: id, grade: 'box' as const, footprintCount: 2, lat, lng: 127, lastVisitedAt: null });
 
 beforeEach(() => {
   jest.clearAllMocks();
   read.mockResolvedValue(EMPTY);
+  (updateArrival as jest.Mock).mockImplementation(async (fn: (d: ArrivalData) => Promise<ArrivalData | null>) => {
+    const next = await fn(await read());
+    if (next) write(next);
+  });
 });
 
 test('항상 허용이 아니면 등록하지 않는다', async () => {
@@ -46,6 +51,32 @@ test('내 위치에서 가까운 20곳을 150m로 등록하고 목록을 저장�
   expect(regions[0]).toEqual({ identifier: 'h0', latitude: 37.5, longitude: 127, radius: 150 });
   expect(Object.keys(write.mock.calls[0][0].regions)).toHaveLength(20);
   expect(write.mock.calls[0][0].regions.h0).toEqual({ name: 'h0', grade: 'box', lastVisitedAt: null });
+});
+
+test('등록할 때 안드로이드 알림 채널을 만들어 둔다(온보딩에서 못 만들었어도)', async () => {
+  bg('granted');
+  L.getLastKnownPositionAsync.mockResolvedValue(null);
+  await syncArrivalRegions([h('a', 37.5)]);
+  expect(ensureArrivalChannel).toHaveBeenCalled();
+});
+
+test('이미 같은 곳들을 감시 중이면 다시 등록하지 않는다(등록 때마다 OS가 진입/이탈을 몰아 보냄)', async () => {
+  bg('granted');
+  L.getLastKnownPositionAsync.mockResolvedValue(null);
+  L.hasStartedGeofencingAsync.mockResolvedValue(true);
+  read.mockResolvedValue({ ...EMPTY, regions: { b: { name: 'b', grade: 'box', lastVisitedAt: null }, a: { name: 'a', grade: 'paw', lastVisitedAt: null } } });
+  await syncArrivalRegions([h('a', 37.5), h('b', 37.6)]);
+  expect(L.startGeofencingAsync).not.toHaveBeenCalled();
+  expect(write.mock.calls[0][0].regions.a.grade).toBe('box'); // 이름·등급·방문 시각은 새로 저장
+});
+
+test('감시가 꺼져 있으면 같은 곳이어도 등록한다', async () => {
+  bg('granted');
+  L.getLastKnownPositionAsync.mockResolvedValue(null);
+  L.hasStartedGeofencingAsync.mockResolvedValue(false);
+  read.mockResolvedValue({ ...EMPTY, regions: { a: { name: 'a', grade: 'box', lastVisitedAt: null } } });
+  await syncArrivalRegions([h('a', 37.5)]);
+  expect(L.startGeofencingAsync).toHaveBeenCalled();
 });
 
 test('위치를 모르면 첫 아지트 기준', async () => {

@@ -1,11 +1,14 @@
 // mobile/src/features/checkin/__tests__/useCheckin.test.ts
 import { act, renderHook } from '@testing-library/react-native';
+import { cancelArrivalAlert } from '@/features/arrival/task';
 import * as api from '../checkinApi';
 import { CheckinError } from '../errors';
 import { useCheckin } from '../useCheckin';
 
 // Not requireActual: the real module imports the Supabase client, which needs env vars.
 jest.mock('../checkinApi', () => ({ getFreshFix: jest.fn(), suggestPlace: jest.fn(), submitCheckin: jest.fn() }));
+
+jest.mock('@/features/arrival/task', () => ({ cancelArrivalAlert: jest.fn() }));
 
 const fix = { lat: 37.5, lng: 126.9, accuracy: 12 };
 const cand = { kind: 'kakao' as const, placeId: 'p1', name: '카페', lat: 37.5, lng: 126.9, roadAddress: null, distanceM: 10 };
@@ -20,6 +23,7 @@ beforeEach(() => {
   getFix.mockResolvedValue(fix);
   suggest.mockResolvedValue(ok);
   submit.mockResolvedValue(result);
+  (cancelArrivalAlert as jest.Mock).mockResolvedValue(undefined);
 });
 
 test('시작 → 후보 고르기 → 발자국 → 축하', async () => {
@@ -143,4 +147,14 @@ test('거절 뒤 다시 누르면 새 위치로 보낸다(가까이 걸어온 �
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
   expect(submit).toHaveBeenLastCalledWith(closer, { kind: 'mine', aidutId: 'a1' });
   expect(h.current.state.name).toBe('celebrating');
+});
+
+test('발자국을 남기면 그곳 도착 알림 예약을 취소한다(실패해도 축하는 그대로)', async () => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  (cancelArrivalAlert as jest.Mock).mockRejectedValueOnce(new Error('nope'));
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1' }));
+  expect(cancelArrivalAlert).toHaveBeenCalledWith('a1');
+  expect(h.current.state).toEqual({ name: 'celebrating', result });
 });
