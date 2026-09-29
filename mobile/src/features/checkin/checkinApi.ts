@@ -1,6 +1,7 @@
 // mobile/src/features/checkin/checkinApi.ts
 // The only place the check-in flow talks to the outside world: GPS, suggest-place, submit_checkin.
 import * as Location from 'expo-location';
+import { isNetworkError } from '@/lib/networkError';
 import { supabase } from '@/services/supabase';
 import type { DongStage } from '@/features/territory/stages';
 import type { Grade } from '@/map/grades';
@@ -53,6 +54,7 @@ export async function suggestPlace(fix: Fix): Promise<SuggestResult> {
     timeout: 10000, // RN fetch has no default timeout; a stalled request must not hang the flow
   });
   if (error) {
+    if (isNetworkError(error)) throw new CheckinError('offline');
     console.error('suggest-place 실패', error);
     throw new CheckinError('unknown');
   }
@@ -67,6 +69,7 @@ export async function submitCheckin(fix: Fix, target: CheckinTarget): Promise<Ch
     p_target: target,
   });
   if (error) {
+    if (isNetworkError(error)) throw new CheckinError('offline');
     const code = (KNOWN as string[]).includes(error.message) ? (error.message as CheckinErrorCode) : 'unknown';
     if (code === 'unknown') console.error('submit_checkin 실패', error);
     throw new CheckinError(code, code === 'cooldown' ? (error.details ?? undefined) : undefined);

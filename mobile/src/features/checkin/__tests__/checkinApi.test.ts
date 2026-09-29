@@ -64,3 +64,10 @@ test('후보 → target', () => {
     kind: 'kakao', placeId: 'p1', name: '카페', lat: 37.5, lng: 126.9, roadAddress: '서울 1',
   });
 });
+
+test('연결이 안 되면 offline', async () => {
+  invoke.mockResolvedValue({ data: null, error: { name: 'FunctionsFetchError', message: 'Failed to send a request to the Edge Function' } });
+  await expect(suggestPlace(fix)).rejects.toMatchObject({ code: 'offline' });
+  rpc.mockResolvedValue({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
+  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null })).rejects.toMatchObject({ code: 'offline' });
+});

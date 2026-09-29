@@ -47,3 +47,7 @@ test('안 올랐거나 동을 모르면 없음', () => {
   expect(dongStageLine({ ...dongBase, dong: null })).toBeNull();
   expect(dongStageLine(dongBase)).toBeNull();
 });
+
+test('offline 문구', () => {
+  expect(messageFor(new CheckinError('offline'))).toBe('연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?');
+});

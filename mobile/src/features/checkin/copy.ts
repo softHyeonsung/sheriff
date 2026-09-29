@@ -10,6 +10,7 @@ export const MSG = {
   locating: '잠깐, 위치를 확인하고 있어요…',
   denied: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.',
   unknown: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?',
+  offline: '연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?',
 };
 
 const GRADE_UP: Record<Exclude<Grade, 'paw'>, string> = {
@@ -32,6 +33,8 @@ export function messageFor(e: unknown): string {
       if (!d || Number.isNaN(d.getTime())) return '여긴 아까 다녀왔어요. 조금 뒤에 다시 남겨볼까요?';
       return `여긴 아까 다녀왔어요. ${d.getHours()}시 ${d.getMinutes()}분부터 다시 남길 수 있어요.`;
     }
+    case 'offline':
+      return MSG.offline;
     default:
       return MSG.unknown;
   }
