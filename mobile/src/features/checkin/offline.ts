@@ -13,7 +13,7 @@ export type Suggestion =
   | { status: 'weak_gps' }
   | { status: 'ok'; hereAddress: string | null; candidates: Candidate[]; offline: boolean };
 
-function metersBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+export function metersBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 6371000;
   const rad = Math.PI / 180;
   const dLat = (b.lat - a.lat) * rad;

@@ -18,7 +18,7 @@ import MapScreen from '../index';
 let mockBridgeProps: Record<string, any> = {};
 const mockPanTo = jest.fn();
 const mockCatSay = jest.fn();
-jest.mock('expo-router', () => ({ router: { navigate: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { navigate: jest.fn(), push: jest.fn() } }));
 jest.mock('@/features/arrival/register', () => ({ shouldOfferArrival: jest.fn(), answerArrivalOffer: jest.fn() }));
 jest.mock('@/features/arrival/useArrivalTap', () => ({ useArrivalTap: jest.fn() }));
 jest.mock('@/features/territory/useMyFog', () => ({ useMyFog: jest.fn() }));
@@ -368,4 +368,11 @@ test('직접 남긴 축하에는 순간 남기기(체크인 위치로), 올라�
   (useCheckinQueue as jest.Mock).mockReturnValue(queueState({ celebrations: [result] }));
   await render(<MapScreen />);
   expect(mockCelebrationProps.memory).toBeUndefined();
+});
+
+test('마커 카드의 추억 보기 → 아지트 상세', async () => {
+  await render(<MapScreen />);
+  await act(async () => mockBridgeProps.onHideoutTap('a1'));
+  await fireEvent.press(screen.getByRole('button', { name: '추억 보기' }));
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/aidut/[id]', params: { id: 'a1' } });
 });

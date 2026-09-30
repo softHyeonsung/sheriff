@@ -252,6 +252,7 @@ export default function MapScreen() {
             <Text style={styles.body}>지금까지 {selected.footprintCount}번 다녀왔어요</Text>
             {thresholds && <Text style={styles.caption}>{nextStageHint(selected.footprintCount, thresholds)}</Text>}
           </View>
+          <Pill label="추억 보기" onPress={() => router.push({ pathname: '/aidut/[id]', params: { id: selected.id } })} />
           <Pill label="닫기" onPress={() => setSelectedId(null)} />
         </View>
       )}

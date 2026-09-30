@@ -37,6 +37,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Protected guard={route === 'tabs'}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="aidut/[id]" />
           </Stack.Protected>
           <Stack.Protected guard={route === 'onboarding'}>
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
