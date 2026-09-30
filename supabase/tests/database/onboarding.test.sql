@@ -16,14 +16,14 @@ select set_config('request.jwt.claims',
 select is(public.my_onboarding(),
   '{"onboarded":false,"nickname":"A","catName":null,"catColor":null,"homeDong":null,"hasHideout":false}'::jsonb, '처음 상태');
 
-select lives_ok($$select public.save_cat('  나비  ', 'gray')$$, 'save_cat 정상(앞뒤 공백 제거)');
+select lives_ok($$select public.save_cat('  나비  ', 'mackerel')$$, 'save_cat 정상(앞뒤 공백 제거)');
 select lives_ok($$select public.save_cat('🐱', 'cheese')$$, '이모지 1개 = 1자');
-select lives_ok($$select public.save_cat('나비', 'gray')$$, '다시 저장');
-select throws_ok($$select public.save_cat('', 'gray')$$, 'P0001', 'invalid_cat', '빈 이름');
-select throws_ok($$select public.save_cat('   ', 'gray')$$, 'P0001', 'invalid_cat', '공백만 → invalid_cat');
-select throws_ok($$select public.save_cat('열한글자짜리이름입니다', 'gray')$$, 'P0001', 'invalid_cat', '11자');
+select lives_ok($$select public.save_cat('나비', 'mackerel')$$, '다시 저장');
+select throws_ok($$select public.save_cat('', 'mackerel')$$, 'P0001', 'invalid_cat', '빈 이름');
+select throws_ok($$select public.save_cat('   ', 'mackerel')$$, 'P0001', 'invalid_cat', '공백만 → invalid_cat');
+select throws_ok($$select public.save_cat('열한글자짜리이름입니다', 'mackerel')$$, 'P0001', 'invalid_cat', '11자');
 select throws_ok($$select public.save_cat('나비', 'pink')$$, 'P0001', 'invalid_cat', '없는 색');
-select throws_ok($$select public.save_cat(null, 'gray')$$, 'P0001', 'invalid_cat', 'null 이름');
+select throws_ok($$select public.save_cat(null, 'mackerel')$$, 'P0001', 'invalid_cat', 'null 이름');
 
 select lives_ok($$select public.set_home_dong(' 서울특별시 종로구 사직동 ')$$, '동네 저장');
 select throws_ok($$select public.set_home_dong('  ')$$, 'P0001', 'invalid_dong', '빈 동네');
@@ -35,7 +35,7 @@ update public.profiles set cat_name = '해킹' where user_id = 'bbbbbbbb-bbbb-bb
 
 select lives_ok($$select public.complete_onboarding()$$, '완료');
 select is(public.my_onboarding(),
-  '{"onboarded":true,"nickname":"A","catName":"나비","catColor":"gray","homeDong":"서울특별시 종로구 사직동","hasHideout":false}'::jsonb, '저장한 값이 보인다');
+  '{"onboarded":true,"nickname":"A","catName":"나비","catColor":"mackerel","homeDong":"서울특별시 종로구 사직동","hasHideout":false}'::jsonb, '저장한 값이 보인다');
 
 reset role;
 select is((select cat_name from public.profiles where user_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'), null, '남의 프로필은 그대로');
