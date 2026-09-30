@@ -132,6 +132,10 @@ export function useCheckin() {
         const result = await submitCheckin(fix, target);
         // 이미 남겼으니 곧 울릴 "발자국 남길까요?" 알림은 거둔다.
         cancelArrivalAlert(result.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
+        // 찜한 가게였다면 그 찜의 도착 알림(wish:{placeId})도.
+        if (target.kind === 'kakao') {
+          cancelArrivalAlert(`wish:${target.placeId}`).catch((e) => console.warn('도착 알림 취소 실패', e));
+        }
         sheet.current = null;
         setState({ name: 'celebrating', result, fix });
       } catch (e) {

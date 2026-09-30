@@ -166,9 +166,10 @@ begin
     );
   end if;
 
-  -- 찜한 곳이면 달성(처음 한 번만).
+  -- 찜한 곳이면 달성(처음 한 번만). 같은 건물의 다른 가게 아지트로 합쳐져도 고른 가게로 판단한다.
   update public.wishlist set achieved_at = now()
-    where user_id = v_uid and place_id = v_aidut.kakao_place_id and achieved_at is null;
+    where user_id = v_uid and achieved_at is null
+      and place_id in (v_aidut.kakao_place_id, p_target ->> 'placeId');
   get diagnostics v_wish = row_count;
 
   return jsonb_build_object(

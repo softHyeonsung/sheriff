@@ -12,6 +12,7 @@ const MAX_NAMES = 3;
 const MAX_PLACES = 15;
 const MAX_HOPS = 3;
 const MAX_BYTES = 200_000;
+const GENERIC_TITLES = /^(네이버\s*지도|네이버|카카오\s*맵|kakaomap|instagram)$/i;
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -20,12 +21,13 @@ export function urlsIn(text: string): string[] {
   return (text.match(/https?:\/\/[^\s<>"']+/g) ?? []).slice(0, 3);
 }
 
-// 링크를 뺀 줄 중 이름처럼 보이는 것: 대괄호 머리말·전화번호·너무 긴 줄은 뺀다.
+// 링크를 뺀 줄 중 이름처럼 보이는 것. "[카카오맵] 가게"처럼 앞에 붙은 머리말은 떼고,
+// 머리말만 있는 줄·전화번호·너무 긴 줄은 뺀다.
 export function lineCandidates(text: string): string[] {
   return text
     .split(/\r?\n/)
-    .map((l) => l.replace(/https?:\/\/\S+/g, '').trim())
-    .filter((l) => l.length >= 1 && l.length <= 40 && !/^\[.*\]$/.test(l) && !/^[\d\s\-+()]+$/.test(l))
+    .map((l) => l.replace(/https?:\/\/\S+/g, '').replace(/^\s*\[[^\]]*\]\s*/, '').trim())
+    .filter((l) => l.length >= 1 && l.length <= 40 && !/^[\d\s\-+()]+$/.test(l))
     .slice(0, MAX_NAMES);
 }
 
@@ -47,6 +49,8 @@ export function titleFrom(html: string, host: string): string | null {
   const raw = meta(html, 'og:title') ?? html.match(/<title>([^<]*)<\/title>/i)?.[1] ?? null;
   if (!raw) return null;
   const name = decode(raw).split(/\s[:|-]\s/)[0].trim(); // "가게 : 네이버", "가게 | 카카오맵"
+  // 사이트 이름뿐인 제목(서버에서 열면 첫 화면으로 가는 경우)은 가게 이름이 아니다.
+  if (GENERIC_TITLES.test(name)) return null;
   return name || null;
 }
 

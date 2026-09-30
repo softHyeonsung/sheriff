@@ -228,3 +228,12 @@ test('내 아지트를 챙기면 그곳 도착 알림 예약도 거둔다', asyn
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
   expect(cancelArrivalAlert).toHaveBeenCalledWith('a1');
 });
+
+test('카카오 장소에 남기면 그 장소의 찜 도착 알림도 거둔다', async () => {
+  (isOffline as jest.Mock).mockResolvedValue(false);
+  const { result: h } = await renderHook(() => useCheckin());
+  await act(async () => h.current.start());
+  await act(async () => h.current.choose({ kind: 'kakao', placeId: 'p1', name: '카페', lat: 37.5, lng: 126.9, roadAddress: null }));
+  expect(cancelArrivalAlert).toHaveBeenCalledWith('a1');
+  expect(cancelArrivalAlert).toHaveBeenCalledWith('wish:p1');
+});

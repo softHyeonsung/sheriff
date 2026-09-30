@@ -59,3 +59,12 @@ Deno.test('parseShared: 아무것도 못 찾으면 빈 목록, 검색 실패는 
   });
   assertEquals(r, { places: [], query: null });
 });
+
+Deno.test('카카오맵처럼 머리말이 이름과 같은 줄에 붙어 와도 이름만', () => {
+  assertEquals(lineCandidates('[카카오맵] 카페 어니언 성수\n서울 성동구 아차산로9길 8\nhttps://kko.to/x'), ['카페 어니언 성수', '서울 성동구 아차산로9길 8']);
+});
+
+Deno.test('사이트 이름뿐인 제목(네이버 지도·카카오맵·Instagram)은 후보가 아니다', () => {
+  assertEquals(titleFrom('<meta property="og:title" content="네이버 지도">', 'map.naver.com'), null);
+  assertEquals(titleFrom('<title>카카오맵</title>', 'map.kakao.com'), null);
+});

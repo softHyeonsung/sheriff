@@ -38,6 +38,18 @@ select is(
   public.submit_checkin(37.6, 126.94, 10, '{"kind":"kakao","placeId":"456","name":"다른 곳","lat":37.6,"lng":126.94,"roadAddress":null}') ->> 'wishAchieved',
   'false', '찜 아닌 곳은 false');
 
+-- 같은 건물의 다른 가게(이미 아지트, 장소 id 없음)로 발자국이 합쳐져도 고른 가게의 찜은 달성
+reset role;
+insert into public.aidut (owner_uid, name, coord) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '1층 편의점', st_setsrid(st_makepoint(126.95, 37.55), 4326)::geography);
+set local role authenticated;
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'role', 'authenticated')::text, true);
+select lives_ok($$select public.add_wish('321', '2층 카페', null, 37.55005, 126.95)$$, '같은 건물 2층 카페 찜');
+select is(
+  public.submit_checkin(37.55005, 126.95, 10, '{"kind":"kakao","placeId":"321","name":"2층 카페","lat":37.55005,"lng":126.95,"roadAddress":null}') ->> 'wishAchieved',
+  'true', '근처 아지트로 합쳐져도 고른 가게의 찜은 달성');
+
 select lives_ok($$select public.remove_wish('123')$$, '찜 해제');
 select is((select count(*)::int from public.my_wishes() where place_id = '123'), 0, '해제되면 사라짐');
 
