@@ -41,6 +41,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings/nickname" />
             <Stack.Screen name="settings/cat" />
             <Stack.Screen name="settings/home" />
+            <Stack.Screen name="wishlist" />
           </Stack.Protected>
           <Stack.Protected guard={route === 'onboarding'}>
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
