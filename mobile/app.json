@@ -59,6 +59,14 @@
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "아지트에서의 순간을 사진으로 남기려고 카메라를 써요.",
+          "photosPermission": "아지트에 붙일 사진을 고르려고 앨범을 봐요.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {
