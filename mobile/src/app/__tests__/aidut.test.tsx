@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { readMapCache } from '@/features/map/mapCache';
 import { useMyLocation } from '@/features/map/useMyLocation';
 import { useMemories } from '@/features/memories/useMemories';
+import { getFreshFix } from '@/features/checkin/checkinApi';
 import HideoutDetail from '../aidut/[id]';
 
 let mockBtnProps: Record<string, unknown> = {};
@@ -99,4 +100,19 @@ test('모르는 아지트면 안내 + 돌아가기', async () => {
   await waitFor(() => expect(screen.getByText('이 아지트를 찾지 못했어요.')).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: '돌아가기' }));
   expect(router.back).toHaveBeenCalled();
+});
+
+test('상세의 위치 확인: 흐리거나 멀면 문제를 알려 주고, 괜찮으면 그 위치', async () => {
+  await render(<HideoutDetail />);
+  await waitFor(() => expect(screen.getByText('btn:on')).toBeTruthy());
+  const getFix = mockBtnProps.getFix as () => Promise<unknown>;
+  (getFreshFix as jest.Mock).mockResolvedValueOnce({ lat: 37.5001, lng: 127, accuracy: 200 });
+  expect(await getFix()).toEqual({ problem: '위치가 흐려요. 조금 뒤에 다시 해볼까요?' });
+  (getFreshFix as jest.Mock).mockResolvedValueOnce({ lat: 37.51, lng: 127, accuracy: 10 });
+  expect(await getFix()).toEqual({ problem: '조금만 더 가까이 가면 순간을 남길 수 있어요.' });
+  (getFreshFix as jest.Mock).mockResolvedValueOnce('denied');
+  expect(await getFix()).toBe('denied');
+  const ok = { lat: 37.5001, lng: 127, accuracy: 10 };
+  (getFreshFix as jest.Mock).mockResolvedValueOnce(ok);
+  expect(await getFix()).toEqual(ok);
 });

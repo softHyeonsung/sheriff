@@ -6,13 +6,13 @@ import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Tex
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { color, font, radius, space, type } from '@/constants/tokens';
 import { getFreshFix } from '@/features/checkin/checkinApi';
-import { metersBetween, OFFLINE_RADIUS_M } from '@/features/checkin/offline';
+import { metersBetween, OFFLINE_ACCURACY_MAX_M, OFFLINE_RADIUS_M } from '@/features/checkin/offline';
 import { LOCATE_TIMEOUT_MS, within } from '@/features/checkin/useCheckin';
 import { readMapCache } from '@/features/map/mapCache';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import type { GradeThresholds, MyHideout } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
-import { MemoryButton } from '@/features/memories/MemoryButton';
+import { type FixResult, MemoryButton } from '@/features/memories/MemoryButton';
 import { useMemories } from '@/features/memories/useMemories';
 import { GRADE_LABEL } from '@/map/grades';
 import { markerFor } from '@/map/markers';
@@ -65,6 +65,15 @@ export default function HideoutDetail() {
   const near = !!location && metersBetween(location, h) <= OFFLINE_RADIUS_M;
   const { photos, pending, status } = memories;
 
+  // 지도 점은 오래됐을 수 있다: 새로 잡은 위치로 서버와 같은 기준을 먼저 본다(거절돼 사진이 사라지지 않게).
+  const getFix = async (): Promise<FixResult> => {
+    const fix = await within(getFreshFix(), LOCATE_TIMEOUT_MS);
+    if (fix === 'denied') return fix;
+    if (fix.accuracy > OFFLINE_ACCURACY_MAX_M) return { problem: '위치가 흐려요. 조금 뒤에 다시 해볼까요?' };
+    if (metersBetween(fix, h) > OFFLINE_RADIUS_M) return { problem: '조금만 더 가까이 가면 순간을 남길 수 있어요.' };
+    return fix;
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -81,7 +90,7 @@ export default function HideoutDetail() {
 
         <MemoryButton
           aidutId={h.id}
-          getFix={() => within(getFreshFix(), LOCATE_TIMEOUT_MS)}
+          getFix={getFix}
           disabled={!near}
           onUploaded={memories.refresh}
         />

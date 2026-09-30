@@ -47,12 +47,11 @@ test('찍으면 그 위치로 챙기고 알린 뒤 올려 본다, 올라가면 o
 
 test('취소하면 아무것도 안 한다', async () => {
   (pickMemoryPhoto as jest.Mock).mockResolvedValue({ status: 'canceled' });
-  const getFix = jest.fn();
+  const getFix = jest.fn().mockResolvedValue(fix);
   await render(<MemoryButton aidutId="a1" getFix={getFix} />);
   await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
   await choose('앨범에서 고르기');
   expect(pickMemoryPhoto).toHaveBeenCalledWith('library');
-  expect(getFix).not.toHaveBeenCalled();
   expect(keepMemory).not.toHaveBeenCalled();
 });
 
@@ -67,12 +66,13 @@ test('사진 권한 거절 → 안내 + 설정 열기', async () => {
   expect(open).toHaveBeenCalled();
 });
 
-test('위치 권한이 없으면 위치 안내, 챙기지 않는다', async () => {
+test('위치 권한이 없으면 위치 안내, 사진을 찍기 전에 멈춘다', async () => {
   (pickMemoryPhoto as jest.Mock).mockResolvedValue({ status: 'ok', id: 'p1', uri: 'u' });
   await render(<MemoryButton aidutId="a1" getFix={async () => 'denied'} />);
   await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
   await choose('사진 찍기');
   expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.')).toBeTruthy();
+  expect(pickMemoryPhoto).not.toHaveBeenCalled();
   expect(keepMemory).not.toHaveBeenCalled();
 });
 
@@ -88,4 +88,21 @@ test('준비가 실패하면 다시 해보자고', async () => {
 test('disabled면 누를 수 없다', async () => {
   await render(<MemoryButton aidutId="a1" getFix={async () => fix} disabled />);
   expect(screen.getByRole('button', { name: '순간 남기기 📷', disabled: true })).toBeTruthy();
+});
+
+test('위치가 흐리거나 멀면 찍기 전에 알려 준다(사진을 잃지 않게)', async () => {
+  await render(<MemoryButton aidutId="a1" getFix={async () => ({ problem: '위치가 흐려요. 조금 뒤에 다시 해볼까요?' })} />);
+  await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
+  await choose('사진 찍기');
+  expect(screen.getByText('위치가 흐려요. 조금 뒤에 다시 해볼까요?')).toBeTruthy();
+  expect(pickMemoryPhoto).not.toHaveBeenCalled();
+});
+
+test('바로 올렸는데 서버가 거절하면 알려 준다', async () => {
+  (pickMemoryPhoto as jest.Mock).mockResolvedValue({ status: 'ok', id: 'p1', uri: 'u' });
+  (flushMemoriesNow as jest.Mock).mockResolvedValue({ attached: [], dropped: 1 });
+  await render(<MemoryButton aidutId="a1" getFix={async () => fix} />);
+  await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
+  await choose('사진 찍기');
+  await waitFor(() => expect(screen.getByText('남긴 순간을 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.')).toBeTruthy());
 });

@@ -13,11 +13,15 @@ export const MEMORY_MSG = {
   kept: '순간을 남겼어요 📷',
   denied: '사진을 쓰려면 권한이 필요해요.',
   failed: '사진을 준비하지 못했어요. 다시 해볼까요?',
+  dropped: '남긴 순간을 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.',
 };
+
+// 위치를 못 쓰는 까닭을 사람 말로(흐림·멂 등) 돌려줄 수 있다.
+export type FixResult = Fix | 'denied' | { problem: string };
 
 type Props = {
   aidutId: string;
-  getFix: () => Promise<Fix | 'denied'>;
+  getFix: () => Promise<FixResult>;
   disabled?: boolean;
   onUploaded?: () => void;
 };
@@ -31,15 +35,20 @@ export function MemoryButton({ aidutId, getFix, disabled = false, onUploaded }: 
     setBusy(true);
     setNote(null);
     try {
+      // 위치 먼저: 흐리거나 멀면 찍기 전에 알려야 방금 찍은 사진을 잃지 않는다.
+      const fix = await getFix();
+      if (fix === 'denied') {
+        setNote(MSG.denied);
+        return;
+      }
+      if ('problem' in fix) {
+        setNote(fix.problem);
+        return;
+      }
       const picked = await pickMemoryPhoto(source);
       if (picked.status === 'canceled') return;
       if (picked.status === 'denied') {
         setNote(MEMORY_MSG.denied);
-        return;
-      }
-      const fix = await getFix(); // 찍은 뒤의 위치가 사진에 더 가깝다
-      if (fix === 'denied') {
-        setNote(MSG.denied);
         return;
       }
       await keepMemory({ id: picked.id, aidutId, fix, localUri: picked.uri });
@@ -47,6 +56,7 @@ export function MemoryButton({ aidutId, getFix, disabled = false, onUploaded }: 
       flushMemoriesNow()
         .then((r) => {
           if (r.attached.length) onUploaded?.();
+          if (r.dropped) setNote(MEMORY_MSG.dropped);
         })
         .catch((e) => console.warn('순간 올리기 실패', e));
     } catch (e) {

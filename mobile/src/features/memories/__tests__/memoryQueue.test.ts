@@ -64,7 +64,7 @@ test('서버가 거절하면 저장소·로컬 파일을 지우고 빼고 센다
   expect(await readMemoryQueue()).toEqual([]);
 });
 
-test('네트워크·서버 오류면 멈추고 남긴다(파일도 그대로)', async () => {
+test('연결 문제면 멈추고 남긴다(파일도 그대로)', async () => {
   await add('p1');
   await add('p2');
   const d = deps({ upload: jest.fn().mockRejectedValue({ code: 'offline' }) });
@@ -72,6 +72,21 @@ test('네트워크·서버 오류면 멈추고 남긴다(파일도 그대로)', 
   expect(d.upload).toHaveBeenCalledTimes(1);
   expect(d.removeLocal).not.toHaveBeenCalled();
   expect((await readMemoryQueue()).map((i) => i.id)).toEqual(['p1', 'p2']);
+});
+
+test('그 밖의 오류는 건너뛰고 다음 사진을 올린다(한 장이 줄을 막지 않게), 3번째면 뺀다', async () => {
+  await add('bad');
+  await add('ok');
+  const upload = jest.fn(async (path: string) => {
+    if (path === 'u1/bad.jpg') throw { code: 'unknown' };
+  });
+  const d = deps({ upload });
+  expect(await flushMemories(d, now)).toEqual({ attached: ['a-ok'], dropped: 0 });
+  expect((await readMemoryQueue()).map((i) => [i.id, i.tries])).toEqual([['bad', 1]]);
+  expect(await flushMemories(d, now)).toEqual({ attached: [], dropped: 0 });
+  expect(await flushMemories(d, now)).toEqual({ attached: [], dropped: 1 });
+  expect(d.removeRemote).toHaveBeenCalledWith('u1/bad.jpg');
+  expect(await readMemoryQueue()).toEqual([]);
 });
 
 test('7일 넘은 건 올리지 않고 저장소 지우기를 시도한 뒤 버린다', async () => {
