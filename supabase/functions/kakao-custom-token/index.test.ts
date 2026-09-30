@@ -1,6 +1,6 @@
 // supabase/functions/kakao-custom-token/index.test.ts
 import { assertEquals, assertRejects, assertThrows } from 'jsr:@std/assert';
-import { assertKakaoOwner, handleRequest, termsDecision, verifyKakaoAccessToken } from './index.ts';
+import { assertKakaoOwner, handleRequest, profileSeed, termsDecision, verifyKakaoAccessToken } from './index.ts';
 
 const OUR_APP_ID = 1234567;
 const tokenInfo = (body: unknown, status = 200) => () =>
@@ -108,4 +108,8 @@ Deno.test('handleRequest: 토큰이 없으면 400이고 카카오도 부르지 �
   const res = await handleRequest({}, deps);
   assertEquals(res.status, 400);
   assertEquals(calls, []);
+});
+
+Deno.test('profileSeed: 프로필 행만 만들고 닉네임은 넣지 않는다(카카오 번호·내부 id 노출 없음)', () => {
+  assertEquals(profileSeed('u1'), { user_id: 'u1' });
 });

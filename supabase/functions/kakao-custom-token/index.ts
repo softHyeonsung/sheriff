@@ -116,16 +116,21 @@ export async function upsertSupabaseUser(kakaoId: number, recordTerms: boolean) 
     { onConflict: 'uid' },
   );
   if (usersError) throw usersError;
-  // ignoreDuplicates: seed the default nickname once, never overwrite a user-chosen one on re-login.
+  // ignoreDuplicates: create the profile row once; never touch it (nickname, cat) on re-login.
   const { error: profileError } = await admin
     .from('profiles')
     .upsert(
-      { user_id: sessionData.user.id, nickname: `고양이집사${kakaoId}` },
+      profileSeed(sessionData.user.id),
       { onConflict: 'user_id', ignoreDuplicates: true },
     );
   if (profileError) throw profileError;
 
   return sessionData.session;
+}
+
+// 가입 때는 프로필 행만. 닉네임은 온보딩에서 사용자가 정한다(카카오 번호·내부 id를 이름에 쓰지 않는다).
+export function profileSeed(userId: string) {
+  return { user_id: userId };
 }
 
 export interface HandlerDeps {
