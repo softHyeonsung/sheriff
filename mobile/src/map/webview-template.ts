@@ -2,13 +2,13 @@
 import type { Grade } from './grades';
 import type { LatLng } from './protocol';
 
-type Opts = { jsKey: string; markers: Record<Grade, { uri: string; size: number }>; center: LatLng; cat: string; fogColor: string };
+type Opts = { jsKey: string; markers: Record<Grade, { uri: string; size: number }>; center: LatLng; cat: string; fogColor: string; wish: { uri: string; size: number } };
 
 // JSON for embedding inside <script>: escaping "<" keeps "</script>" in any value from
 // closing the block early.
 const embed = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
 
-export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): string {
+export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Opts): string {
   return `<!doctype html>
 <html><head>
 <meta charset="utf-8">
@@ -18,10 +18,11 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
 <div id="map"></div>
 <script>
 (function () {
-  var cfg = ${embed({ jsKey, markers, center, cat, fogColor })};
+  var cfg = ${embed({ jsKey, markers, center, cat, fogColor, wish })};
   function post(m) { window.ReactNativeWebView.postMessage(JSON.stringify(m)); }
   window.onerror = function (msg) { post({ type: 'error', reason: String(msg) }); };
   var map = null, pins = [], me = null, meAt = null;
+  var wishPins = [];
   var fog = null, cells = [], cat = null, catImg = null, bubble = null, catAt = null, catCell = null, bubbleTimer = null;
   // 한국 전체를 넉넉히 덮는 바깥 사각형(시계 방향). 구멍은 반대 방향이어야 채움 규칙과 무관하게 뚫린다.
   var KOREA = [[39.5, 124], [39.5, 132], [32, 132], [32, 124]];
@@ -38,6 +39,19 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
         map: map,
       });
       kakao.maps.event.addListener(marker, 'click', function () { post({ type: 'hideoutTap', id: h.id }); });
+      return marker;
+    });
+  }
+
+  function setWishes(list) {
+    wishPins.forEach(function (m) { m.setMap(null); });
+    wishPins = list.map(function (w) {
+      var marker = new kakao.maps.Marker({
+        position: latLng(w),
+        image: new kakao.maps.MarkerImage(cfg.wish.uri, new kakao.maps.Size(cfg.wish.size, cfg.wish.size)),
+        map: map,
+      });
+      kakao.maps.event.addListener(marker, 'click', function () { post({ type: 'wishTap', placeId: w.placeId }); });
       return marker;
     });
   }
@@ -148,6 +162,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor }: Opts): s
     });
     window.__onAppMessage = function (m) {
       if (m.type === 'setHideouts') setHideouts(m.hideouts);
+      else if (m.type === 'setWishes') setWishes(m.wishes);
       else if (m.type === 'setMyLocation') setMyLocation(m);
       else if (m.type === 'panTo') map.panTo(latLng(m));
       else if (m.type === 'setFog') setFog(m.cells);

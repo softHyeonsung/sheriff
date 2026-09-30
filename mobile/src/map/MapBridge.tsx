@@ -7,14 +7,16 @@ import { color } from '@/constants/tokens';
 import { CAT_IMAGES } from './cat-image.generated';
 import type { CatColor } from './catColors';
 import { GRADES } from './grades';
-import { markerFor } from './markers';
-import { type AppToMap, type FogCell, type HideoutPin, type LatLng, type MyLocation, parseMapMessage, toMapScript } from './protocol';
+import { markerFor, WISH_MARKER } from './markers';
+import { type AppToMap, type FogCell, type HideoutPin, type LatLng, type MyLocation, type WishPin, parseMapMessage, toMapScript } from './protocol';
 import { buildMapHtml } from './webview-template';
 
 export type MapBridgeHandle = { panTo: (lat: number, lng: number) => void; catSay: (text: string) => void };
 
 type Props = {
   hideouts: HideoutPin[];
+  wishes: WishPin[];
+  onWishTap: (placeId: string) => void;
   myLocation: MyLocation | null;
   center: LatLng;
   onHideoutTap: (id: string) => void;
@@ -28,7 +30,7 @@ type Props = {
 const ORIGIN = 'http://localhost'; // registered as a Web platform domain in the Kakao console
 
 export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
-  { hideouts, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap, catColor },
+  { hideouts, wishes, onWishTap, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap, catColor },
   ref,
 ) {
   const jsKey = process.env.EXPO_PUBLIC_KAKAO_JS_KEY ?? '';
@@ -38,7 +40,7 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   const [initialCenter] = useState(center);
   const [initialCat] = useState(catColor); // the page is built once — the coat is chosen in onboarding, before the map
   const html = useMemo(
-    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: CAT_IMAGES[initialCat], fogColor: color.fog }),
+    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: CAT_IMAGES[initialCat], fogColor: color.fog, wish: WISH_MARKER }),
     [jsKey, initialCenter, initialCat],
   );
 
@@ -53,6 +55,10 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   useEffect(() => {
     if (ready) send({ type: 'setHideouts', hideouts });
   }, [ready, hideouts]);
+
+  useEffect(() => {
+    if (ready) send({ type: 'setWishes', wishes });
+  }, [ready, wishes]);
 
   useEffect(() => {
     if (ready && fog) send({ type: 'setFog', cells: fog });
@@ -91,6 +97,7 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
     if (!msg) return;
     if (msg.type === 'ready') setReady(true);
     else if (msg.type === 'hideoutTap') onHideoutTap(msg.id);
+    else if (msg.type === 'wishTap') onWishTap(msg.placeId);
     else if (msg.type === 'idle') onIdle(msg.center);
     else if (msg.type === 'catTap') onCatTap();
     else onError(msg.reason);

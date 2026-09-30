@@ -20,7 +20,7 @@ jest.mock('react-native-webview', () => {
 });
 
 const pins = [{ id: 'a1', lat: 37.5, lng: 126.9, grade: 'hut' as const }];
-const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn(), catColor: 'cheese' as const };
+const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn(), catColor: 'cheese' as const, wishes: [], onWishTap: jest.fn() };
 const send = async (data: string) => act(async () => mockWebProps.onMessage({ nativeEvent: { data } }));
 
 beforeEach(() => {
@@ -32,10 +32,11 @@ test('지도 준비 전엔 보내지 않고, ready 이후에 보낸다', async (
   await render(<MapBridge {...base} />);
   expect(mockInject).not.toHaveBeenCalled();
   await send('{"type":"ready"}');
-  expect(mockInject).toHaveBeenCalledTimes(2);
+  expect(mockInject).toHaveBeenCalledTimes(3);
   expect(mockInject.mock.calls[0][0]).toContain('setHideouts');
   expect(mockInject.mock.calls[0][0]).toContain('a1');
-  expect(mockInject.mock.calls[1][0]).toContain('setFog');
+  expect(mockInject.mock.calls.some(([s]) => s.includes('setWishes'))).toBe(true);
+  expect(mockInject.mock.calls.some(([s]) => s.includes('setFog'))).toBe(true);
 });
 
 test('위치가 오면 setMyLocation을 보낸다', async () => {
@@ -147,4 +148,12 @@ test('고른 털색의 고양이 그림을 싣는다', async () => {
   // PNG 머리는 셋 다 같으니 끝부분으로 구분
   expect(mockWebProps.source.html).toContain(CAT_IMAGES.black.slice(-80));
   expect(mockWebProps.source.html).not.toContain(CAT_IMAGES.cheese.slice(-80));
+});
+
+test('찜 핀을 보내고, wishTap을 넘긴다', async () => {
+  await render(<MapBridge {...base} wishes={[{ placeId: '777', lat: 37.5, lng: 127 }]} />);
+  await send('{"type":"ready"}');
+  expect(mockInject.mock.calls.some(([s]) => s.includes('setWishes') && s.includes('777'))).toBe(true);
+  await send('{"type":"wishTap","placeId":"777"}');
+  expect(base.onWishTap).toHaveBeenCalledWith('777');
 });

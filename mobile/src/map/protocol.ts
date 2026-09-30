@@ -5,12 +5,14 @@ import type { Grade } from './grades';
 
 export type LatLng = { lat: number; lng: number };
 export type HideoutPin = { id: string; lat: number; lng: number; grade: Grade };
+export type WishPin = { placeId: string; lat: number; lng: number };
 export type MyLocation = { lat: number; lng: number; accuracy: number };
 // 걷힌 칸 하나: 남서·북동 모서리.
 export type FogCell = { sw: LatLng; ne: LatLng };
 
 export type AppToMap =
   | { type: 'setHideouts'; hideouts: HideoutPin[] }
+  | { type: 'setWishes'; wishes: WishPin[] }
   | ({ type: 'setMyLocation' } & MyLocation)
   | ({ type: 'panTo' } & LatLng)
   | { type: 'setFog'; cells: FogCell[] }
@@ -19,6 +21,7 @@ export type AppToMap =
 export type MapToApp =
   | { type: 'ready' }
   | { type: 'hideoutTap'; id: string }
+  | { type: 'wishTap'; placeId: string }
   | { type: 'error'; reason: string }
   | { type: 'idle'; center: LatLng }
   | { type: 'catTap' };
@@ -43,6 +46,8 @@ export function parseMapMessage(raw: string): MapToApp | null {
       return { type: 'ready' };
     case 'hideoutTap':
       return typeof o.id === 'string' ? { type: 'hideoutTap', id: o.id } : null;
+    case 'wishTap':
+      return typeof o.placeId === 'string' ? { type: 'wishTap', placeId: o.placeId } : null;
     case 'error':
       return typeof o.reason === 'string' ? { type: 'error', reason: o.reason } : null;
     case 'idle':

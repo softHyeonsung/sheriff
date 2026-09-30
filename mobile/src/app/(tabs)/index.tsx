@@ -12,6 +12,7 @@ import { Celebration } from '@/features/checkin/Celebration';
 import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
+import { useWishes } from '@/features/wishlist/useWishes';
 import { onOnline } from '@/lib/network';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
@@ -42,6 +43,13 @@ export default function MapScreen() {
   const fog = useMyFog();
   const dongAt = useDongAt();
   const offline = status === 'offline';
+  const wishList = useWishes();
+  const [wishId, setWishId] = useState<string | null>(null);
+  const wishPins = useMemo(
+    () => wishList.wishes.filter((w) => !w.achievedAt).map(({ placeId, lat, lng }) => ({ placeId, lat, lng })),
+    [wishList.wishes],
+  );
+  const selectedWish = wishList.wishes.find((w) => w.placeId === wishId) ?? null;
   const { refresh: refreshFog } = fog;
   const { refresh: refreshDong } = dongAt;
   // 챙겨둔 발자국이 올라가면 지도를 새로 불러온다(마커·안개·동).
@@ -144,7 +152,15 @@ export default function MapScreen() {
         hideouts={pins}
         myLocation={location}
         center={CITY_HALL}
-        onHideoutTap={setSelectedId}
+        onHideoutTap={(id) => {
+          setWishId(null);
+          setSelectedId(id);
+        }}
+        wishes={wishPins}
+        onWishTap={(id) => {
+          setSelectedId(null);
+          setWishId(id);
+        }}
         fog={fog.cells}
         onIdle={dongAt.onIdle}
         catColor={catColor}
@@ -185,6 +201,10 @@ export default function MapScreen() {
           </View>
         )}
       </SafeAreaView>
+
+      <View style={styles.wishBtn}>
+        <Pill label="⭐ 찜" onPress={() => router.push('/wishlist')} />
+      </View>
 
       {location && (
         <View style={styles.locate}>
@@ -265,6 +285,24 @@ export default function MapScreen() {
         </View>
       )}
 
+      {selectedWish && (
+        <View style={styles.card}>
+          <View style={styles.cardText}>
+            <Text style={styles.cardTitle}>{selectedWish.name}</Text>
+            <Text style={styles.caption}>고양이가 찜한 곳</Text>
+            {selectedWish.roadAddress && <Text style={styles.body}>{selectedWish.roadAddress}</Text>}
+          </View>
+          <Pill
+            label="찜 해제"
+            onPress={() => {
+              setWishId(null);
+              wishList.remove(selectedWish.placeId).catch((e) => console.warn('찜 해제 실패', e));
+            }}
+          />
+          <Pill label="닫기" onPress={() => setWishId(null)} />
+        </View>
+      )}
+
       {checkin.state.name === 'choosing' && (
         <CheckinSheet state={checkin.state} footprintsById={footprintsById} onChoose={checkin.choose} onClose={checkin.close} />
       )}
@@ -277,6 +315,7 @@ export default function MapScreen() {
             if (celebrated) {
               checkin.close();
               retry(); // the marker should show the grown hideout
+              wishList.refresh(); // 찜한 곳이었으면 ⭐ 핀이 사라진다(달성)
               fog.refresh(); // the new footprint's cell clears
               dongAt.refresh(); // ratio and stage move with it
             } else {
@@ -343,6 +382,7 @@ const styles = StyleSheet.create({
   },
   bannerText: { ...type.body, color: color.ink },
   locate: { position: 'absolute', right: space.gutter, bottom: 180 },
+  wishBtn: { position: 'absolute', right: space.gutter, bottom: 240 },
   pill: {
     alignSelf: 'flex-start',
     minHeight: space.tapMin,

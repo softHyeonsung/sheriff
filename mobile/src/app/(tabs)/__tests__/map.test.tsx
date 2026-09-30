@@ -10,6 +10,7 @@ import { useMyLocation } from '@/features/map/useMyLocation';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { onOnline } from '@/lib/network';
+import { useWishes } from '@/features/wishlist/useWishes';
 import { useMyFog } from '@/features/territory/useMyFog';
 import { useDongAt } from '@/features/territory/useDongAt';
 import { useMeStore } from '@/stores/meStore';
@@ -40,6 +41,7 @@ let mockSheetProps: Record<string, any> = {};
 let mockCelebrationProps: Record<string, any> = {};
 jest.mock('@/features/checkin/useCheckin', () => ({ useCheckin: jest.fn() }));
 jest.mock('@/features/checkin/useCheckinQueue', () => ({ useCheckinQueue: jest.fn() }));
+jest.mock('@/features/wishlist/useWishes', () => ({ useWishes: jest.fn() }));
 jest.mock('@/lib/network', () => ({ onOnline: jest.fn(() => () => {}) }));
 jest.mock('@/features/checkin/CheckinSheet', () => {
   const { View } = require('react-native');
@@ -66,6 +68,7 @@ beforeEach(() => {
   (useDongAt as jest.Mock).mockReturnValue({ dong: null, onIdle: jest.fn(), refresh: jest.fn() });
   (shouldOfferArrival as jest.Mock).mockResolvedValue(false);
   (useCheckinQueue as jest.Mock).mockReturnValue(queueState());
+  (useWishes as jest.Mock).mockReturnValue({ wishes: [], status: 'ready', refresh: jest.fn(), add: jest.fn(), remove: jest.fn() });
 
 });
 
@@ -384,4 +387,24 @@ test('거절된 사진 안내 + 닫기', async () => {
   expect(screen.getByText('남긴 순간 1개는 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(q.clearDroppedMemories).toHaveBeenCalled();
+});
+
+test('[⭐ 찜] → 찜 화면, 달성 안 한 찜만 핀, 핀 카드에서 찜 해제', async () => {
+  const remove = jest.fn(() => Promise.resolve());
+  (useWishes as jest.Mock).mockReturnValue({
+    wishes: [
+      { placeId: '1', name: '찜한 카페', roadAddress: '서울 1', lat: 37.5, lng: 127, achievedAt: null },
+      { placeId: '2', name: '가 본 곳', roadAddress: null, lat: 37.6, lng: 127, achievedAt: '2026-09-30' },
+    ],
+    status: 'ready', refresh: jest.fn(), add: jest.fn(), remove,
+  });
+  await render(<MapScreen />);
+  expect(mockBridgeProps.wishes).toEqual([{ placeId: '1', lat: 37.5, lng: 127 }]);
+  await fireEvent.press(screen.getByRole('button', { name: '⭐ 찜' }));
+  expect(router.push).toHaveBeenCalledWith('/wishlist');
+  await act(async () => mockBridgeProps.onWishTap('1'));
+  expect(screen.getByText('찜한 카페')).toBeTruthy();
+  expect(screen.getByText('고양이가 찜한 곳')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '찜 해제' }));
+  expect(remove).toHaveBeenCalledWith('1');
 });

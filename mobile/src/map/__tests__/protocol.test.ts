@@ -39,3 +39,8 @@ test('주입 스크립트는 값을 데이터로만 전달한다(따옴표·스�
   new Function('window', toMapScript(msg))(fakeWindow);
   expect(received).toEqual([msg]);
 });
+
+test('wishTap을 읽는다(모양이 틀리면 버린다)', () => {
+  expect(parseMapMessage(JSON.stringify({ type: 'wishTap', placeId: '123' }))).toEqual({ type: 'wishTap', placeId: '123' });
+  expect(parseMapMessage(JSON.stringify({ type: 'wishTap', placeId: 5 }))).toBeNull();
+});
