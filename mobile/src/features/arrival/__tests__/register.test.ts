@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { askNotifications, ensureArrivalChannel } from '@/features/onboarding/permissions';
 import { clearArrival, readArrival, updateArrival, type ArrivalData } from '../store';
-import { answerArrivalOffer, clearArrivalData, shouldOfferArrival, syncArrivalRegions } from '../register';
+import { answerArrivalOffer, arrivalSwitchState, clearArrivalData, setArrivalEnabled, shouldOfferArrival, syncArrivalRegions } from '../register';
 
 jest.mock('expo-location', () => ({
   getBackgroundPermissionsAsync: jest.fn(),
@@ -134,4 +134,51 @@ test('로그아웃 정리: 감시를 멈추고 예약 알림·기록을 지운�
   expect(L.stopGeofencingAsync).toHaveBeenCalledWith('arrival-geofence');
   expect(Notifications.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
   expect(clearArrival).toHaveBeenCalled();
+});
+
+test('끈 상태면 지도를 열어도 등록하지 않고, 권한 카드도 안 띄운다', async () => {
+  bg('granted');
+  read.mockResolvedValue({ ...EMPTY, disabled: true });
+  await syncArrivalRegions([h('a', 37.5)]);
+  expect(L.startGeofencingAsync).not.toHaveBeenCalled();
+  bg('denied');
+  expect(await shouldOfferArrival(2)).toBe(false);
+});
+
+test('스위치 상태 = 항상 허용 && 끄지 않음', async () => {
+  bg('granted');
+  expect(await arrivalSwitchState()).toEqual({ on: true });
+  read.mockResolvedValue({ ...EMPTY, disabled: true });
+  expect(await arrivalSwitchState()).toEqual({ on: false });
+  read.mockResolvedValue(EMPTY);
+  bg('denied');
+  expect(await arrivalSwitchState()).toEqual({ on: false });
+});
+
+test('끄기: 끔 기록 → 감시 멈춤 → 예약 알림 취소', async () => {
+  L.hasStartedGeofencingAsync.mockResolvedValue(true);
+  expect(await setArrivalEnabled(false, [])).toBe('off');
+  expect(write).toHaveBeenCalledWith({ ...EMPTY, disabled: true });
+  expect(L.stopGeofencingAsync).toHaveBeenCalledWith('arrival-geofence');
+  expect(Notifications.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
+});
+
+test('켜기: 끔 해제 → 알림·위치·항상 허용 → 등록', async () => {
+  bg('granted');
+  L.getLastKnownPositionAsync.mockResolvedValue(null);
+  L.requestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
+  L.requestBackgroundPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
+  read.mockResolvedValueOnce({ ...EMPTY, disabled: true }); // 켜기 전 상태(가짜 저장소는 쓴 값을 되읽지 않는다)
+  expect(await setArrivalEnabled(true, [h('a', 37.5)])).toBe('on');
+  expect(write.mock.calls[0][0]).toEqual({ ...EMPTY, disabled: false, offerSeen: true });
+  expect(askNotifications).toHaveBeenCalled();
+  expect(L.startGeofencingAsync).toHaveBeenCalled();
+});
+
+test('켜기: 권한이 거절되면 설정 안내', async () => {
+  L.requestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
+  L.requestBackgroundPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
+  expect(await setArrivalEnabled(true, [])).toBe('needs_settings');
+  L.requestForegroundPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
+  expect(await setArrivalEnabled(true, [])).toBe('needs_settings');
 });

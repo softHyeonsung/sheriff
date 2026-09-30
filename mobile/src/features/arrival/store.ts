@@ -3,7 +3,8 @@
 import { jsonFile } from '@/lib/jsonFile';
 import { ARRIVAL, type ArrivalLogEntry, type ArrivalRegion } from './rules';
 
-export type ArrivalData = { regions: Record<string, ArrivalRegion>; log: ArrivalLogEntry[]; offerSeen: boolean };
+// disabled: 사용자가 프로필에서 끈 상태(true일 때만 저장).
+export type ArrivalData = { regions: Record<string, ArrivalRegion>; log: ArrivalLogEntry[]; offerSeen: boolean; disabled?: boolean };
 
 const file = jsonFile<ArrivalData>('arrival.json', (raw) => {
   const d = (raw && typeof raw === 'object' ? raw : {}) as Partial<ArrivalData>;
@@ -11,6 +12,7 @@ const file = jsonFile<ArrivalData>('arrival.json', (raw) => {
     regions: d.regions && typeof d.regions === 'object' ? d.regions : {},
     log: Array.isArray(d.log) ? d.log : [],
     offerSeen: d.offerSeen === true,
+    ...(d.disabled === true ? { disabled: true } : {}),
   };
 });
 

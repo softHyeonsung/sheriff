@@ -61,3 +61,10 @@ test('고쳐 쓰면 그대로, 7일 넘은 기록은 버린다', async () => {
     offerSeen: true,
   });
 });
+
+test('끔(disabled)은 true일 때만 저장되고 읽힌다', async () => {
+  await updateArrival(async (d) => ({ ...d, disabled: true }));
+  expect((await readArrival()).disabled).toBe(true);
+  disk['doc/arrival.json'] = '{"disabled":"yes"}';
+  expect(await readArrival()).toEqual(EMPTY);
+});

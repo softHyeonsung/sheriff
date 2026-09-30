@@ -17,6 +17,7 @@ const sameIds = (a: string[], b: string[]) => a.length === b.length && [...a].so
 // ponytail: 앱을 열 때만 갱신 — 아지트 20곳 초과 + 오래 안 연 채 먼 동네면 거기선 알림이 없다.
 // 필요해지면 "내 위치 큰 원 이탈 시 재등록"을 추가.
 export async function syncArrivalRegions(hideouts: MyHideout[]): Promise<void> {
+  if ((await readArrival()).disabled) return; // 사용자가 끈 상태
   if (!(await backgroundGranted())) return;
   if (hideouts.length === 0) {
     if (await Location.hasStartedGeofencingAsync(ARRIVAL_TASK)) await Location.stopGeofencingAsync(ARRIVAL_TASK);
@@ -45,7 +46,8 @@ export async function syncArrivalRegions(hideouts: MyHideout[]): Promise<void> {
 
 export async function shouldOfferArrival(footprintCount: number): Promise<boolean> {
   if (footprintCount < 2) return false;
-  if ((await readArrival()).offerSeen) return false;
+  const data = await readArrival();
+  if (data.offerSeen || data.disabled) return false;
   return !(await backgroundGranted());
 }
 
@@ -63,4 +65,26 @@ export async function clearArrivalData(): Promise<void> {
   if (await Location.hasStartedGeofencingAsync(ARRIVAL_TASK)) await Location.stopGeofencingAsync(ARRIVAL_TASK);
   await Notifications.cancelAllScheduledNotificationsAsync(); // 이 앱이 예약하는 알림은 도착 알림뿐
   await clearArrival();
+}
+
+// 프로필 스위치: 항상 허용 && 사용자가 끄지 않음.
+export async function arrivalSwitchState(): Promise<{ on: boolean }> {
+  const [granted, data] = await Promise.all([backgroundGranted(), readArrival()]);
+  return { on: granted && !data.disabled };
+}
+
+// 끄기는 "끔"을 기억해서 지도를 열어도 다시 등록하지 않는다. 켜기는 권한을 차례로 묻고 바로 등록.
+export async function setArrivalEnabled(on: boolean, hideouts: MyHideout[]): Promise<'on' | 'off' | 'needs_settings'> {
+  if (!on) {
+    await updateArrival(async (d) => ({ ...d, disabled: true }));
+    if (await Location.hasStartedGeofencingAsync(ARRIVAL_TASK)) await Location.stopGeofencingAsync(ARRIVAL_TASK);
+    await Notifications.cancelAllScheduledNotificationsAsync(); // 이 앱이 예약하는 알림은 도착 알림뿐
+    return 'off';
+  }
+  await updateArrival(async (d) => ({ ...d, disabled: false, offerSeen: true }));
+  await askNotifications();
+  if ((await Location.requestForegroundPermissionsAsync()).status !== 'granted') return 'needs_settings';
+  if ((await Location.requestBackgroundPermissionsAsync()).status !== 'granted') return 'needs_settings';
+  await syncArrivalRegions(hideouts);
+  return 'on';
 }
