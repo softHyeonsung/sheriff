@@ -13,6 +13,7 @@ import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { useWishes } from '@/features/wishlist/useWishes';
+import { useShareStore } from '@/stores/shareStore';
 import { onOnline } from '@/lib/network';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
@@ -50,6 +51,15 @@ export default function MapScreen() {
     [wishList.wishes],
   );
   const selectedWish = wishList.wishes.find((w) => w.placeId === wishId) ?? null;
+
+  // 공유로 들어온 글이 기다리고 있으면 찜 화면으로(지도에 도착했다 = 로그인·온보딩 끝).
+  const pendingShare = useShareStore((s) => s.pending);
+  const setPendingShare = useShareStore((s) => s.setPending);
+  useEffect(() => {
+    if (!pendingShare) return;
+    setPendingShare(null);
+    router.push({ pathname: '/wishlist', params: { shared: pendingShare } });
+  }, [pendingShare, setPendingShare]);
   const { refresh: refreshFog } = fog;
   const { refresh: refreshDong } = dongAt;
   // 챙겨둔 발자국이 올라가면 지도를 새로 불러온다(마커·안개·동).

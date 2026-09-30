@@ -11,6 +11,7 @@ import { useCheckin } from '@/features/checkin/useCheckin';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { onOnline } from '@/lib/network';
 import { useWishes } from '@/features/wishlist/useWishes';
+import { useShareStore } from '@/stores/shareStore';
 import { useMyFog } from '@/features/territory/useMyFog';
 import { useDongAt } from '@/features/territory/useDongAt';
 import { useMeStore } from '@/stores/meStore';
@@ -407,4 +408,11 @@ test('[⭐ 찜] → 찜 화면, 달성 안 한 찜만 핀, 핀 카드에서 찜 
   expect(screen.getByText('고양이가 찜한 곳')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '찜 해제' }));
   expect(remove).toHaveBeenCalledWith('1');
+});
+
+test('공유가 기다리고 있으면 찜 화면으로 넘기고 비운다', async () => {
+  useShareStore.setState({ pending: 'https://naver.me/a' });
+  await render(<MapScreen />);
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/wishlist', params: { shared: 'https://naver.me/a' } });
+  expect(useShareStore.getState().pending).toBeNull();
 });

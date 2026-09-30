@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { ShareIntentProvider } from 'expo-share-intent';
 import * as SplashScreen from 'expo-splash-screen';
 import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
@@ -7,10 +8,21 @@ import { color, font, radius, space, type } from '@/constants/tokens';
 import { useAuthSession } from '@/features/auth/useAuthSession';
 import { routeFor } from '@/features/onboarding/route';
 import { useMe } from '@/features/onboarding/useMe';
+import { useIncomingShare } from '@/features/wishlist/useIncomingShare';
 
 SplashScreen.preventAutoHideAsync();
 
+// 공유 받기(useIncomingShare)는 Provider 안에서만 쓸 수 있다.
 export default function RootLayout() {
+  return (
+    <ShareIntentProvider>
+      <RootContent />
+    </ShareIntentProvider>
+  );
+}
+
+function RootContent() {
+  useIncomingShare(); // 다른 앱에서 공유된 글을 기억(로그인·온보딩 전이어도)
   const colorScheme = useColorScheme();
   const { session, loading } = useAuthSession();
   const { me, status, retry } = useMe(session?.user.id ?? null);
