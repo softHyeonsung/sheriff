@@ -1,6 +1,6 @@
 -- supabase/tests/database/rls.test.sql
 begin;
-select plan(8);
+select plan(9);
 
 select is_empty(
   $$select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -65,13 +65,17 @@ select is(
   '클라이언트는 aidut을 쓸 수 없다 — service_role 전용(RLS가 UPDATE를 조용히 0행으로 차단)'
 );
 
-select lives_ok(
-  $$insert into public.wishlist (user_id, place_id) values ('11111111-1111-1111-1111-111111111111','place-1')$$,
-  '사용자 A는 본인 명의로 wishlist 삽입 가능'
+-- 찜 쓰기는 add_wish로만(20260930000003): 본인 명의라도 직접 insert는 막힌다.
+select throws_ok(
+  $$insert into public.wishlist (user_id, place_id, name, lat, lng) values ('11111111-1111-1111-1111-111111111111','1','A 찜',37.5,127)$$,
+  '42501',
+  null,
+  '사용자 A도 wishlist 직접 삽입은 불가(add_wish로만)'
 );
+select lives_ok($$select public.add_wish('1', 'A 찜', null, 37.5, 127)$$, '사용자 A는 add_wish로 찜 가능');
 
 select throws_ok(
-  $$insert into public.wishlist (user_id, place_id) values ('22222222-2222-2222-2222-222222222222','place-2')$$,
+  $$insert into public.wishlist (user_id, place_id, name, lat, lng) values ('22222222-2222-2222-2222-222222222222','2','B 찜',37.5,127)$$,
   '42501',
   null,
   '사용자 A는 사용자 B 명의로 wishlist 삽입 불가(with check 위반)'
