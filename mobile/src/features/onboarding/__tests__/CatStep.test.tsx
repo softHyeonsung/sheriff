@@ -4,6 +4,7 @@ import { saveCat } from '../onboardingApi';
 import { CatStep } from '../CatStep';
 
 jest.mock('../onboardingApi', () => ({ saveCat: jest.fn() }));
+jest.mock('@/map/catArt', () => ({ catArt: (c: string, p: string) => `art:${c}:${p}` }));
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -56,4 +57,11 @@ test('설정에서는 지금 이름·털색으로 시작하고 버튼 문구가 
   expect(screen.getByRole('radio', { name: '고등어', selected: true })).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '저장할게요' }));
   expect(onDone).toHaveBeenCalledWith('나비', 'mackerel');
+});
+
+test('세 마리가 앉은 그림으로 보이고, 고른 고양이가 크게', async () => {
+  await render(<CatStep onDone={jest.fn()} />);
+  await fireEvent.press(screen.getByRole('radio', { name: '하양' }));
+  expect(screen.getByTestId('cat-preview').props.source).toEqual({ uri: 'art:white:sit' });
+  expect(screen.getByRole('radio', { name: '고등어' })).toBeTruthy();
 });

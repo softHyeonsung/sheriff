@@ -1,7 +1,7 @@
 // mobile/src/features/checkin/Celebration.tsx
 // The loop's peak moment (DESIGN.md §3): the new stage springs in with soft particles and a haptic.
 import { useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
@@ -16,7 +16,9 @@ import Animated, {
 
 import { color, font, radius, space, type } from '@/constants/tokens';
 import type { GradeThresholds } from '@/features/map/useMyHideouts';
+import { catArt } from '@/map/catArt';
 import { markerFor } from '@/map/markers';
+import { useMeStore } from '@/stores/meStore';
 import { MemoryButton } from '@/features/memories/MemoryButton';
 import type { CheckinResult, Fix } from './checkinApi';
 import { celebrationCopy, dongStageLine, wishLine } from './copy';
@@ -47,6 +49,7 @@ export function Celebration({
   memory?: { aidutId: string; fix: Fix };
 }) {
   const reduceMotion = useReducedMotion();
+  const catColor = useMeStore((s) => s.me?.catColor) ?? 'cheese';
   const pop = useSharedValue(reduceMotion ? 1 : 0);
   const burst = useSharedValue(reduceMotion ? 1 : 0);
   const { title, hint } = celebrationCopy(result, thresholds);
@@ -72,6 +75,7 @@ export function Celebration({
           <View style={styles.stage}>
             {!reduceMotion && Array.from({ length: PARTICLES }, (_, i) => <Particle key={i} index={i} progress={burst} />)}
             <Animated.Image source={{ uri: markerFor(result.grade).uri }} style={[styles.art, popStyle]} />
+            <Image testID="celebration-cat" source={{ uri: catArt(catColor, 'happy') }} style={styles.cat} />
           </View>
           <Text style={styles.name}>{result.name}</Text>
           <Text style={styles.title} accessibilityRole="header">
@@ -95,6 +99,7 @@ const styles = StyleSheet.create({
   card: { alignSelf: 'stretch', backgroundColor: color.surface, borderRadius: radius.sheet, padding: space.section, alignItems: 'center', gap: 8 },
   stage: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center' },
   art: { width: 140, height: 140 },
+  cat: { position: 'absolute', right: -8, bottom: -8, width: 64, height: 64 },
   particle: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: color.primary },
   name: { ...type.caption, color: color.inkSub },
   title: { ...type.subtitle, color: color.ink, textAlign: 'center' },

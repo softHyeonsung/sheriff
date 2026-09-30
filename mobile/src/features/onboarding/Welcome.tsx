@@ -7,7 +7,7 @@ import { PrimaryButton, StepScreen } from './ui';
 export function Welcome({ onDone }: { onDone: () => void }) {
   return (
     <StepScreen footer={<PrimaryButton label="시작할게요" onPress={onDone} />}>
-      <Image source={{ uri: catArt('cheese', 'sit') }} style={styles.cat} />
+      <Image source={{ uri: catArt('cheese', 'look') }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
         안녕하세요. 저랑 같이 우리 동네를 누벼볼까요?
       </Text>

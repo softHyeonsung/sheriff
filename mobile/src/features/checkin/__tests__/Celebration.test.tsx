@@ -2,7 +2,10 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
 import { useReducedMotion } from 'react-native-reanimated';
+import { useMeStore } from '@/stores/meStore';
 import { Celebration } from '../Celebration';
+
+jest.mock('@/map/catArt', () => ({ catArt: (c: string, p: string) => `art:${c}:${p}` }));
 
 jest.mock('expo-haptics', () => ({ notificationAsync: jest.fn(), NotificationFeedbackType: { Success: 'success' } }));
 jest.mock('@/features/memories/MemoryButton', () => {
@@ -55,4 +58,10 @@ test('memory가 있으면 순간 남기기 버튼, 없으면 없음', async () =
 test('찜한 곳이면 달성 한 줄', async () => {
   await render(<Celebration result={{ ...up, wishAchieved: true }} thresholds={T} onClose={jest.fn()} />);
   expect(screen.getByText('가고 싶다던 카페, 드디어 왔어요!')).toBeTruthy();
+});
+
+test('기뻐 뛰는 내 고양이', async () => {
+  useMeStore.setState({ me: { onboarded: true, nickname: 'n', catName: '나비', catColor: 'white', homeDong: null, hasHideout: true } });
+  await render(<Celebration result={up} thresholds={T} onClose={jest.fn()} />);
+  expect(screen.getByTestId('celebration-cat').props.source).toEqual({ uri: 'art:white:happy' });
 });

@@ -1,6 +1,9 @@
 // mobile/src/features/onboarding/__tests__/Tutorial.test.tsx
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { useMeStore } from '@/stores/meStore';
 import { Tutorial } from '../Tutorial';
+
+jest.mock('@/map/catArt', () => ({ catArt: (c: string, p: string) => `art:${c}:${p}` }));
 
 test('세 컷을 넘기고 마지막에 알겠어요', async () => {
   const onDone = jest.fn();
@@ -13,4 +16,12 @@ test('세 컷을 넘기고 마지막에 알겠어요', async () => {
   expect(onDone).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '알겠어요' }));
   expect(onDone).toHaveBeenCalled();
+});
+
+test('세 번째 장은 내 고양이가 걷는 그림', async () => {
+  useMeStore.setState({ me: { onboarded: false, nickname: 'n', catName: '나비', catColor: 'mackerel', homeDong: null, hasHideout: false } });
+  await render(<Tutorial onDone={jest.fn()} />);
+  await fireEvent.press(screen.getByRole('button', { name: '다음' }));
+  await fireEvent.press(screen.getByRole('button', { name: '다음' }));
+  expect(screen.getByTestId('tutorial-art').props.source).toEqual({ uri: 'art:mackerel:walk' });
 });
