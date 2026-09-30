@@ -57,3 +57,7 @@ export function dongStageLine(r: CheckinResult): string | null {
   if (!r.dong?.stageChanged || r.dong.stage === 'fog') return null;
   return DONG_UP[r.dong.stage];
 }
+
+export function wishLine(r: CheckinResult): string | null {
+  return r.wishAchieved ? `가고 싶다던 ${r.name}, 드디어 왔어요!` : null;
+}

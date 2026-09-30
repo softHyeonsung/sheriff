@@ -51,3 +51,8 @@ test('memory가 있으면 순간 남기기 버튼, 없으면 없음', async () =
   await rerender(<Celebration result={up} thresholds={T} onClose={jest.fn()} memory={{ aidutId: 'a', fix: { lat: 1, lng: 2, accuracy: 3 } }} />);
   expect(screen.getByText('memory:a')).toBeTruthy();
 });
+
+test('찜한 곳이면 달성 한 줄', async () => {
+  await render(<Celebration result={{ ...up, wishAchieved: true }} thresholds={T} onClose={jest.fn()} />);
+  expect(screen.getByText('가고 싶다던 카페, 드디어 왔어요!')).toBeTruthy();
+});

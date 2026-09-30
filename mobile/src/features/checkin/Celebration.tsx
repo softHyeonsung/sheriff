@@ -19,7 +19,7 @@ import type { GradeThresholds } from '@/features/map/useMyHideouts';
 import { markerFor } from '@/map/markers';
 import { MemoryButton } from '@/features/memories/MemoryButton';
 import type { CheckinResult, Fix } from './checkinApi';
-import { celebrationCopy, dongStageLine } from './copy';
+import { celebrationCopy, dongStageLine, wishLine } from './copy';
 
 const PARTICLES = 8;
 
@@ -51,6 +51,7 @@ export function Celebration({
   const burst = useSharedValue(reduceMotion ? 1 : 0);
   const { title, hint } = celebrationCopy(result, thresholds);
   const dongLine = dongStageLine(result);
+  const wish = wishLine(result);
 
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -78,6 +79,7 @@ export function Celebration({
           </Text>
           {hint && <Text style={styles.hint}>{hint}</Text>}
           {dongLine && <Text style={styles.hint}>{dongLine}</Text>}
+          {wish && <Text style={styles.hint}>{wish}</Text>}
           {memory && <MemoryButton aidutId={memory.aidutId} getFix={async () => memory.fix} />}
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="좋아요" style={styles.cta}>
             <Text style={styles.ctaText}>좋아요</Text>

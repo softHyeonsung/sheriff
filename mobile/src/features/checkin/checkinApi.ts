@@ -36,6 +36,8 @@ export type CheckinResult = {
   newCellsCleared: number;
   // 아지트가 동 경계 밖이거나 경계 데이터가 없으면 null.
   dong?: { name: string; stage: DongStage; stageChanged: boolean } | null;
+  // 찜한 곳에서 처음 남긴 발자국이면 true(서버가 찜을 달성으로 기록).
+  wishAchieved?: boolean;
 };
 
 const KNOWN: CheckinErrorCode[] = ['too_far', 'weak_gps', 'cooldown', 'not_yours'];

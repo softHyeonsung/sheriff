@@ -1,6 +1,6 @@
 // mobile/src/features/checkin/__tests__/copy.test.ts
 import { CheckinError } from '../errors';
-import { celebrationCopy, dongStageLine, messageFor } from '../copy';
+import { celebrationCopy, dongStageLine, messageFor, wishLine } from '../copy';
 
 const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const r = (over: object) => ({ aidutId: 'a', name: 'x', footprintCount: 3, grade: 'box', gradeChanged: false, newCellsCleared: 0, ...over }) as never;
@@ -50,4 +50,10 @@ test('안 올랐거나 동을 모르면 없음', () => {
 
 test('offline 문구', () => {
   expect(messageFor(new CheckinError('offline'))).toBe('연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?');
+});
+
+test('찜 달성 한 줄', () => {
+  expect(wishLine(r({ name: '찜한 카페', wishAchieved: true }))).toBe('가고 싶다던 찜한 카페, 드디어 왔어요!');
+  expect(wishLine(r({ wishAchieved: false }))).toBeNull();
+  expect(wishLine(r({}))).toBeNull();
 });
