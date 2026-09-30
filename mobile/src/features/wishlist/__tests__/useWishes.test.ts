@@ -1,10 +1,12 @@
 // mobile/src/features/wishlist/__tests__/useWishes.test.ts
 import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { resyncArrival } from '@/features/arrival/register';
 import { readMapCache, saveWishes } from '@/features/map/mapCache';
 import { addWish, myWishes, removeWish } from '../wishlistApi';
 import { useWishes } from '../useWishes';
 
 jest.mock('expo-router', () => ({ useFocusEffect: (cb: () => void) => require('react').useEffect(cb, [cb]) }));
+jest.mock('@/features/arrival/register', () => ({ resyncArrival: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('../wishlistApi', () => ({ myWishes: jest.fn(), addWish: jest.fn(), removeWish: jest.fn() }));
 jest.mock('@/features/map/mapCache', () => ({ readMapCache: jest.fn(), saveWishes: jest.fn().mockResolvedValue(undefined) }));
 
@@ -22,6 +24,7 @@ test('불러와서 저장본에 쓴다', async () => {
   await waitFor(() => expect(result.current.status).toBe('ready'));
   expect(result.current.wishes).toEqual([wish]);
   expect(saveWishes).toHaveBeenCalledWith([wish]);
+  await waitFor(() => expect(resyncArrival).toHaveBeenCalled()); // 찜이 바뀌면 도착 알림 감시도
 });
 
 test('연결이 끊기면 저장본', async () => {

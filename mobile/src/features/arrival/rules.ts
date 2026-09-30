@@ -14,7 +14,7 @@ export const ARRIVAL = {
   keepMs: 7 * 24 * HOUR,
 };
 
-export type ArrivalRegion = { name: string; grade: Grade; lastVisitedAt: string | null };
+export type ArrivalRegion = { name: string; grade: Grade; lastVisitedAt: string | null; wish?: boolean };
 // at = 알림이 울리는(울릴) 시각. 이탈로 취소된 예약은 기록에서 빠진다.
 export type ArrivalLogEntry = { id: string; at: number };
 
@@ -38,6 +38,7 @@ export function pickNearest<T extends { lat: number; lng: number }>(items: T[], 
 
 const REGULAR: Grade[] = ['hut', 'tower', 'palace'];
 
-export function arrivalMessage(name: string, grade: Grade): string {
+export function arrivalMessage(name: string, grade: Grade, wish = false): string {
+  if (wish) return `가고 싶다던 ${name}, 드디어 왔어요!`;
   return REGULAR.includes(grade) ? `또 왔네요, ${name}. 여기 자주 오시네요 :)` : `${name} 오셨네요. 발자국 남길까요?`;
 }

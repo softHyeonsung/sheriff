@@ -53,3 +53,7 @@ test('문구: 작은 집 이상은 단골 문구', () => {
   expect(arrivalMessage('동네 빵집', 'hut')).toBe('또 왔네요, 동네 빵집. 여기 자주 오시네요 :)');
   expect(arrivalMessage('동네 빵집', 'palace')).toBe('또 왔네요, 동네 빵집. 여기 자주 오시네요 :)');
 });
+
+test('찜한 곳 문구', () => {
+  expect(arrivalMessage('찜한 카페', 'paw', true)).toBe('가고 싶다던 찜한 카페, 드디어 왔어요!');
+});

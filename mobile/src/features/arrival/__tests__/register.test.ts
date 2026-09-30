@@ -2,8 +2,9 @@
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { askNotifications, ensureArrivalChannel } from '@/features/onboarding/permissions';
+import { readMapCache } from '@/features/map/mapCache';
 import { clearArrival, readArrival, updateArrival, type ArrivalData } from '../store';
-import { answerArrivalOffer, arrivalSwitchState, clearArrivalData, setArrivalEnabled, shouldOfferArrival, syncArrivalRegions } from '../register';
+import { answerArrivalOffer, arrivalSwitchState, resyncArrival, clearArrivalData, setArrivalEnabled, shouldOfferArrival, syncArrivalRegions } from '../register';
 
 jest.mock('expo-location', () => ({
   getBackgroundPermissionsAsync: jest.fn(),
@@ -15,6 +16,7 @@ jest.mock('expo-location', () => ({
   hasStartedGeofencingAsync: jest.fn(),
 }));
 jest.mock('../task', () => ({ ARRIVAL_TASK: 'arrival-geofence' }));
+jest.mock('@/features/map/mapCache', () => ({ readMapCache: jest.fn() }));
 jest.mock('../store', () => ({ readArrival: jest.fn(), updateArrival: jest.fn(), clearArrival: jest.fn() }));
 jest.mock('expo-notifications', () => ({ cancelAllScheduledNotificationsAsync: jest.fn() }));
 jest.mock('@/features/onboarding/permissions', () => ({ askNotifications: jest.fn(), ensureArrivalChannel: jest.fn() }));
@@ -30,6 +32,7 @@ const h = (id: string, lat: number) => ({ id, name: id, grade: 'box' as const, f
 beforeEach(() => {
   jest.clearAllMocks();
   read.mockResolvedValue(EMPTY);
+  (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [], thresholds: null, fog: null, wishes: [] });
   (updateArrival as jest.Mock).mockImplementation(async (fn: (d: ArrivalData) => Promise<ArrivalData | null>) => {
     const next = await fn(await read());
     if (next) write(next);
@@ -181,4 +184,39 @@ test('켜기: 권한이 거절되면 설정 안내', async () => {
   expect(await setArrivalEnabled(true, [])).toBe('needs_settings');
   L.requestForegroundPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
   expect(await setArrivalEnabled(true, [])).toBe('needs_settings');
+});
+
+test('달성 안 한 찜도 합쳐 가까운 20곳, 찜은 문구가 다르다', async () => {
+  bg('granted');
+  L.getLastKnownPositionAsync.mockResolvedValue({ coords: { latitude: 37.5, longitude: 127 } } as never);
+  (readMapCache as jest.Mock).mockResolvedValue({
+    hideouts: [], thresholds: null, fog: null,
+    wishes: [
+      { placeId: '1', name: '찜한 카페', roadAddress: null, lat: 37.5001, lng: 127, achievedAt: null },
+      { placeId: '2', name: '가 본 곳', roadAddress: null, lat: 37.5, lng: 127, achievedAt: '2026-09-30' },
+    ],
+  });
+  await syncArrivalRegions([h('a', 37.51)]);
+  const regions = L.startGeofencingAsync.mock.calls[0][1]!;
+  expect(regions.map((r) => r.identifier)).toEqual(['wish:1', 'a']);
+  expect(write.mock.calls[0][0].regions['wish:1']).toEqual({ name: '찜한 카페', grade: 'paw', lastVisitedAt: null, wish: true });
+});
+
+test('아지트가 없어도 찜이 있으면 감시한다', async () => {
+  bg('granted');
+  L.getLastKnownPositionAsync.mockResolvedValue(null);
+  (readMapCache as jest.Mock).mockResolvedValue({
+    hideouts: [], thresholds: null, fog: null,
+    wishes: [{ placeId: '1', name: '찜한 카페', roadAddress: null, lat: 37.5, lng: 127, achievedAt: null }],
+  });
+  await syncArrivalRegions([]);
+  expect(L.startGeofencingAsync.mock.calls[0][1]![0].identifier).toBe('wish:1');
+});
+
+test('resyncArrival은 저장본 아지트로 다시 등록', async () => {
+  bg('granted');
+  L.getLastKnownPositionAsync.mockResolvedValue(null);
+  (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [h('a', 37.5)], thresholds: null, fog: null, wishes: [] });
+  await resyncArrival();
+  expect(L.startGeofencingAsync).toHaveBeenCalled();
 });

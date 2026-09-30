@@ -3,8 +3,9 @@
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import type { MyHideout } from '@/features/map/useMyHideouts';
+import { readMapCache } from '@/features/map/mapCache';
 import { askNotifications, ensureArrivalChannel } from '@/features/onboarding/permissions';
-import { ARRIVAL, pickNearest } from './rules';
+import { ARRIVAL, type ArrivalRegion, pickNearest } from './rules';
 import { clearArrival, readArrival, updateArrival } from './store';
 import { ARRIVAL_TASK } from './task';
 
@@ -19,28 +20,36 @@ const sameIds = (a: string[], b: string[]) => a.length === b.length && [...a].so
 export async function syncArrivalRegions(hideouts: MyHideout[]): Promise<void> {
   if ((await readArrival()).disabled) return; // 사용자가 끈 상태
   if (!(await backgroundGranted())) return;
-  if (hideouts.length === 0) {
+  // 아지트 + 달성 안 한 찜을 한 목록으로(iOS 20곳 한도를 같이 쓴다).
+  const wishes = ((await readMapCache().catch(() => null))?.wishes ?? []).filter((w) => !w.achievedAt);
+  const spots: { id: string; lat: number; lng: number; region: ArrivalRegion }[] = [
+    ...hideouts.map((h) => ({ id: h.id, lat: h.lat, lng: h.lng, region: { name: h.name, grade: h.grade, lastVisitedAt: h.lastVisitedAt } })),
+    ...wishes.map((w) => ({
+      id: `wish:${w.placeId}`,
+      lat: w.lat,
+      lng: w.lng,
+      region: { name: w.name, grade: 'paw' as const, lastVisitedAt: null, wish: true },
+    })),
+  ];
+  if (spots.length === 0) {
     if (await Location.hasStartedGeofencingAsync(ARRIVAL_TASK)) await Location.stopGeofencingAsync(ARRIVAL_TASK);
     return;
   }
   await ensureArrivalChannel();
   const last = await Location.getLastKnownPositionAsync();
-  const origin = last ? { lat: last.coords.latitude, lng: last.coords.longitude } : hideouts[0];
-  const picked = pickNearest(hideouts, origin, ARRIVAL.maxRegions);
+  const origin = last ? { lat: last.coords.latitude, lng: last.coords.longitude } : spots[0];
+  const picked = pickNearest(spots, origin, ARRIVAL.maxRegions);
   let changed = true;
   // 이름·등급·방문 시각은 매번 새로 저장한다(태스크가 이걸 보고 판단).
   await updateArrival(async (data) => {
-    changed = !sameIds(Object.keys(data.regions), picked.map((h) => h.id));
-    return {
-      ...data,
-      regions: Object.fromEntries(picked.map((h) => [h.id, { name: h.name, grade: h.grade, lastVisitedAt: h.lastVisitedAt }])),
-    };
+    changed = !sameIds(Object.keys(data.regions), picked.map((s) => s.id));
+    return { ...data, regions: Object.fromEntries(picked.map((s) => [s.id, s.region])) };
   });
   // 등록할 때마다 OS가 모든 원에 진입/이탈을 한꺼번에 보낸다. 같은 곳들을 이미 감시 중이면 건드리지 않는다.
   if (!changed && (await Location.hasStartedGeofencingAsync(ARRIVAL_TASK))) return;
   await Location.startGeofencingAsync(
     ARRIVAL_TASK,
-    picked.map((h) => ({ identifier: h.id, latitude: h.lat, longitude: h.lng, radius: ARRIVAL.radiusM })),
+    picked.map((s) => ({ identifier: s.id, latitude: s.lat, longitude: s.lng, radius: ARRIVAL.radiusM })),
   );
 }
 
@@ -87,4 +96,10 @@ export async function setArrivalEnabled(on: boolean, hideouts: MyHideout[]): Pro
   if ((await Location.requestBackgroundPermissionsAsync()).status !== 'granted') return 'needs_settings';
   await syncArrivalRegions(hideouts);
   return 'on';
+}
+
+// 찜이 바뀌었을 때처럼 아지트 목록이 손에 없을 때: 저장본 아지트로 다시 등록.
+export async function resyncArrival(): Promise<void> {
+  const cache = await readMapCache();
+  await syncArrivalRegions(cache.hideouts);
 }

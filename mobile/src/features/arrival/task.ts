@@ -32,7 +32,7 @@ export async function handleGeofenceEvent({ eventType, region }: GeofenceEvent, 
     if (!target || !decideArrival(now, id, target, data.log)) return null;
     await Notifications.scheduleNotificationAsync({
       identifier: keyFor(id),
-      content: { body: arrivalMessage(target.name, target.grade), data: { hideoutId: id } },
+      content: { body: arrivalMessage(target.name, target.grade, target.wish), data: { hideoutId: id } },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: ARRIVAL.dwellMs / 1000, channelId: 'arrival' },
     });
     return { ...data, log: [...data.log, { id, at: now + ARRIVAL.dwellMs }] };

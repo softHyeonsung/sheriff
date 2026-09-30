@@ -91,6 +91,12 @@ describe('진입/이탈', () => {
     expect(written).toEqual({ ...data(), log: [rang, other] });
   });
 
+  test('찜한 곳이면 찜 문구', async () => {
+    useStore({ ...data(), regions: { 'wish:1': { name: '찜한 카페', grade: 'paw', lastVisitedAt: null, wish: true } } });
+    await handleGeofenceEvent({ eventType: 1, region: { ...region, identifier: 'wish:1' } }, now);
+    expect(schedule.mock.calls[0][0].content.body).toBe('가고 싶다던 찜한 카페, 드디어 왔어요!');
+  });
+
   test('발자국을 남기면 그곳 예약 알림을 취소한다(기록은 남겨 하루 횟수에 센다)', async () => {
     await cancelArrivalAlert('a');
     expect(cancel).toHaveBeenCalledWith('arrival:a');
