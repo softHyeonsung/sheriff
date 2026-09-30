@@ -14,9 +14,19 @@ const valid = (name: string) => {
   return n >= 1 && n <= 10;
 };
 
-export function CatStep({ onDone }: { onDone: (name: string, color: CatColor) => void }) {
-  const [name, setName] = useState('');
-  const [coat, setCoat] = useState<CatColor>('cheese');
+export function CatStep({
+  onDone,
+  initialName = '',
+  initialColor = 'cheese',
+  cta = '이 친구로 할게요',
+}: {
+  onDone: (name: string, color: CatColor) => void;
+  initialName?: string;
+  initialColor?: CatColor;
+  cta?: string;
+}) {
+  const [name, setName] = useState(initialName);
+  const [coat, setCoat] = useState<CatColor>(initialColor);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const ok = valid(name);
@@ -37,7 +47,7 @@ export function CatStep({ onDone }: { onDone: (name: string, color: CatColor) =>
   };
 
   return (
-    <StepScreen footer={<PrimaryButton label="이 친구로 할게요" onPress={submit} disabled={!ok || saving} />}>
+    <StepScreen footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
       <Image source={{ uri: CAT_IMAGES[coat] }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
         이 친구, 이름을 지어줄래요? 털색도 골라봐요.

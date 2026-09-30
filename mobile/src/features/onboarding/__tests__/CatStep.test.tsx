@@ -47,3 +47,13 @@ test('저장 실패 → 입력 유지 + 오류 + 다시 누를 수 있음', asyn
   await fireEvent.press(submit());
   expect(onDone).toHaveBeenCalledWith('나비', 'cheese');
 });
+
+test('설정에서는 지금 이름·털색으로 시작하고 버튼 문구가 다르다', async () => {
+  (saveCat as jest.Mock).mockResolvedValue(undefined);
+  const onDone = jest.fn();
+  await render(<CatStep onDone={onDone} initialName="나비" initialColor="gray" cta="저장할게요" />);
+  expect(name().props.value).toBe('나비');
+  expect(screen.getByRole('radio', { name: '회색', selected: true })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '저장할게요' }));
+  expect(onDone).toHaveBeenCalledWith('나비', 'gray');
+});
