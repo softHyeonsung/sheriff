@@ -208,6 +208,14 @@ export default function MapScreen() {
           </View>
         </View>
       )}
+      {queue.droppedMemories > 0 && queue.dropped === 0 && checkin.state.name === 'idle' && (
+        <View style={styles.checkinNote}>
+          <Text style={styles.bannerText}>남긴 순간 {queue.droppedMemories}개는 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.</Text>
+          <View style={styles.row}>
+            <Pill label="닫기" onPress={queue.clearDroppedMemories} />
+          </View>
+        </View>
+      )}
       {(locating || checkin.state.name === 'failed') && (
         <View style={styles.checkinNote}>
           <Text style={styles.bannerText}>

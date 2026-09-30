@@ -2,6 +2,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import { cancelArrivalAlert } from '@/features/arrival/task';
+import { flushMemoriesNow } from '@/features/memories/memoriesApi';
 import { onOnline } from '@/lib/network';
 import { submitCheckin } from '../checkinApi';
 import { flushQueue, readQueue } from '../queue';
@@ -9,6 +10,7 @@ import { useCheckinQueue } from '../useCheckinQueue';
 
 jest.mock('expo-router', () => ({ useFocusEffect: (cb: () => void) => require('react').useEffect(cb, [cb]) }));
 jest.mock('@/lib/network', () => ({ onOnline: jest.fn() }));
+jest.mock('@/features/memories/memoriesApi', () => ({ flushMemoriesNow: jest.fn() }));
 jest.mock('@/features/arrival/task', () => ({ cancelArrivalAlert: jest.fn() }));
 jest.mock('../checkinApi', () => ({ submitCheckin: jest.fn() }));
 jest.mock('../queue', () => ({ flushQueue: jest.fn(), readQueue: jest.fn() }));
@@ -22,6 +24,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   (readQueue as jest.Mock).mockResolvedValue([]);
   flush.mockResolvedValue({ results: [], dropped: 0 });
+  (flushMemoriesNow as jest.Mock).mockResolvedValue({ attached: [], dropped: 0 });
   (cancelArrivalAlert as jest.Mock).mockResolvedValue(undefined);
   (onOnline as jest.Mock).mockImplementation((cb: () => void) => {
     online = cb;
@@ -86,4 +89,21 @@ test('flush를 직접 부를 수 있다(챙긴 직후 바로 시도)', async () 
   await waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
   await act(async () => h.current.flush());
   expect(flush).toHaveBeenCalledTimes(2);
+});
+
+test('발자국 다음에 사진도 올리고, 거절된 사진 수를 센다', async () => {
+  (flushMemoriesNow as jest.Mock).mockResolvedValueOnce({ attached: ['a1'], dropped: 2 });
+  const { result: h } = await renderHook(() => useCheckinQueue(jest.fn()));
+  await waitFor(() => expect(h.current.droppedMemories).toBe(2));
+  expect((flushMemoriesNow as jest.Mock).mock.invocationCallOrder[0]).toBeGreaterThan(flush.mock.invocationCallOrder[0]);
+  await act(async () => h.current.clearDroppedMemories());
+  expect(h.current.droppedMemories).toBe(0);
+});
+
+test('사진 올리기가 실패해도 발자국 결과는 그대로', async () => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  flush.mockResolvedValueOnce({ results: [result('a')], dropped: 0 });
+  (flushMemoriesNow as jest.Mock).mockRejectedValueOnce(new Error('disk'));
+  const { result: h } = await renderHook(() => useCheckinQueue(jest.fn()));
+  await waitFor(() => expect(h.current.celebrations).toHaveLength(1));
 });

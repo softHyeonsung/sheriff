@@ -53,7 +53,7 @@ jest.mock('@/features/checkin/Celebration', () => {
 
 const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const cafe = { id: 'a1', name: '테스트 카페', grade: 'box' as const, footprintCount: 3, lat: 37.5, lng: 126.9 };
-const queueState = (over = {}) => ({ pending: 0, celebrations: [], dropped: 0, next: jest.fn(), clearDropped: jest.fn(), refresh: jest.fn(), flush: jest.fn(), ...over });
+const queueState = (over = {}) => ({ pending: 0, celebrations: [], dropped: 0, next: jest.fn(), clearDropped: jest.fn(), refresh: jest.fn(), flush: jest.fn(), droppedMemories: 0, clearDroppedMemories: jest.fn(), ...over });
 const hideoutsState = (over = {}) => ({ hideouts: [cafe], thresholds: T, status: 'ready', retry: jest.fn(), ...over });
 
 beforeEach(() => {
@@ -375,4 +375,13 @@ test('마커 카드의 추억 보기 → 아지트 상세', async () => {
   await act(async () => mockBridgeProps.onHideoutTap('a1'));
   await fireEvent.press(screen.getByRole('button', { name: '추억 보기' }));
   expect(router.push).toHaveBeenCalledWith({ pathname: '/aidut/[id]', params: { id: 'a1' } });
+});
+
+test('거절된 사진 안내 + 닫기', async () => {
+  const q = queueState({ droppedMemories: 1 });
+  (useCheckinQueue as jest.Mock).mockReturnValue(q);
+  await render(<MapScreen />);
+  expect(screen.getByText('남긴 순간 1개는 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(q.clearDroppedMemories).toHaveBeenCalled();
 });

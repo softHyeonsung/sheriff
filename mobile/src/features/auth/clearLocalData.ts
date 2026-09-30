@@ -4,9 +4,17 @@
 import { clearArrivalData } from '@/features/arrival/register';
 import { clearQueue } from '@/features/checkin/queue';
 import { clearMapCache } from '@/features/map/mapCache';
+import { clearMemoryQueue } from '@/features/memories/memoryQueue';
+import { clearLocalPhotos } from '@/features/memories/photo';
 
 export async function clearLocalData(): Promise<void> {
-  const results = await Promise.allSettled([clearQueue(), clearMapCache(), clearArrivalData()]);
+  const results = await Promise.allSettled([
+    clearQueue(),
+    clearMapCache(),
+    clearArrivalData(),
+    clearMemoryQueue(),
+    Promise.resolve().then(clearLocalPhotos),
+  ]);
   for (const r of results) {
     if (r.status === 'rejected') console.warn('로그아웃 정리 실패', r.reason);
   }
