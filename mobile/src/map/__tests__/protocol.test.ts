@@ -44,3 +44,7 @@ test('wishTap을 읽는다(모양이 틀리면 버린다)', () => {
   expect(parseMapMessage(JSON.stringify({ type: 'wishTap', placeId: '123' }))).toEqual({ type: 'wishTap', placeId: '123' });
   expect(parseMapMessage(JSON.stringify({ type: 'wishTap', placeId: 5 }))).toBeNull();
 });
+
+test('setCat은 자세 묶음을 싣는다', () => {
+  expect(toMapScript({ type: 'setCat', poses: { sit: 'a', walk: 'b', lie: 'c', happy: 'd', look: 'e' } })).toContain('setCat');
+});

@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { color } from '@/constants/tokens';
-import { catArt } from './catArt';
+import { catPoses } from './catArt';
 import type { CatColor } from './catColors';
 import { GRADES } from './grades';
 import { markerFor, WISH_MARKER } from './markers';
@@ -38,9 +38,9 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   const [ready, setReady] = useState(false);
   // The page is built once; later center changes go through panTo, not a reload.
   const [initialCenter] = useState(center);
-  const [initialCat] = useState(catColor); // the page is built once — the coat is chosen in onboarding, before the map
+  const [initialCat] = useState(catColor); // 페이지는 한 번만 만든다 — 이후 교체는 setCat으로
   const html = useMemo(
-    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: catArt(initialCat, 'sit'), fogColor: color.fog, wish: WISH_MARKER }),
+    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: catPoses(initialCat), fogColor: color.fog, wish: WISH_MARKER }),
     [jsKey, initialCenter, initialCat],
   );
 
@@ -63,6 +63,11 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   useEffect(() => {
     if (ready && fog) send({ type: 'setFog', cells: fog });
   }, [ready, fog]);
+
+  // 프로필에서 고양이를 바꾸면 페이지를 다시 만들지 않고 그림 묶음만 바꾼다.
+  useEffect(() => {
+    if (ready) send({ type: 'setCat', poses: catPoses(catColor) });
+  }, [ready, catColor]);
 
   useEffect(() => {
     if (ready && myLocation) send({ type: 'setMyLocation', ...myLocation });

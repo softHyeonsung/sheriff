@@ -32,7 +32,7 @@ test('지도 준비 전엔 보내지 않고, ready 이후에 보낸다', async (
   await render(<MapBridge {...base} />);
   expect(mockInject).not.toHaveBeenCalled();
   await send('{"type":"ready"}');
-  expect(mockInject).toHaveBeenCalledTimes(3);
+  expect(mockInject).toHaveBeenCalledTimes(4);
   expect(mockInject.mock.calls[0][0]).toContain('setHideouts');
   expect(mockInject.mock.calls[0][0]).toContain('a1');
   expect(mockInject.mock.calls.some(([s]) => s.includes('setWishes'))).toBe(true);
@@ -156,4 +156,12 @@ test('찜 핀을 보내고, wishTap을 넘긴다', async () => {
   expect(mockInject.mock.calls.some(([s]) => s.includes('setWishes') && s.includes('777'))).toBe(true);
   await send('{"type":"wishTap","placeId":"777"}');
   expect(base.onWishTap).toHaveBeenCalledWith('777');
+});
+
+test('고양이를 바꾸면 지도에 새 자세 묶음을 보낸다(앱을 다시 켜지 않아도)', async () => {
+  const { rerender } = await render(<MapBridge {...base} catColor="cheese" />);
+  await send('{"type":"ready"}');
+  mockInject.mockClear();
+  await rerender(<MapBridge {...base} catColor="white" />);
+  expect(mockInject.mock.calls.some(([s]) => s.includes('setCat'))).toBe(true);
 });

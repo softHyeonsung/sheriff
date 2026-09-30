@@ -1,6 +1,7 @@
 // mobile/src/map/protocol.ts
 // The only language the app and the map WebView speak. Anything that doesn't parse into
 // MapToApp is dropped — the page can't make the app do something it didn't declare here.
+import type { CatPose } from './catColors';
 import type { Grade } from './grades';
 
 export type LatLng = { lat: number; lng: number };
@@ -16,7 +17,8 @@ export type AppToMap =
   | ({ type: 'setMyLocation' } & MyLocation)
   | ({ type: 'panTo' } & LatLng)
   | { type: 'setFog'; cells: FogCell[] }
-  | { type: 'catSay'; text: string };
+  | { type: 'catSay'; text: string }
+  | { type: 'setCat'; poses: Record<CatPose, string> };
 
 export type MapToApp =
   | { type: 'ready' }

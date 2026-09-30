@@ -1,8 +1,9 @@
 // mobile/src/map/webview-template.ts
+import type { CatPose } from './catColors';
 import type { Grade } from './grades';
 import type { LatLng } from './protocol';
 
-type Opts = { jsKey: string; markers: Record<Grade, { uri: string; size: number }>; center: LatLng; cat: string; fogColor: string; wish: { uri: string; size: number } };
+type Opts = { jsKey: string; markers: Record<Grade, { uri: string; size: number }>; center: LatLng; cat: Record<CatPose, string>; fogColor: string; wish: { uri: string; size: number } };
 
 // JSON for embedding inside <script>: escaping "<" keeps "</script>" in any value from
 // closing the block early.
@@ -24,6 +25,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
   var map = null, pins = [], me = null, meAt = null;
   var wishPins = [];
   var fog = null, cells = [], cat = null, catImg = null, bubble = null, catAt = null, catCell = null, bubbleTimer = null;
+  var pose = 'sit', poseTimer = null, lieTimer = null, happyUntil = 0;
   // 한국 전체를 넉넉히 덮는 바깥 사각형(시계 방향). 구멍은 반대 방향이어야 채움 규칙과 무관하게 뚫린다.
   var KOREA = [[39.5, 124], [39.5, 132], [32, 132], [32, 124]];
 
@@ -109,6 +111,8 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
     var to = randomIn(next);
     var from = catAt, t0 = Date.now(), dur = 4000;
     catImg.style.transform = to.lng < from.lng ? 'scaleX(-1)' : '';
+    clearTimeout(lieTimer);
+    setPose('walk');
     (function step() {
       if (!cat) return;
       var k = Math.min(1, (Date.now() - t0) / dur);
@@ -117,9 +121,26 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
       if (k < 1) requestAnimationFrame(step);
       else {
         catCell = next;
-        setTimeout(wander, 3000 + Math.random() * 5000);
+        setPose('sit');
+        // 가끔은 오래 쉰다: 20초 앉아 있으면 엎드린다.
+        var rest = Math.random() < 0.25 ? 30000 : 3000 + Math.random() * 5000;
+        if (rest > 20000) lieTimer = setTimeout(function () { setPose('lie'); }, 20000);
+        setTimeout(wander, rest);
       }
     })();
+  }
+
+  // 자세 바꾸기. 기뻐 뛰는 2초 동안은 다른 자세가 덮어쓰지 않는다(끝나면 원래 자세로).
+  function setPose(p) {
+    pose = p;
+    if (catImg && Date.now() >= happyUntil) catImg.src = cfg.cat[p] || cfg.cat.sit;
+  }
+  function cheer() {
+    if (!catImg) return;
+    happyUntil = Date.now() + 2000;
+    catImg.src = cfg.cat.happy || cfg.cat.sit;
+    clearTimeout(poseTimer);
+    poseTimer = setTimeout(function () { happyUntil = 0; setPose(pose); }, 2000);
   }
 
   function showCat() {
@@ -138,10 +159,11 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
     bubble = document.createElement('div');
     bubble.className = 'bubble';
     catImg = document.createElement('img');
-    catImg.src = cfg.cat;
+    pose = 'sit';
+    catImg.src = cfg.cat.sit;
     el.appendChild(bubble);
     el.appendChild(catImg);
-    el.addEventListener('click', function () { post({ type: 'catTap' }); });
+    el.addEventListener('click', function () { cheer(); post({ type: 'catTap' }); });
     cat = new kakao.maps.CustomOverlay({ content: el, position: latLng(catAt), map: map, yAnchor: 1, zIndex: 5, clickable: true });
     setTimeout(wander, 1500);
   }
@@ -167,6 +189,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
       else if (m.type === 'panTo') map.panTo(latLng(m));
       else if (m.type === 'setFog') setFog(m.cells);
       else if (m.type === 'catSay') catSay(m.text);
+      else if (m.type === 'setCat') { cfg.cat = m.poses; setPose(pose); }
     };
     post({ type: 'ready' });
   }

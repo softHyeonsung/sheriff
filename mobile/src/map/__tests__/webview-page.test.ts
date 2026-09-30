@@ -42,7 +42,7 @@ function boot() {
     },
   };
   const window: any = { ReactNativeWebView: { postMessage: (s: string) => posted.push(JSON.parse(s)) } };
-  const html = buildMapHtml({ jsKey: 'k', markers, center: { lat: 37.5, lng: 126.9 }, cat: 'CAT', fogColor: '#CFC8BA', wish: { uri: 'data:image/svg+xml,WISH', size: 36 } });
+  const html = buildMapHtml({ jsKey: 'k', markers, center: { lat: 37.5, lng: 126.9 }, cat: { sit: 'CAT', walk: 'W', lie: 'L', happy: 'H', look: 'K' }, fogColor: '#CFC8BA', wish: { uri: 'data:image/svg+xml,WISH', size: 36 } });
   const body = html.slice(html.indexOf('<script>') + '<script>'.length, html.lastIndexOf('</script>'));
   // eslint-disable-next-line no-new-func
   new Function('window', 'document', 'kakao', 'requestAnimationFrame', body)(window, document, kakao, (f: () => void) => setTimeout(f, 16));
