@@ -40,7 +40,7 @@ test('시작 → 후보 고르기 → 발자국 → 축하', async () => {
   expect(h.current.state).toEqual({ name: 'choosing', fix, hereAddress: '서울 1', candidates: [cand], offline: false, busy: false, error: null });
   await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1' }));
   expect(submit).toHaveBeenCalledWith(fix, { kind: 'new', roadAddress: '서울 1' });
-  expect(h.current.state).toEqual({ name: 'celebrating', result });
+  expect(h.current.state).toEqual({ name: 'celebrating', result, fix });
   await act(async () => h.current.close());
   expect(h.current.state).toEqual({ name: 'idle' });
 });
@@ -164,7 +164,7 @@ test('발자국을 남기면 그곳 도착 알림 예약을 취소한다(실패�
   await act(async () => h.current.start());
   await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1' }));
   expect(cancelArrivalAlert).toHaveBeenCalledWith('a1');
-  expect(h.current.state).toEqual({ name: 'celebrating', result });
+  expect(h.current.state).toEqual({ name: 'celebrating', result, fix });
 });
 
 const mine = { kind: 'mine' as const, aidutId: 'a1', name: '단골 카페', grade: 'box' as const, distanceM: 20 };
@@ -218,7 +218,7 @@ test('오프라인 후보였어도 고를 때 연결돼 있으면 바로 보낸�
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
   expect(submit).toHaveBeenCalledWith(fix, { kind: 'mine', aidutId: 'a1' });
   expect(enqueueCheckin).not.toHaveBeenCalled();
-  expect(h.current.state).toEqual({ name: 'celebrating', result });
+  expect(h.current.state).toEqual({ name: 'celebrating', result, fix });
 });
 
 test('내 아지트를 챙기면 그곳 도착 알림 예약도 거둔다', async () => {

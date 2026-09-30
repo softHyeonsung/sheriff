@@ -28,7 +28,7 @@ export type CheckinState =
   | { name: 'idle' }
   | { name: 'locating' }
   | Choosing
-  | { name: 'celebrating'; result: CheckinResult }
+  | { name: 'celebrating'; result: CheckinResult; fix: Fix }
   | { name: 'failed'; message: string; needsSettings: boolean }
   | { name: 'queued' };
 
@@ -37,7 +37,7 @@ const ATTEMPTS = 2; // weak GPS gets one automatic retry before we ask the user
 // offer a retry instead of leaving the user on "위치를 확인하고 있어요…" forever.
 export const LOCATE_TIMEOUT_MS = 15000;
 
-function within<T>(p: Promise<T>, ms: number): Promise<T> {
+export function within<T>(p: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new CheckinError('unknown')), ms);
@@ -133,7 +133,7 @@ export function useCheckin() {
         // 이미 남겼으니 곧 울릴 "발자국 남길까요?" 알림은 거둔다.
         cancelArrivalAlert(result.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
         sheet.current = null;
-        setState({ name: 'celebrating', result });
+        setState({ name: 'celebrating', result, fix });
       } catch (e) {
         if (!(e instanceof CheckinError && e.code === 'offline')) throw e;
         await keep(); // 보내다 끊겼다: 고른 발자국을 잃지 않게

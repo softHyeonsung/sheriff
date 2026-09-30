@@ -83,6 +83,7 @@ export default function MapScreen() {
   const centeredOn = useRef<'none' | 'hideout' | 'me'>('none');
   const [arrivalOffer, setArrivalOffer] = useState(false);
   const celebrated = checkin.state.name === 'celebrating' ? checkin.state.result : null;
+  const celebratedFix = checkin.state.name === 'celebrating' ? checkin.state.fix : null;
   // 직접 남긴 발자국이 먼저. 올라간 발자국 축하는 체크인이 쉬고 있을 때 차례로.
   const synced = !celebrated && checkin.state.name === 'idle' ? (queue.celebrations[0] ?? null) : null;
   const shown = celebrated ?? synced;
@@ -261,6 +262,7 @@ export default function MapScreen() {
       {shown && (
         <Celebration
           result={shown}
+          memory={celebrated && celebratedFix ? { aidutId: celebrated.aidutId, fix: celebratedFix } : undefined}
           thresholds={thresholds}
           onClose={() => {
             if (celebrated) {

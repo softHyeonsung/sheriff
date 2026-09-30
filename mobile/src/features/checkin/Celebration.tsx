@@ -17,7 +17,8 @@ import Animated, {
 import { color, font, radius, space, type } from '@/constants/tokens';
 import type { GradeThresholds } from '@/features/map/useMyHideouts';
 import { markerFor } from '@/map/markers';
-import type { CheckinResult } from './checkinApi';
+import { MemoryButton } from '@/features/memories/MemoryButton';
+import type { CheckinResult, Fix } from './checkinApi';
 import { celebrationCopy, dongStageLine } from './copy';
 
 const PARTICLES = 8;
@@ -34,7 +35,17 @@ function Particle({ index, progress }: { index: number; progress: SharedValue<nu
   return <Animated.View style={[styles.particle, style]} />;
 }
 
-export function Celebration({ result, thresholds, onClose }: { result: CheckinResult; thresholds: GradeThresholds | null; onClose: () => void }) {
+export function Celebration({
+  result,
+  thresholds,
+  onClose,
+  memory,
+}: {
+  result: CheckinResult;
+  thresholds: GradeThresholds | null;
+  onClose: () => void;
+  memory?: { aidutId: string; fix: Fix };
+}) {
   const reduceMotion = useReducedMotion();
   const pop = useSharedValue(reduceMotion ? 1 : 0);
   const burst = useSharedValue(reduceMotion ? 1 : 0);
@@ -67,6 +78,7 @@ export function Celebration({ result, thresholds, onClose }: { result: CheckinRe
           </Text>
           {hint && <Text style={styles.hint}>{hint}</Text>}
           {dongLine && <Text style={styles.hint}>{dongLine}</Text>}
+          {memory && <MemoryButton aidutId={memory.aidutId} getFix={async () => memory.fix} />}
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="좋아요" style={styles.cta}>
             <Text style={styles.ctaText}>좋아요</Text>
           </Pressable>

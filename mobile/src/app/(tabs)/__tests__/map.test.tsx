@@ -356,3 +356,16 @@ test('온라인 상태에서 온 연결 소식으로는 다시 불러오지 않�
   await act(async () => online());
   expect(retry).not.toHaveBeenCalled();
 });
+
+test('직접 남긴 축하에는 순간 남기기(체크인 위치로), 올라간 축하에는 없음', async () => {
+  const fixUsed = { lat: 37.5, lng: 126.9, accuracy: 10 };
+  const result = { aidutId: 'a1', name: '테스트 카페', footprintCount: 2, grade: 'box', gradeChanged: true, newCellsCleared: 0 };
+  checkin({ name: 'celebrating', result, fix: fixUsed });
+  const { unmount } = await render(<MapScreen />);
+  expect(mockCelebrationProps.memory).toEqual({ aidutId: 'a1', fix: fixUsed });
+  await unmount();
+  checkin({ name: 'idle' });
+  (useCheckinQueue as jest.Mock).mockReturnValue(queueState({ celebrations: [result] }));
+  await render(<MapScreen />);
+  expect(mockCelebrationProps.memory).toBeUndefined();
+});
