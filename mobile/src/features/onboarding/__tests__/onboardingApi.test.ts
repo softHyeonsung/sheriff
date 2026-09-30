@@ -12,8 +12,8 @@ const answerOnce = (v: unknown) => rpc.mockImplementationOnce(() => ({ abortSign
 beforeEach(() => jest.clearAllMocks());
 
 test('myOnboarding: 모르는 털색은 null로', async () => {
-  answer({ data: { onboarded: false, catName: '나비', catColor: 'pink', homeDong: null, hasHideout: false }, error: null });
-  await expect(myOnboarding()).resolves.toEqual({ onboarded: false, catName: '나비', catColor: null, homeDong: null, hasHideout: false });
+  answer({ data: { onboarded: false, nickname: '나비집사', catName: '나비', catColor: 'pink', homeDong: null, hasHideout: false }, error: null });
+  await expect(myOnboarding()).resolves.toEqual({ onboarded: false, nickname: '나비집사', catName: '나비', catColor: null, homeDong: null, hasHideout: false });
   expect(rpc).toHaveBeenCalledWith('my_onboarding');
 });
 

@@ -7,6 +7,7 @@ import { MSG } from '@/features/checkin/copy';
 import { CatStep } from '@/features/onboarding/CatStep';
 import { FirstFootprintStep } from '@/features/onboarding/FirstFootprintStep';
 import { HomeDongStep } from '@/features/onboarding/HomeDongStep';
+import { NicknameStep } from '@/features/onboarding/NicknameStep';
 import { completeOnboarding } from '@/features/onboarding/onboardingApi';
 import { PermissionStep } from '@/features/onboarding/PermissionStep';
 import { askLocation, askNotifications, locationAsked, notificationsAsked } from '@/features/onboarding/permissions';
@@ -34,7 +35,7 @@ export default function Onboarding() {
     Promise.all([locationAsked(), notificationsAsked()])
       .catch(() => [false, false])
       .then(([l, n]) =>
-        setProgress((p) => p ?? { catName: me.catName, homeDong: me.homeDong, hasHideout: me.hasHideout, locationAsked: l, notificationsAsked: n }),
+        setProgress((p) => p ?? { nickname: me.nickname, catName: me.catName, homeDong: me.homeDong, hasHideout: me.hasHideout, locationAsked: l, notificationsAsked: n }),
       );
   }, [me]);
 
@@ -62,6 +63,15 @@ export default function Onboarding() {
   switch (step) {
     case 'welcome':
       return <Welcome onDone={() => advance()} />;
+    case 'nickname':
+      return (
+        <NicknameStep
+          onDone={(nickname) => {
+            setMe({ ...useMeStore.getState().me!, nickname });
+            advance({ nickname });
+          }}
+        />
+      );
     case 'cat':
       return (
         <CatStep

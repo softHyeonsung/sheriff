@@ -5,7 +5,7 @@ import { myOnboarding } from '../onboardingApi';
 import { useMe } from '../useMe';
 
 jest.mock('../onboardingApi', () => ({ myOnboarding: jest.fn() }));
-const me = { onboarded: true, catName: '나비', catColor: 'gray', homeDong: null, hasHideout: true };
+const me = { onboarded: true, nickname: '나비집사', catName: '나비', catColor: 'gray', homeDong: null, hasHideout: true };
 
 beforeEach(() => {
   jest.clearAllMocks();

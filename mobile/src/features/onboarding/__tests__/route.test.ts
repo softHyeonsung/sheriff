@@ -1,7 +1,7 @@
 // mobile/src/features/onboarding/__tests__/route.test.ts
 import { routeFor } from '../route';
 
-const me = (onboarded: boolean) => ({ onboarded, catName: null, catColor: null, homeDong: null, hasHideout: false });
+const me = (onboarded: boolean) => ({ onboarded, nickname: null, catName: null, catColor: null, homeDong: null, hasHideout: false });
 
 test('세션 없으면 로그인', () => {
   expect(routeFor({ hasSession: false, status: 'idle', me: null })).toBe('login');

@@ -1,12 +1,14 @@
 // mobile/src/features/onboarding/steps.ts
 // 온보딩 이어하기 규칙의 전부: 순서 + "이미 한 것" 건너뛰기. 단계 기록은 따로 두지 않는다.
-export type Step = 'welcome' | 'cat' | 'location' | 'notifications' | 'homeDong' | 'tutorial' | 'firstFootprint' | 'done';
-export type Progress = { catName: string | null; homeDong: string | null; hasHideout: boolean; locationAsked: boolean; notificationsAsked: boolean };
+export type Step = 'welcome' | 'nickname' | 'cat' | 'location' | 'notifications' | 'homeDong' | 'tutorial' | 'firstFootprint' | 'done';
+export type Progress = { nickname: string | null; catName: string | null; homeDong: string | null; hasHideout: boolean; locationAsked: boolean; notificationsAsked: boolean };
 
-const ORDER: Step[] = ['welcome', 'cat', 'location', 'notifications', 'homeDong', 'tutorial', 'firstFootprint', 'done'];
+const ORDER: Step[] = ['welcome', 'nickname', 'cat', 'location', 'notifications', 'homeDong', 'tutorial', 'firstFootprint', 'done'];
 
 function alreadyDone(step: Step, p: Progress): boolean {
   switch (step) {
+    case 'nickname':
+      return !!p.nickname;
     case 'cat':
       return !!p.catName;
     case 'location':

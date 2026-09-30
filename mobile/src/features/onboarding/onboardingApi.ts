@@ -26,6 +26,7 @@ export async function myOnboarding(): Promise<Me> {
   return { ...d, catColor: isCatColor(d.catColor) ? d.catColor : null };
 }
 
+export const setNickname = async (name: string) => void (await rpc('set_nickname', { p_name: name }));
 export const saveCat = async (name: string, color: CatColor) => void (await rpc('save_cat', { p_name: name, p_color: color }));
 export const setHomeDong = async (name: string) => void (await rpc('set_home_dong', { p_name: name }));
 export const completeOnboarding = async () => void (await rpc('complete_onboarding'));

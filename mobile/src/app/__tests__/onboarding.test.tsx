@@ -18,13 +18,14 @@ const stub = (id: string) => function Stub(p: any) {
   return <Text testID="step">{id}</Text>;
 };
 jest.mock('@/features/onboarding/Welcome', () => ({ Welcome: (p: any) => stub('welcome')(p) }));
+jest.mock('@/features/onboarding/NicknameStep', () => ({ NicknameStep: (p: any) => stub('nickname')(p) }));
 jest.mock('@/features/onboarding/CatStep', () => ({ CatStep: (p: any) => stub('cat')(p) }));
 jest.mock('@/features/onboarding/PermissionStep', () => ({ PermissionStep: (p: any) => stub(`perm:${p.text.slice(0, 5)}`)(p) }));
 jest.mock('@/features/onboarding/HomeDongStep', () => ({ HomeDongStep: (p: any) => stub('homeDong')(p) }));
 jest.mock('@/features/onboarding/Tutorial', () => ({ Tutorial: (p: any) => stub('tutorial')(p) }));
 jest.mock('@/features/onboarding/FirstFootprintStep', () => ({ FirstFootprintStep: (p: any) => stub('firstFootprint')(p) }));
 
-const fresh = { onboarded: false, catName: null, catColor: null, homeDong: null, hasHideout: false };
+const fresh = { onboarded: false, nickname: null, catName: null, catColor: null, homeDong: null, hasHideout: false };
 const current = () => screen.getByTestId('step').props.children;
 const done = async (...args: unknown[]) => act(async () => mockProps.onDone(...args));
 
@@ -40,6 +41,9 @@ test('처음부터 끝까지 → 완료 저장 → 스토어 onboarded', async (
   await render(<Onboarding />);
   await waitFor(() => expect(current()).toBe('welcome'));
   await done();
+  expect(current()).toBe('nickname');
+  await done('나비집사');
+  expect(useMeStore.getState().me).toMatchObject({ nickname: '나비집사' });
   expect(current()).toBe('cat');
   await done('나비', 'gray');
   expect(useMeStore.getState().me).toMatchObject({ catName: '나비', catColor: 'gray' });
@@ -60,7 +64,7 @@ test('처음부터 끝까지 → 완료 저장 → 스토어 onboarded', async (
 test('이어하기: 기존 계정(고양이·동네·아지트 있음, 권한 물어봄)은 환영 → 튜토리얼 → 끝', async () => {
   (locationAsked as jest.Mock).mockResolvedValue(true);
   (notificationsAsked as jest.Mock).mockResolvedValue(true);
-  useMeStore.setState({ me: { ...fresh, catName: '나비', catColor: 'gray', homeDong: '사직동', hasHideout: true } });
+  useMeStore.setState({ me: { ...fresh, nickname: '나비집사', catName: '나비', catColor: 'gray', homeDong: '사직동', hasHideout: true } });
   await render(<Onboarding />);
   await waitFor(() => expect(current()).toBe('welcome'));
   await done();
@@ -74,7 +78,7 @@ test('완료 저장 실패 → 오류 + 다시 시도', async () => {
   (locationAsked as jest.Mock).mockResolvedValue(true);
   (notificationsAsked as jest.Mock).mockResolvedValue(true);
   (completeOnboarding as jest.Mock).mockRejectedValueOnce(new Error('net')).mockResolvedValueOnce(undefined);
-  useMeStore.setState({ me: { ...fresh, catName: '나비', homeDong: '사직동', hasHideout: true } });
+  useMeStore.setState({ me: { ...fresh, nickname: '나비집사', catName: '나비', homeDong: '사직동', hasHideout: true } });
   await render(<Onboarding />);
   await waitFor(() => expect(current()).toBe('welcome'));
   await done();
@@ -89,7 +93,7 @@ test('완료 저장 중엔 기다림 표시(빈 화면 아님)', async () => {
   (locationAsked as jest.Mock).mockResolvedValue(true);
   (notificationsAsked as jest.Mock).mockResolvedValue(true);
   (completeOnboarding as jest.Mock).mockReturnValue(new Promise(() => {}));
-  useMeStore.setState({ me: { ...fresh, catName: '나비', homeDong: '사직동', hasHideout: true } });
+  useMeStore.setState({ me: { ...fresh, nickname: '나비집사', catName: '나비', homeDong: '사직동', hasHideout: true } });
   await render(<Onboarding />);
   await waitFor(() => expect(current()).toBe('welcome'));
   await done();
