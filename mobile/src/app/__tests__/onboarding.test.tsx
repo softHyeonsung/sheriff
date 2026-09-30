@@ -45,8 +45,8 @@ test('처음부터 끝까지 → 완료 저장 → 스토어 onboarded', async (
   await done('나비집사');
   expect(useMeStore.getState().me).toMatchObject({ nickname: '나비집사' });
   expect(current()).toBe('cat');
-  await done('나비', 'gray');
-  expect(useMeStore.getState().me).toMatchObject({ catName: '나비', catColor: 'gray' });
+  await done('나비', 'mackerel');
+  expect(useMeStore.getState().me).toMatchObject({ catName: '나비', catColor: 'mackerel' });
   expect(current()).toBe('perm:어디를 다');
   await done();
   expect(current()).toBe('perm:도착하면 ');
@@ -64,7 +64,7 @@ test('처음부터 끝까지 → 완료 저장 → 스토어 onboarded', async (
 test('이어하기: 기존 계정(고양이·동네·아지트 있음, 권한 물어봄)은 환영 → 튜토리얼 → 끝', async () => {
   (locationAsked as jest.Mock).mockResolvedValue(true);
   (notificationsAsked as jest.Mock).mockResolvedValue(true);
-  useMeStore.setState({ me: { ...fresh, nickname: '나비집사', catName: '나비', catColor: 'gray', homeDong: '사직동', hasHideout: true } });
+  useMeStore.setState({ me: { ...fresh, nickname: '나비집사', catName: '나비', catColor: 'mackerel', homeDong: '사직동', hasHideout: true } });
   await render(<Onboarding />);
   await waitFor(() => expect(current()).toBe('welcome'));
   await done();

@@ -26,16 +26,16 @@ test('myOnboarding: 오류·행 없음은 throw', async () => {
 
 test('저장 RPC들은 인자를 넘기고 오류면 throw', async () => {
   answer({ data: null, error: null });
-  await saveCat('나비', 'gray');
+  await saveCat('나비', 'mackerel');
   await setHomeDong('서울특별시 종로구 사직동');
   await completeOnboarding();
   expect(rpc.mock.calls).toEqual([
-    ['save_cat', { p_name: '나비', p_color: 'gray' }],
+    ['save_cat', { p_name: '나비', p_color: 'mackerel' }],
     ['set_home_dong', { p_name: '서울특별시 종로구 사직동' }],
     ['complete_onboarding'],
   ]);
   answer({ data: null, error: new Error('invalid_cat') });
-  await expect(saveCat('', 'gray')).rejects.toThrow('invalid_cat');
+  await expect(saveCat('', 'mackerel')).rejects.toThrow('invalid_cat');
 });
 
 test('동네 추정·검색은 이름 목록', async () => {

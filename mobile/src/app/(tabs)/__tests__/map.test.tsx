@@ -281,9 +281,9 @@ test('고양이를 누르면 말풍선을 보낸다(권유 → 인사 번갈아)
 test('지도 고양이는 내 털색, 모르면 치즈', async () => {
   await render(<MapScreen />);
   expect(mockBridgeProps.catColor).toBe('cheese');
-  useMeStore.setState({ me: { onboarded: true, nickname: '나비집사', catName: '나비', catColor: 'gray', homeDong: null, hasHideout: true } });
+  useMeStore.setState({ me: { onboarded: true, nickname: '나비집사', catName: '나비', catColor: 'mackerel', homeDong: null, hasHideout: true } });
   await render(<MapScreen />);
-  expect(mockBridgeProps.catColor).toBe('gray');
+  expect(mockBridgeProps.catColor).toBe('mackerel');
 });
 
 const synced = { aidutId: 'a1', name: '테스트 카페', footprintCount: 2, grade: 'box', gradeChanged: true, newCellsCleared: 0 };

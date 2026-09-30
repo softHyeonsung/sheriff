@@ -16,11 +16,11 @@ test('이름·털색을 저장하고 넘어간다', async () => {
   await render(<CatStep onDone={onDone} />);
   expect(screen.getByText('이 친구, 이름을 지어줄래요? 털색도 골라봐요.')).toBeTruthy();
   await fireEvent.changeText(name(), '  나비 ');
-  await fireEvent.press(screen.getByRole('radio', { name: '까망' }));
-  expect(screen.getByRole('radio', { name: '까망', selected: true })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('radio', { name: '하양' }));
+  expect(screen.getByRole('radio', { name: '하양', selected: true })).toBeTruthy();
   await fireEvent.press(submit());
-  expect(saveCat).toHaveBeenCalledWith('나비', 'black');
-  expect(onDone).toHaveBeenCalledWith('나비', 'black');
+  expect(saveCat).toHaveBeenCalledWith('나비', 'white');
+  expect(onDone).toHaveBeenCalledWith('나비', 'white');
 });
 
 test('공백만이면 비활성 + 안내, 10자 넘어도', async () => {
@@ -51,9 +51,9 @@ test('저장 실패 → 입력 유지 + 오류 + 다시 누를 수 있음', asyn
 test('설정에서는 지금 이름·털색으로 시작하고 버튼 문구가 다르다', async () => {
   (saveCat as jest.Mock).mockResolvedValue(undefined);
   const onDone = jest.fn();
-  await render(<CatStep onDone={onDone} initialName="나비" initialColor="gray" cta="저장할게요" />);
+  await render(<CatStep onDone={onDone} initialName="나비" initialColor="mackerel" cta="저장할게요" />);
   expect(name().props.value).toBe('나비');
-  expect(screen.getByRole('radio', { name: '회색', selected: true })).toBeTruthy();
+  expect(screen.getByRole('radio', { name: '고등어', selected: true })).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '저장할게요' }));
-  expect(onDone).toHaveBeenCalledWith('나비', 'gray');
+  expect(onDone).toHaveBeenCalledWith('나비', 'mackerel');
 });

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { color, font, radius, type } from '@/constants/tokens';
 import { MSG } from '@/features/checkin/copy';
-import { CAT_IMAGES } from '@/map/cat-image.generated';
+import { catArt } from '@/map/catArt';
 import { CAT_COLOR_LABEL, CAT_COLORS, type CatColor } from '@/map/catColors';
 import { saveCat } from './onboardingApi';
 import { PrimaryButton, StepScreen } from './ui';
@@ -50,7 +50,7 @@ export function CatStep({
 
   return (
     <StepScreen onBack={onBack} footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
-      <Image source={{ uri: CAT_IMAGES[coat] }} style={styles.cat} />
+      <Image source={{ uri: catArt(coat, 'sit') }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
         이 친구, 이름을 지어줄래요? 털색도 골라봐요.
       </Text>
@@ -74,7 +74,7 @@ export function CatStep({
             accessibilityLabel={CAT_COLOR_LABEL[c]}
             accessibilityState={{ selected: coat === c }}
             style={[styles.coat, coat === c && styles.coatOn]}>
-            <Image source={{ uri: CAT_IMAGES[c] }} style={styles.coatArt} />
+            <Image source={{ uri: catArt(c, 'sit') }} style={styles.coatArt} />
             <Text style={styles.coatLabel}>{CAT_COLOR_LABEL[c]}</Text>
           </Pressable>
         ))}

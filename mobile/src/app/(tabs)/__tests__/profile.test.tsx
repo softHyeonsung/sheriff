@@ -12,7 +12,7 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/features/auth/useAuthSession', () => ({ useAuthSession: jest.fn() }));
 jest.mock('@/features/profile/useArrivalSwitch', () => ({ useArrivalSwitch: jest.fn() }));
 
-const me = { onboarded: true, nickname: '나비집사', catName: '나비', catColor: 'gray' as const, homeDong: '서울특별시 종로구 사직동', hasHideout: true };
+const me = { onboarded: true, nickname: '나비집사', catName: '나비', catColor: 'mackerel' as const, homeDong: '서울특별시 종로구 사직동', hasHideout: true };
 type AlertButton = { text: string; onPress?: () => void | Promise<void> };
 const alertButton = async (label: string) => {
   const buttons = (Alert.alert as jest.Mock).mock.calls.at(-1)![2] as AlertButton[];

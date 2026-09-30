@@ -8,7 +8,7 @@ import { color, font, radius, space, type } from '@/constants/tokens';
 import { TERMS_LINKS } from '@/constants/terms';
 import { useAuthSession } from '@/features/auth/useAuthSession';
 import { useArrivalSwitch } from '@/features/profile/useArrivalSwitch';
-import { CAT_IMAGES } from '@/map/cat-image.generated';
+import { catArt } from '@/map/catArt';
 import { CAT_COLOR_LABEL } from '@/map/catColors';
 import { useMeStore } from '@/stores/meStore';
 
@@ -80,7 +80,7 @@ export default function ProfileScreen() {
 
         <Section title="내 고양이">
           <View style={styles.row}>
-            <Image source={{ uri: CAT_IMAGES[catColor] }} style={styles.cat} />
+            <Image source={{ uri: catArt(catColor, 'sit') }} style={styles.cat} />
             <View style={styles.grow}>
               <Text style={styles.body}>{me?.catName ?? ''}</Text>
               <Text style={styles.caption}>{CAT_COLOR_LABEL[catColor]}</Text>

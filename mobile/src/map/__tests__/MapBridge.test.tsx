@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- loosely typed test doubles for native components */
 import { createRef } from 'react';
 import { act, render } from '@testing-library/react-native';
-import { CAT_IMAGES } from '../cat-image.generated';
+import { catArt } from '../catArt';
 import { MapBridge, type MapBridgeHandle } from '../MapBridge';
 
 const mockInject = jest.fn();
@@ -144,10 +144,10 @@ test('걷힌 칸을 아직 못 불러왔으면(null) 안개를 보내지 않는�
 });
 
 test('고른 털색의 고양이 그림을 싣는다', async () => {
-  await render(<MapBridge {...base} catColor="black" />);
+  await render(<MapBridge {...base} catColor="white" />);
   // PNG 머리는 셋 다 같으니 끝부분으로 구분
-  expect(mockWebProps.source.html).toContain(CAT_IMAGES.black.slice(-80));
-  expect(mockWebProps.source.html).not.toContain(CAT_IMAGES.cheese.slice(-80));
+  expect(mockWebProps.source.html).toContain(catArt('white', 'sit').slice(-80));
+  expect(mockWebProps.source.html).not.toContain(catArt('cheese', 'sit').slice(-80));
 });
 
 test('찜 핀을 보내고, wishTap을 넘긴다', async () => {

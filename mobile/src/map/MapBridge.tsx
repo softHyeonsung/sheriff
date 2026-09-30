@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { color } from '@/constants/tokens';
-import { CAT_IMAGES } from './cat-image.generated';
+import { catArt } from './catArt';
 import type { CatColor } from './catColors';
 import { GRADES } from './grades';
 import { markerFor, WISH_MARKER } from './markers';
@@ -40,7 +40,7 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   const [initialCenter] = useState(center);
   const [initialCat] = useState(catColor); // the page is built once — the coat is chosen in onboarding, before the map
   const html = useMemo(
-    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: CAT_IMAGES[initialCat], fogColor: color.fog, wish: WISH_MARKER }),
+    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: catArt(initialCat, 'sit'), fogColor: color.fog, wish: WISH_MARKER }),
     [jsKey, initialCenter, initialCat],
   );
 

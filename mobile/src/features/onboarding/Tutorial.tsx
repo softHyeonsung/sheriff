@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Image, StyleSheet, Text } from 'react-native';
 import { color, type } from '@/constants/tokens';
-import { CAT_IMAGES } from '@/map/cat-image.generated';
+import { catArt } from '@/map/catArt';
 import { markerFor } from '@/map/markers';
 import { PrimaryButton, StepScreen } from './ui';
 
@@ -10,7 +10,7 @@ import { PrimaryButton, StepScreen } from './ui';
 const CUTS = [
   { text: '다녀온 곳에 발자국을 남기고', art: markerFor('paw').uri },
   { text: '발자국이 쌓이면 아지트가 자라요', art: markerFor('hut').uri },
-  { text: '안개가 걷히면 제가 뛰어놀 곳이 넓어져요.', art: CAT_IMAGES.cheese },
+  { text: '안개가 걷히면 제가 뛰어놀 곳이 넓어져요.', art: catArt('cheese', 'sit') },
 ];
 
 export function Tutorial({ onDone }: { onDone: () => void }) {
