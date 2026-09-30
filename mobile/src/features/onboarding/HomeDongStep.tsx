@@ -19,7 +19,7 @@ function within<T>(p: Promise<T>, ms: number): Promise<T> {
 
 type Mode = { name: 'guessing' } | { name: 'confirm'; dong: string } | { name: 'search' };
 
-export function HomeDongStep({ onDone }: { onDone: (name: string) => void }) {
+export function HomeDongStep({ onDone, onBack }: { onDone: (name: string) => void; onBack?: () => void }) {
   const [mode, setMode] = useState<Mode>({ name: 'guessing' });
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<string[] | null>(null);
@@ -78,7 +78,7 @@ export function HomeDongStep({ onDone }: { onDone: (name: string) => void }) {
 
   if (mode.name === 'guessing') {
     return (
-      <StepScreen>
+      <StepScreen onBack={onBack}>
         <ActivityIndicator color={color.primary} />
       </StepScreen>
     );
@@ -87,6 +87,7 @@ export function HomeDongStep({ onDone }: { onDone: (name: string) => void }) {
   if (mode.name === 'confirm') {
     return (
       <StepScreen
+        onBack={onBack}
         footer={
           <>
             <PrimaryButton label="맞아요" onPress={() => save(mode.dong)} disabled={busy} />
@@ -103,7 +104,7 @@ export function HomeDongStep({ onDone }: { onDone: (name: string) => void }) {
   }
 
   return (
-    <StepScreen>
+    <StepScreen onBack={onBack}>
       <Text style={styles.title} accessibilityRole="header">
         우리 동네 이름을 알려주세요
       </Text>

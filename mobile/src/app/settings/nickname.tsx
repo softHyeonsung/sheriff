@@ -9,6 +9,7 @@ export default function NicknameSettings() {
   const setMe = useMeStore((s) => s.setMe);
   return (
     <NicknameStep
+      onBack={() => router.back()}
       initial={me?.nickname ?? undefined}
       cta="저장할게요"
       onDone={(nickname) => {

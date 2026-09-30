@@ -70,3 +70,12 @@ test('설정에서는 지금 닉네임으로 시작하고 버튼 문구가 다�
   expect(input().props.value).toBe('나비집사');
   expect(save('저장할게요')).toBeTruthy();
 });
+
+test('onBack이 있으면 돌아가기 버튼(설정 화면용), 없으면 없음(온보딩은 앞으로만)', async () => {
+  const onBack = jest.fn();
+  const { rerender } = await render(<NicknameStep onDone={jest.fn()} />);
+  expect(screen.queryByRole('button', { name: '돌아가기' })).toBeNull();
+  await rerender(<NicknameStep onDone={jest.fn()} onBack={onBack} />);
+  await fireEvent.press(screen.getByRole('button', { name: '돌아가기' }));
+  expect(onBack).toHaveBeenCalled();
+});

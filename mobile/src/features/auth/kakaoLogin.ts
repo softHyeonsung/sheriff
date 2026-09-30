@@ -9,9 +9,14 @@ let initialized: Promise<void> | undefined;
 
 // Opens KakaoTalk (or Kakao account web login when KakaoTalk isn't installed) and resolves
 // with a Kakao access token.
-export async function loginWithKakao(): Promise<string> {
+// SDK는 쓸 때 한 번만 준비한다(로그인·연결 끊기 모두 준비된 SDK가 필요).
+export async function ensureKakao(): Promise<void> {
   initialized ??= initializeKakaoSDK(process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY ?? '');
   await initialized;
+}
+
+export async function loginWithKakao(): Promise<string> {
+  await ensureKakao();
   const token = await login();
   return token.accessToken;
 }

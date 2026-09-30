@@ -13,9 +13,9 @@ export const NICKNAME_MSG = {
   taken: '다른 집사가 쓰고 있어요. 다른 이름은 어때요?',
 };
 
-type Props = { onDone: (name: string) => void; initial?: string; cta?: string };
+type Props = { onDone: (name: string) => void; initial?: string; cta?: string; onBack?: () => void };
 
-export function NicknameStep({ onDone, initial, cta = '이걸로 할게요' }: Props) {
+export function NicknameStep({ onDone, initial, cta = '이걸로 할게요', onBack }: Props) {
   const [name, setName] = useState(() => initial ?? randomNickname());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export function NicknameStep({ onDone, initial, cta = '이걸로 할게요' }: P
   };
 
   return (
-    <StepScreen footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
+    <StepScreen onBack={onBack} footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
       <Text style={styles.title} accessibilityRole="header">
         뭐라고 불러드릴까요?
       </Text>

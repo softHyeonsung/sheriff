@@ -2,6 +2,7 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { unlink } from '@react-native-kakao/user';
 import { deleteAccount as deleteOnServer } from '@/features/profile/profileApi';
+import { ensureKakao } from '../kakaoLogin';
 import { supabase } from '@/services/supabase';
 import { clearLocalData } from '../clearLocalData';
 import { useAuthSession } from '../useAuthSession';
@@ -18,6 +19,7 @@ jest.mock('@/services/supabase', () => ({
 jest.mock('../clearLocalData', () => ({ clearLocalData: jest.fn(() => Promise.resolve()) }));
 jest.mock('@/features/profile/profileApi', () => ({ deleteAccount: jest.fn() }));
 jest.mock('@react-native-kakao/user', () => ({ unlink: jest.fn() }));
+jest.mock('../kakaoLogin', () => ({ ensureKakao: jest.fn(() => Promise.resolve()) }));
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -48,4 +50,13 @@ test('탈퇴: 서버가 실패하면 아무것도 안 지우고 던진다', asyn
   await expect(act(async () => result.current.deleteAccount())).rejects.toThrow('500');
   expect(clearLocalData).not.toHaveBeenCalled();
   expect(supabase.auth.signOut).not.toHaveBeenCalled();
+});
+
+test('탈퇴: 카카오 SDK를 먼저 준비하고 연결을 끊는다(로그인한 날과 다른 날이어도)', async () => {
+  (deleteOnServer as jest.Mock).mockResolvedValue(undefined);
+  (unlink as jest.Mock).mockResolvedValue(undefined);
+  const { result } = await renderHook(() => useAuthSession());
+  await act(async () => result.current.deleteAccount());
+  expect(ensureKakao).toHaveBeenCalled();
+  expect((ensureKakao as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan((unlink as jest.Mock).mock.invocationCallOrder[0]);
 });

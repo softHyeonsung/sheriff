@@ -8,6 +8,7 @@ export default function HomeSettings() {
   const setMe = useMeStore((s) => s.setMe);
   return (
     <HomeDongStep
+      onBack={() => router.back()}
       onDone={(homeDong) => {
         const cur = useMeStore.getState().me;
         if (cur) setMe({ ...cur, homeDong });

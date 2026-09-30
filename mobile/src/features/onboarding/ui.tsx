@@ -5,9 +5,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { color, font, radius, space } from '@/constants/tokens';
 
-export function StepScreen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+// onBack: 설정에서 다시 쓸 때만(온보딩은 앞으로만). 저장하지 않고 나가는 길.
+export function StepScreen({ children, footer, onBack }: { children: ReactNode; footer?: ReactNode; onBack?: () => void }) {
   return (
     <SafeAreaView style={styles.screen}>
+      {onBack && (
+        <View style={styles.back}>
+          <TextButton label="돌아가기" onPress={onBack} />
+        </View>
+      )}
       <View style={styles.body}>{children}</View>
       {footer && <View style={styles.footer}>{footer}</View>}
     </SafeAreaView>
@@ -37,6 +43,7 @@ export function TextButton({ label, onPress }: { label: string; onPress: () => v
 }
 
 const styles = StyleSheet.create({
+  back: { alignItems: 'flex-start', paddingHorizontal: space.gutter },
   screen: { flex: 1, backgroundColor: color.surface },
   body: { flex: 1, paddingHorizontal: space.gutter, alignItems: 'center', justifyContent: 'center', gap: 16 },
   footer: { paddingHorizontal: space.gutter, paddingBottom: space.section, gap: 8 },

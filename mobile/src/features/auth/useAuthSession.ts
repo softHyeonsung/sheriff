@@ -4,6 +4,7 @@ import { unlink } from '@react-native-kakao/user';
 import { deleteAccount as deleteOnServer } from '@/features/profile/profileApi';
 import { supabase } from '@/services/supabase';
 import { clearLocalData } from './clearLocalData';
+import { ensureKakao } from './kakaoLogin';
 import { useAuthStore } from '@/stores/authStore';
 
 export function useAuthSession() {
@@ -33,7 +34,10 @@ export function useAuthSession() {
   const deleteAccount = async () => {
     await deleteOnServer();
     await clearLocalData().catch((e) => console.warn('탈퇴 후 폰 정리 실패', e));
-    await unlink().catch((e) => console.warn('카카오 연결 끊기 실패', e));
+    // 로그인한 날과 다른 날 탈퇴하면 SDK가 아직 준비 전이다: 먼저 준비하고 끊는다.
+    await ensureKakao()
+      .then(() => unlink())
+      .catch((e) => console.warn('카카오 연결 끊기 실패', e));
     await supabase.auth.signOut({ scope: 'local' }).catch((e) => console.warn('로그아웃 실패', e));
     setSession(null);
   };

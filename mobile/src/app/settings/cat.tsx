@@ -9,6 +9,7 @@ export default function CatSettings() {
   const setMe = useMeStore((s) => s.setMe);
   return (
     <CatStep
+      onBack={() => router.back()}
       initialName={me?.catName ?? ''}
       initialColor={me?.catColor ?? 'cheese'}
       cta="저장할게요"

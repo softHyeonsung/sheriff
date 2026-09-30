@@ -19,11 +19,13 @@ export function CatStep({
   initialName = '',
   initialColor = 'cheese',
   cta = '이 친구로 할게요',
+  onBack,
 }: {
   onDone: (name: string, color: CatColor) => void;
   initialName?: string;
   initialColor?: CatColor;
   cta?: string;
+  onBack?: () => void;
 }) {
   const [name, setName] = useState(initialName);
   const [coat, setCoat] = useState<CatColor>(initialColor);
@@ -47,7 +49,7 @@ export function CatStep({
   };
 
   return (
-    <StepScreen footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
+    <StepScreen onBack={onBack} footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
       <Image source={{ uri: CAT_IMAGES[coat] }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
         이 친구, 이름을 지어줄래요? 털색도 골라봐요.

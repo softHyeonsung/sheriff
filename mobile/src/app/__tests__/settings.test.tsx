@@ -48,3 +48,14 @@ test('동네: 저장하면 스토어·뒤로', async () => {
   expect(useMeStore.getState().me?.homeDong).toBe('서울특별시 종로구 사직동');
   expect(router.back).toHaveBeenCalled();
 });
+
+test('세 화면 모두 저장하지 않고 돌아갈 수 있다(실수로 들어와도 동네가 바뀌지 않게)', async () => {
+  for (const Screen of [NicknameSettings, CatSettings, HomeSettings]) {
+    (router.back as jest.Mock).mockClear();
+    const { unmount } = await render(<Screen />);
+    await act(async () => mockProps.onBack());
+    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(useMeStore.getState().me).toEqual(me);
+    await unmount();
+  }
+});
