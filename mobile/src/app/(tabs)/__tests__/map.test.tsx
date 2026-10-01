@@ -510,3 +510,29 @@ test('아지트 카드가 떠 있는 동안 코스 카드는 숨고, 코스 핀�
   expect(screen.queryByText('고양이가 가보고 싶대요')).toBeNull();
   expect(mockBridgeProps.course).not.toBeNull();
 });
+
+test('코스가 떠 있어도 발자국 안내가 가려지지 않는다(체크인 중엔 코스 카드를 숨긴다)', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf());
+  const { rerender } = await render(<MapScreen />);
+  await walk();
+  await screen.findByText('고양이가 가보고 싶대요');
+  (useCheckin as jest.Mock).mockReturnValue({ state: { name: 'locating' }, start: jest.fn(), choose: jest.fn(), close: jest.fn() });
+  await rerender(<MapScreen />);
+  expect(screen.getByText('잠깐, 위치를 확인하고 있어요…')).toBeTruthy();
+  expect(screen.queryByText('고양이가 가보고 싶대요')).toBeNull();
+  expect(mockBridgeProps.course).not.toBeNull(); // 핀은 남는다
+  (useCheckin as jest.Mock).mockReturnValue({ state: { name: 'idle' }, start: jest.fn(), choose: jest.fn(), close: jest.fn() });
+  await rerender(<MapScreen />);
+  expect(screen.getByText('고양이가 가보고 싶대요')).toBeTruthy();
+});
+
+test('찜 화면에서 찾기는 괄호를 뗀 이름으로 연다', async () => {
+  const long = { ...stopA, name: '세종로공원(광화문광장 옆 작은 공원)' };
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf({ stops: [long] }));
+  (findKakaoPlace as jest.Mock).mockResolvedValue(null);
+  await render(<MapScreen />);
+  await walk();
+  await fireEvent.press(await screen.findByRole('button', { name: `${long.name} ⭐ 찜` }));
+  await fireEvent.press(await screen.findByRole('button', { name: /찜 화면에서 찾기$/ }));
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/wishlist', params: { shared: '세종로공원' } });
+});

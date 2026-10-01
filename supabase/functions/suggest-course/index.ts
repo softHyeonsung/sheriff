@@ -79,7 +79,8 @@ export async function tourNearby(
   if (!res.ok) throw new Error(`tourapi ${res.status}`);
   const r = (await res.json()).response; // 키 오류 등은 JSON이 아닌 글로 온다 → 여기서 던진다
   if (r?.header?.resultCode !== '0000') throw new Error(`tourapi ${r?.header?.resultCode}`);
-  const items = (r.body?.items?.item ?? []) as TourItem[]; // 0건이면 items가 ""
+  // 0건이면 items가 "", 한 건이면 item이 배열이 아닐 수 있다.
+  const items = ([] as TourItem[]).concat(r.body?.items?.item ?? []);
   return items
     .filter((i) => i.title && i.mapx && i.mapy)
     .map((i) => ({ name: i.title.slice(0, 60), address: i.addr1 || null, lat: Number(i.mapy), lng: Number(i.mapx) }))
@@ -126,7 +127,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const [candidates, mine] = await Promise.all([deps.candidates(at), deps.hideouts(req)]);
     stops = pickStops(at, candidates, mine);
   } catch (e) {
-    console.error('코스 후보 실패', e);
+    // fetch 오류 글에는 요청 주소(= TourAPI 키)가 들어 있을 수 있다: 가리고 남긴다.
+    console.error('코스 후보 실패', String(e).replace(/serviceKey=[^&)\s]+/g, 'serviceKey=***'));
     return json({ error: 'course_failed' }, 502);
   }
   if (stops.length === 0) return json({ stops, route: null, distanceM: null, routeLimited: false }, 200);
@@ -138,7 +140,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (await deps.useCall(req)) found = await deps.directions([at, ...stops]);
     else routeLimited = true;
   } catch (e) {
-    console.error('코스 길찾기 실패', e);
+    console.error('코스 길찾기 실패', String(e));
   }
   return json({ stops, route: found?.route ?? null, distanceM: found?.distanceM ?? null, routeLimited }, 200);
 }

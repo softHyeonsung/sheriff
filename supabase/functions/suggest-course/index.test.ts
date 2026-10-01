@@ -124,3 +124,24 @@ Deno.test('handle: TourAPI·아지트 조회 실패는 502', async () => {
   assertEquals((await handle(req(me), deps({ candidates: () => Promise.reject(new Error('tourapi 500')) }))).status, 502);
   assertEquals((await handle(req(me), deps({ hideouts: () => Promise.reject(new Error('db')) }))).status, 502);
 });
+
+Deno.test('tourNearby: 결과가 하나라 item이 배열이 아니어도 읽는다', async () => {
+  const one = { response: { header: { resultCode: '0000' }, body: { items: { item: { title: '세종로공원', addr1: '', mapx: '126.9759', mapy: '37.5734' } } } } };
+  const fake = (() => Promise.resolve(new Response(JSON.stringify(one)))) as unknown as typeof fetch;
+  assertEquals(await tourNearby(me, fake, 'K'), [{ name: '세종로공원', address: null, lat: 37.5734, lng: 126.9759 }]);
+});
+
+Deno.test('handle: 오류 기록에 TourAPI 키가 남지 않는다', async () => {
+  const logged: string[] = [];
+  const orig = console.error;
+  console.error = (...a: unknown[]) => { logged.push(a.map(String).join(' ')); };
+  try {
+    const leaky = new TypeError('error sending request for url (https://apis.data.go.kr/x?serviceKey=SECRETKEY&MobileOS=ETC)');
+    assertEquals((await handle(req(me), deps({ candidates: () => Promise.reject(leaky) }))).status, 502);
+  } finally {
+    console.error = orig;
+  }
+  assertEquals(logged.length, 1);
+  assertEquals(logged[0].includes('SECRETKEY'), false);
+  assertEquals(logged[0].includes('serviceKey=***'), true);
+});

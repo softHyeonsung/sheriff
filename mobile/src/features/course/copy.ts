@@ -13,6 +13,12 @@ export const COURSE = {
   source: '장소 정보: 한국관광공사',
 };
 
+// 관광공사 이름을 카카오 검색어로: "이름(부연)" → "이름"(맨 앞 괄호는 그대로), 검색 한도 40자까지.
+export function bareName(name: string): string {
+  const bare = name.replace(/(?!^)\s*[([].*$/, '').trim();
+  return (bare || name).slice(0, 40);
+}
+
 export function fmtM(m: number): string {
   const r = Math.max(10, Math.round(m / 10) * 10);
   return r < 1000 ? `약 ${r}m` : `약 ${(r / 1000).toFixed(1)}km`;

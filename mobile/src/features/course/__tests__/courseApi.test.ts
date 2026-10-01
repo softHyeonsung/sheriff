@@ -1,7 +1,7 @@
 // mobile/src/features/course/__tests__/courseApi.test.ts
 import { searchPlaces } from '@/features/wishlist/wishlistApi';
 import { supabase } from '@/services/supabase';
-import { fmtM } from '../copy';
+import { bareName, fmtM } from '../copy';
 import { findKakaoPlace, suggestCourse } from '../courseApi';
 
 jest.mock('@/services/supabase', () => ({ supabase: { functions: { invoke: jest.fn() } } }));
@@ -50,4 +50,19 @@ test('fmtM: 10m 단위, 1km부터 km', () => {
   expect(fmtM(3)).toBe('약 10m');
   expect(fmtM(999)).toBe('약 1.0km');
   expect(fmtM(2680)).toBe('약 2.7km');
+});
+
+test('findKakaoPlace: 200m 안에 이름이 같은 곳이 있으면 더 가까운 다른 곳보다 그곳', async () => {
+  const lot = { ...place(30), placeId: '7', name: '세종로공원 주차장' };
+  const park = { ...place(120), placeId: '8', name: '세종로공원' };
+  search.mockResolvedValueOnce([lot, park]);
+  expect(await findKakaoPlace(stop)).toEqual(park);
+  search.mockResolvedValueOnce([lot, { ...park, distanceM: 300 }]);
+  expect(await findKakaoPlace(stop)).toEqual(lot); // 같은 이름이 200m 밖이면 가까운 첫 결과
+});
+
+test('bareName: 괄호 앞까지, 40자까지', () => {
+  expect(bareName('K-컬처 스크린(대한민국역사박물관)')).toBe('K-컬처 스크린');
+  expect(bareName('가'.repeat(60))).toBe('가'.repeat(40));
+  expect(bareName('(구)서울역사')).toBe('(구)서울역사');
 });

@@ -13,7 +13,7 @@ import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { MSG } from '@/features/checkin/copy';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
-import { COURSE } from '@/features/course/copy';
+import { bareName, COURSE } from '@/features/course/copy';
 import { CourseCard } from '@/features/course/CourseCard';
 import { type Course, findKakaoPlace, suggestCourse } from '@/features/course/courseApi';
 import { useWishes } from '@/features/wishlist/useWishes';
@@ -372,7 +372,8 @@ export default function MapScreen() {
         </View>
       )}
 
-      {(courseBusy || courseNote) && (
+      {/* 발자국 안내와 같은 자리라, 체크인이 진행 중이면 코스 쪽을 잠깐 숨긴다(핀은 남는다). */}
+      {checkin.state.name === 'idle' && (courseBusy || courseNote) && (
         <View style={styles.checkinNote}>
           <Text style={styles.bannerText}>{courseBusy ? COURSE.finding : courseNote}</Text>
           <View style={styles.row}>
@@ -380,7 +381,7 @@ export default function MapScreen() {
           </View>
         </View>
       )}
-      {course && !selected && !selectedWish && (
+      {course && checkin.state.name === 'idle' && !selected && !selectedWish && (
         <CourseCard
           key={courseKey}
           catName={catName}
@@ -391,7 +392,7 @@ export default function MapScreen() {
             await wishList.add(place);
             return true;
           }}
-          onFind={(stop) => router.push({ pathname: '/wishlist', params: { shared: stop.name } })}
+          onFind={(stop) => router.push({ pathname: '/wishlist', params: { shared: bareName(stop.name) } })}
           onClose={closeCourse}
         />
       )}
