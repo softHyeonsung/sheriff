@@ -88,6 +88,17 @@ select is(
   (select array_agg(place_id || ':' || name || ':' || visits) from public.my_places((select id from public.aidut where kakao_place_id = '111'))),
   array['222:2층 카페 리뉴얼:2', '111:1층 편의점:2'], 'my_places: 장소별 횟수, 같으면 최근 순, 이름은 최근 것');
 
+-- 5b) 주소를 못 받은 "새로 만들기"(오프라인 등)가 기존 아지트로 합쳐지면 그 아지트의 원래 장소로 센다
+reset role;
+select pg_temp.age_checkins();
+set local role authenticated;
+select is(
+  (public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","roadAddress":null}') ->> 'footprintCount'),
+  '5', '주소 없는 새로 만들기가 기존 아지트로 합쳐진다');
+select is(
+  (select array_agg(place_id || ':' || name || ':' || visits) from public.my_places((select id from public.aidut where kakao_place_id = '111'))),
+  array['111:1층 편의점:3', '222:2층 카페 리뉴얼:2'], '같은 이름이 두 줄로 갈라지지 않는다');
+
 -- 6) 새로 만들기 → 번호 없이 주소 이름
 select is(
   (public.submit_checkin(37.6, 126.94, 10, '{"kind":"new","roadAddress":"서울 새길 1"}') ->> 'footprintCount'),
@@ -108,11 +119,17 @@ select is((select count(*)::int from public.my_places('01d01d01-0000-0000-0000-0
 
 -- 8) 남의 아지트
 reset role;
+-- b는 a의 아지트를 못 읽는다: id는 postgres일 때 챙겨 둔다(null로 부르면 검사가 헛돈다).
+select set_config('test.aidut', (select id::text from public.aidut where kakao_place_id = '111'), true);
 select pg_temp.as_user('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 set local role authenticated;
+select isnt(current_setting('test.aidut'), '', 'a의 아지트 id를 들고 있다');
 select is(
-  (select count(*)::int from public.my_places((select id from public.aidut where kakao_place_id = '111'))),
+  (select count(*)::int from public.my_places(current_setting('test.aidut')::uuid)),
   0, '남의 아지트의 간 곳은 안 보인다');
+select is(
+  (select count(*)::int from public.my_memories(current_setting('test.aidut')::uuid)),
+  0, '남의 아지트의 사진도 안 보인다');
 
 reset role;
 select * from finish();

@@ -101,6 +101,10 @@ begin
     v_place_id := v_aidut.kakao_place_id;
     v_place_name := v_aidut.name;
   else
+    -- 새로 만들기: 주소도 못 받았으면(오프라인 등) 이름이 아지트 이름이 되니 번호도 아지트 것으로 — 한 장소가 두 줄로 갈라지지 않게.
+    if v_name is null then
+      v_place_id := v_aidut.kakao_place_id;
+    end if;
     v_place_name := coalesce(v_name, v_aidut.name);
   end if;
   insert into public.checkins (user_id, aidut_id, coord, place_id, place_name)
