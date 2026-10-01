@@ -47,14 +47,14 @@ update public.checkins set created_at = created_at - interval '7 hours';
 set local role authenticated;
 select is(
   public.submit_checkin(37.50009, 126.94, 10,
-    '{"kind":"kakao","placeId":"k1","name":"테스트 카페","lat":37.50009,"lng":126.94,"roadAddress":"서울 테스트로 1"}')
+    '{"kind":"kakao","placeId":"901","name":"테스트 카페","lat":37.50009,"lng":126.94,"roadAddress":"서울 테스트로 1"}')
     ->> 'footprintCount',
   '3', '15m 안의 카카오 후보는 기존 아지트에 합쳐진다');
 select is((select count(*)::int from public.aidut), 2, '합쳐졌으니 아지트는 여전히 2개');
 
 -- 거절들
 select throws_ok(
-  $$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"kakao","placeId":"k2","name":"먼 곳","lat":37.5018,"lng":126.94}')$$,
+  $$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"kakao","placeId":"902","name":"먼 곳","lat":37.5018,"lng":126.94}')$$,
   'P0001', 'too_far', '150m 밖 후보(조작 포함) → too_far');
 select throws_ok($$select public.submit_checkin(37.5, 126.94, 200, '{"kind":"new"}')$$,
   'P0001', 'weak_gps', '정확도 200m → weak_gps');
@@ -69,7 +69,7 @@ select throws_ok($$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"tele
 -- 이름 60자 제한 (또 다른 300m 지점)
 select is(
   char_length(public.submit_checkin(37.5, 126.9468, 10,
-    jsonb_build_object('kind', 'kakao', 'placeId', 'k3', 'name', repeat('가', 100), 'lat', 37.5, 'lng', 126.9468)) ->> 'name'),
+    jsonb_build_object('kind', 'kakao', 'placeId', '903', 'name', repeat('가', 100), 'lat', 37.5, 'lng', 126.9468)) ->> 'name'),
   60, '후보 이름은 60자로 잘린다');
 
 -- 안개 셀은 본인 것만
