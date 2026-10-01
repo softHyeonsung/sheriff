@@ -12,7 +12,7 @@ export class MemoryError extends Error {
     super(code);
   }
 }
-export type MemoryPhoto = { id: string; url: string | null; createdAt: string };
+export type MemoryPhoto = { id: string; url: string | null; createdAt: string; placeName: string | null };
 
 const BUCKET = 'memories';
 const LINK_SECONDS = 3600;
@@ -52,7 +52,7 @@ export function removeLocalPhoto(uri: string): void {
 export async function listMemories(aidutId: string): Promise<MemoryPhoto[]> {
   const { data, error } = await supabase.rpc('my_memories', { p_aidut: aidutId });
   if (error) throw error;
-  const rows = (data ?? []) as { id: string; path: string; created_at: string }[];
+  const rows = (data ?? []) as { id: string; path: string; created_at: string; place_name: string | null }[];
   if (rows.length === 0) return [];
   const signed = await supabase.storage.from(BUCKET).createSignedUrls(
     rows.map((r) => r.path),
@@ -61,7 +61,7 @@ export async function listMemories(aidutId: string): Promise<MemoryPhoto[]> {
   // 링크를 못 받아도 목록은 둔다(회색 칸).
   if (signed.error) console.warn('사진 링크 받기 실패', signed.error);
   const byPath = new Map((signed.data ?? []).map((s) => [s.path, s.signedUrl || null]));
-  return rows.map((r) => ({ id: r.id, url: byPath.get(r.path) ?? null, createdAt: r.created_at }));
+  return rows.map((r) => ({ id: r.id, url: byPath.get(r.path) ?? null, createdAt: r.created_at, placeName: r.place_name ?? null }));
 }
 
 // 남긴 직후·지도 올리기가 같은 순간에 불러도 한 번만 돈다.

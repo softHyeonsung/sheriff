@@ -64,15 +64,15 @@ test('저장소 파일 지우기', async () => {
 test('목록: 1시간 임시 링크, 링크 못 받은 사진은 url null', async () => {
   rpc.mockResolvedValue({
     data: [
-      { id: 'm2', path: 'u1/p2.jpg', created_at: '2026-09-30T02:00:00Z' },
-      { id: 'm1', path: 'u1/p1.jpg', created_at: '2026-09-30T01:00:00Z' },
+      { id: 'm2', path: 'u1/p2.jpg', created_at: '2026-09-30T02:00:00Z', place_name: '2층 카페' },
+      { id: 'm1', path: 'u1/p1.jpg', created_at: '2026-09-30T01:00:00Z', place_name: null },
     ],
     error: null,
   });
   mockSigned.mockResolvedValue({ data: [{ path: 'u1/p2.jpg', signedUrl: 'https://s/p2' }, { path: 'u1/p1.jpg', signedUrl: '' }], error: null });
   expect(await listMemories('a1')).toEqual([
-    { id: 'm2', url: 'https://s/p2', createdAt: '2026-09-30T02:00:00Z' },
-    { id: 'm1', url: null, createdAt: '2026-09-30T01:00:00Z' },
+    { id: 'm2', url: 'https://s/p2', createdAt: '2026-09-30T02:00:00Z', placeName: '2층 카페' },
+    { id: 'm1', url: null, createdAt: '2026-09-30T01:00:00Z', placeName: null },
   ]);
   expect(rpc).toHaveBeenCalledWith('my_memories', { p_aidut: 'a1' });
   expect(mockSigned).toHaveBeenCalledWith(['u1/p2.jpg', 'u1/p1.jpg'], 3600);
