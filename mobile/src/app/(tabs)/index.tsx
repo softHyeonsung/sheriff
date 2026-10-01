@@ -11,10 +11,15 @@ import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { Celebration } from '@/features/checkin/Celebration';
 import { CheckinSheet } from '@/features/checkin/CheckinSheet';
 import { useCheckin } from '@/features/checkin/useCheckin';
+import { MSG } from '@/features/checkin/copy';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
+import { COURSE } from '@/features/course/copy';
+import { CourseCard } from '@/features/course/CourseCard';
+import { type Course, findKakaoPlace, suggestCourse } from '@/features/course/courseApi';
 import { useWishes } from '@/features/wishlist/useWishes';
 import { useShareStore } from '@/stores/shareStore';
 import { onOnline } from '@/lib/network';
+import { isNetworkError } from '@/lib/networkError';
 import { nextStageHint } from '@/features/map/nextStageHint';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
@@ -29,9 +34,16 @@ import { useMeStore } from '@/stores/meStore';
 
 const CITY_HALL = { lat: 37.5665, lng: 126.978 };
 
-function Pill({ label, onPress }: { label: string; onPress: () => void }) {
+function Pill({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.pill} hitSlop={8}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      style={[styles.pill, disabled && styles.stampBusy]}
+      hitSlop={8}>
       <Text style={styles.pillText}>{label}</Text>
     </Pressable>
   );
@@ -95,6 +107,49 @@ export default function MapScreen() {
   const locating = checkin.state.name === 'locating';
   const bridge = useRef<MapBridgeHandle>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const catName = useMeStore((s) => s.me?.catName) ?? '고양이';
+  // 코스(고양이의 산책 제안): 화면 상태로만 든다. 요청 번호로 닫은 뒤 늦게 온 응답을 버린다.
+  const [course, setCourse] = useState<Course | null>(null);
+  const [courseKey, setCourseKey] = useState(0); // 새 코스 = 새 카드(줄마다의 찜 상태를 비운다)
+  const [courseBusy, setCourseBusy] = useState(false);
+  const [courseNote, setCourseNote] = useState<string | null>(null);
+  const courseReq = useRef(0);
+  const coursePlan = useMemo(
+    () => (course ? { stops: course.stops.map(({ lat, lng }) => ({ lat, lng })), route: course.route } : null),
+    [course],
+  );
+  const closeCourse = () => {
+    courseReq.current++;
+    setCourse(null);
+    setCourseNote(null);
+    setCourseBusy(false);
+  };
+  const startCourse = async () => {
+    closeCourse();
+    if (!location) {
+      setCourseNote(COURSE.noLocation);
+      return;
+    }
+    const id = courseReq.current;
+    setSelectedId(null);
+    setWishId(null);
+    setCourseBusy(true);
+    try {
+      const c = await suggestCourse(location.lat, location.lng);
+      if (id !== courseReq.current) return;
+      if (c.stops.length === 0) setCourseNote(COURSE.empty);
+      else {
+        setCourse(c);
+        setCourseKey(id);
+      }
+    } catch (e) {
+      if (id !== courseReq.current) return;
+      if (!isNetworkError(e)) console.error('코스 추천 실패', e);
+      setCourseNote(isNetworkError(e) ? MSG.offline : MSG.unknown);
+    } finally {
+      if (id === courseReq.current) setCourseBusy(false);
+    }
+  };
   const [mapFailed, setMapFailed] = useState(false);
   const [mapKey, setMapKey] = useState(0);
   // What the map was last centered on. A ref, not state: updating it must not re-render.
@@ -174,7 +229,7 @@ export default function MapScreen() {
         fog={fog.cells}
         onIdle={dongAt.onIdle}
         catColor={catColor}
-        course={null}
+        course={coursePlan}
         onCatTap={() => bridge.current?.catSay(pickCatLine(dongAt.dong?.ratio ?? null, catTaps.current++))}
         onError={(reason) => {
           console.warn('지도 오류', reason);
@@ -213,6 +268,9 @@ export default function MapScreen() {
         )}
       </SafeAreaView>
 
+      <View style={styles.courseBtn}>
+        <Pill label={COURSE.button} onPress={startCourse} disabled={courseBusy} />
+      </View>
       <View style={styles.wishBtn}>
         <Pill label="⭐ 찜" onPress={() => router.push('/wishlist')} />
       </View>
@@ -314,6 +372,30 @@ export default function MapScreen() {
         </View>
       )}
 
+      {(courseBusy || courseNote) && (
+        <View style={styles.checkinNote}>
+          <Text style={styles.bannerText}>{courseBusy ? COURSE.finding : courseNote}</Text>
+          <View style={styles.row}>
+            <Pill label="닫기" onPress={closeCourse} />
+          </View>
+        </View>
+      )}
+      {course && !selected && !selectedWish && (
+        <CourseCard
+          key={courseKey}
+          catName={catName}
+          course={course}
+          onWish={async (stop) => {
+            const place = await findKakaoPlace(stop);
+            if (!place) return false;
+            await wishList.add(place);
+            return true;
+          }}
+          onFind={(stop) => router.push({ pathname: '/wishlist', params: { shared: stop.name } })}
+          onClose={closeCourse}
+        />
+      )}
+
       {checkin.state.name === 'choosing' && (
         <CheckinSheet state={checkin.state} footprintsById={footprintsById} onChoose={checkin.choose} onClose={checkin.close} />
       )}
@@ -394,6 +476,7 @@ const styles = StyleSheet.create({
   bannerText: { ...type.body, color: color.ink },
   locate: { position: 'absolute', right: space.gutter, bottom: 180 },
   wishBtn: { position: 'absolute', right: space.gutter, bottom: 240 },
+  courseBtn: { position: 'absolute', right: space.gutter, bottom: 300 },
   pill: {
     alignSelf: 'flex-start',
     minHeight: space.tapMin,

@@ -7,7 +7,10 @@ import { answerArrivalOffer, shouldOfferArrival } from '@/features/arrival/regis
 import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
+import { MSG } from '@/features/checkin/copy';
 import { useCheckin } from '@/features/checkin/useCheckin';
+import { COURSE } from '@/features/course/copy';
+import { findKakaoPlace, suggestCourse } from '@/features/course/courseApi';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { onOnline } from '@/lib/network';
 import { useWishes } from '@/features/wishlist/useWishes';
@@ -44,6 +47,7 @@ jest.mock('@/features/checkin/useCheckin', () => ({ useCheckin: jest.fn() }));
 jest.mock('@/features/checkin/useCheckinQueue', () => ({ useCheckinQueue: jest.fn() }));
 jest.mock('@/features/wishlist/useWishes', () => ({ useWishes: jest.fn() }));
 jest.mock('@/lib/network', () => ({ onOnline: jest.fn(() => () => {}) }));
+jest.mock('@/features/course/courseApi', () => ({ suggestCourse: jest.fn(), findKakaoPlace: jest.fn() }));
 jest.mock('@/features/checkin/CheckinSheet', () => {
   const { View } = require('react-native');
   return { CheckinSheet: function MockSheet(props: any) { mockSheetProps = props; return <View testID="checkin-sheet" />; } };
@@ -415,4 +419,94 @@ test('공유가 기다리고 있으면 찜 화면으로 넘기고 비운다', as
   await render(<MapScreen />);
   expect(router.push).toHaveBeenCalledWith({ pathname: '/wishlist', params: { shared: 'https://naver.me/a' } });
   expect(useShareStore.getState().pending).toBeNull();
+});
+
+const stopA = { name: '세종로공원', address: null, lat: 37.501, lng: 126.9, legM: 110 };
+const courseOf = (over = {}) => ({ stops: [stopA], route: [[37.5, 126.9], [37.501, 126.9]], distanceM: 300, routeLimited: false, ...over });
+const walk = () => fireEvent.press(screen.getByRole('button', { name: COURSE.button }));
+
+test('산책 → 현재 위치로 코스를 받아 카드와 지도에', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf());
+  await render(<MapScreen />);
+  expect(mockBridgeProps.course).toBeNull();
+  await walk();
+  expect(suggestCourse).toHaveBeenCalledWith(37.5, 126.9);
+  expect(await screen.findByText('고양이가 가보고 싶대요')).toBeTruthy();
+  expect(mockBridgeProps.course).toEqual({ stops: [{ lat: 37.501, lng: 126.9 }], route: [[37.5, 126.9], [37.501, 126.9]] });
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(mockBridgeProps.course).toBeNull();
+  expect(screen.queryByText('고양이가 가보고 싶대요')).toBeNull();
+});
+
+test('산책: 찾는 동안 버튼 비활성, 닫은 뒤 늦게 온 응답은 버린다', async () => {
+  let done: (c: unknown) => void = () => {};
+  (suggestCourse as jest.Mock).mockReturnValue(new Promise((r) => (done = r)));
+  await render(<MapScreen />);
+  const pressed = walk(); // 누름은 코스가 올 때까지 끝나지 않는다: 기다리지 않고 화면을 본다
+  expect(await screen.findByText(COURSE.finding)).toBeTruthy();
+  expect(screen.getByRole('button', { name: COURSE.button })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  await act(async () => done(courseOf()));
+  await pressed;
+  expect(screen.queryByText('고양이가 가보고 싶대요')).toBeNull();
+  expect(mockBridgeProps.course).toBeNull();
+  expect(screen.getByRole('button', { name: COURSE.button })).not.toBeDisabled();
+});
+
+test('산책: 후보가 없으면 다 개척했다는 문구', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf({ stops: [], route: null, distanceM: null }));
+  await render(<MapScreen />);
+  await walk();
+  expect(await screen.findByText(COURSE.empty)).toBeTruthy();
+  expect(mockBridgeProps.course).toBeNull();
+});
+
+test('산책: 위치를 모르면 부르지 않고 안내', async () => {
+  (useMyLocation as jest.Mock).mockReturnValue({ location: null, permission: 'granted' });
+  await render(<MapScreen />);
+  await walk();
+  expect(suggestCourse).not.toHaveBeenCalled();
+  expect(screen.getByText(COURSE.noLocation)).toBeTruthy();
+});
+
+test('산책: 끊겼으면 연결 문구, 그 밖은 공통 문구', async () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  (suggestCourse as jest.Mock).mockRejectedValueOnce({ message: 'TypeError: Network request failed' });
+  await render(<MapScreen />);
+  await walk();
+  expect(await screen.findByText(MSG.offline)).toBeTruthy();
+  (suggestCourse as jest.Mock).mockRejectedValueOnce(new Error('502'));
+  await walk();
+  expect(await screen.findByText(MSG.unknown)).toBeTruthy();
+});
+
+test('코스 카드 찜: 카카오에서 찾으면 찜, 못 찾으면 찜 화면을 그 이름으로', async () => {
+  const add = jest.fn().mockResolvedValue(undefined);
+  (useWishes as jest.Mock).mockReturnValue({ wishes: [], status: 'ready', refresh: jest.fn(), add, remove: jest.fn() });
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf());
+  const place = { placeId: '9', name: '세종로공원', roadAddress: null, lat: 37.501, lng: 126.9, distanceM: 20 };
+  (findKakaoPlace as jest.Mock).mockResolvedValueOnce(place);
+  await render(<MapScreen />);
+  await walk();
+  await fireEvent.press(await screen.findByRole('button', { name: '세종로공원 ⭐ 찜' }));
+  expect(findKakaoPlace).toHaveBeenCalledWith(stopA);
+  expect(add).toHaveBeenCalledWith(place);
+  expect(await screen.findByText(COURSE.wished)).toBeTruthy();
+
+  (findKakaoPlace as jest.Mock).mockResolvedValueOnce(null);
+  await walk(); // 새 코스 = 새 카드
+  await fireEvent.press(await screen.findByRole('button', { name: '세종로공원 ⭐ 찜' }));
+  await fireEvent.press(await screen.findByRole('button', { name: '세종로공원 찜 화면에서 찾기' }));
+  expect(add).toHaveBeenCalledTimes(1);
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/wishlist', params: { shared: '세종로공원' } });
+});
+
+test('아지트 카드가 떠 있는 동안 코스 카드는 숨고, 코스 핀은 남는다', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf());
+  await render(<MapScreen />);
+  await walk();
+  await screen.findByText('고양이가 가보고 싶대요');
+  await act(async () => mockBridgeProps.onHideoutTap('a1'));
+  expect(screen.queryByText('고양이가 가보고 싶대요')).toBeNull();
+  expect(mockBridgeProps.course).not.toBeNull();
 });

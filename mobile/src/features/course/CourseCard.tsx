@@ -13,13 +13,14 @@ import type { Course, Stop } from './courseApi';
 type Props = { catName: string; course: Course; onWish: (s: Stop) => Promise<boolean>; onFind: (s: Stop) => void; onClose: () => void };
 type RowState = 'busy' | 'wished' | 'notFound';
 
-function Btn({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+// about: 줄마다 같은 글자의 버튼이 있어, 읽어 주는 이름에는 어느 곳인지 붙인다(지도의 [⭐ 찜] 버튼과도 구분).
+function Btn({ label, onPress, disabled = false, about }: { label: string; onPress: () => void; disabled?: boolean; about?: string }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={about ? `${about} ${label}` : label}
       accessibilityState={{ disabled }}
       style={[styles.btn, disabled && styles.btnBusy]}
       hitSlop={8}>
@@ -59,9 +60,9 @@ export function CourseCard({ catName, course, onWish, onFind, onClose }: Props) 
             {rows[i] === 'wished' ? (
               <Text style={styles.caption}>{COURSE.wished}</Text>
             ) : rows[i] === 'notFound' ? (
-              <Btn label={COURSE.find} onPress={() => onFind(s)} />
+              <Btn label={COURSE.find} about={s.name} onPress={() => onFind(s)} />
             ) : (
-              <Btn label={COURSE.wish} onPress={() => wish(s, i)} disabled={rows[i] === 'busy'} />
+              <Btn label={COURSE.wish} about={s.name} onPress={() => wish(s, i)} disabled={rows[i] === 'busy'} />
             )}
           </View>
           {rows[i] === 'notFound' && <Text style={styles.caption}>{COURSE.notFound}</Text>}

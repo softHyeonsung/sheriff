@@ -39,18 +39,18 @@ test('길찾기 실패로 길이 없으면 한도 안내는 없다', async () =>
 test('찜 → "찜했어요"', async () => {
   const p = props();
   await render(<CourseCard {...p} />);
-  await fireEvent.press(screen.getAllByRole('button', { name: COURSE.wish })[0]);
+  await fireEvent.press(screen.getByRole('button', { name: '세종로공원 ⭐ 찜' }));
   expect(p.onWish).toHaveBeenCalledWith(a);
   expect(await screen.findByText(COURSE.wished)).toBeTruthy();
-  expect(screen.getAllByRole('button', { name: COURSE.wish })).toHaveLength(1); // 다른 줄은 그대로
+  expect(screen.getAllByRole('button', { name: /⭐ 찜$/ })).toHaveLength(1); // 다른 줄은 그대로
 });
 
 test('카카오에서 못 찾으면 안내 + 찜 화면에서 찾기', async () => {
   const p = props({ onWish: jest.fn().mockResolvedValue(false) });
   await render(<CourseCard {...p} />);
-  await fireEvent.press(screen.getAllByRole('button', { name: COURSE.wish })[1]);
+  await fireEvent.press(screen.getByRole('button', { name: '경복궁 ⭐ 찜' }));
   expect(await screen.findByText(COURSE.notFound)).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: COURSE.find }));
+  await fireEvent.press(screen.getByRole('button', { name: '경복궁 찜 화면에서 찾기' }));
   expect(p.onFind).toHaveBeenCalledWith(b);
 });
 
@@ -58,9 +58,9 @@ test('찜 실패 → 공통 문구, 버튼은 원래대로', async () => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   const p = props({ onWish: jest.fn().mockRejectedValue(new Error('boom')) });
   await render(<CourseCard {...p} />);
-  await fireEvent.press(screen.getAllByRole('button', { name: COURSE.wish })[0]);
+  await fireEvent.press(screen.getByRole('button', { name: '세종로공원 ⭐ 찜' }));
   expect(await screen.findByText(MSG.unknown)).toBeTruthy();
-  expect(screen.getAllByRole('button', { name: COURSE.wish })).toHaveLength(2);
+  expect(screen.getAllByRole('button', { name: /⭐ 찜$/ })).toHaveLength(2);
 });
 
 test('닫기', async () => {
