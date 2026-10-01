@@ -6,7 +6,7 @@ import { CourseCard } from '../CourseCard';
 
 const a = { name: '세종로공원', address: '서울 종로구 세종대로 189', lat: 37.57, lng: 126.97, legM: 284 };
 const b = { name: '경복궁', address: null, lat: 37.58, lng: 126.98, legM: 1200 };
-const course = { stops: [a, b], route: [[37.5, 127]] as [number, number][], routeLimited: false };
+const course = { stops: [a, b], route: [[37.5, 127]] as [number, number][], routeLimited: false, waitS: 0 };
 const props = (over = {}) => ({ catName: '나비', course, onWish: jest.fn().mockResolvedValue(true), onFind: jest.fn(), onClose: jest.fn(), ...over });
 
 test('제목·번호·이름·주소·거리·전체 거리·출처', async () => {

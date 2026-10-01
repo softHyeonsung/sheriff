@@ -10,6 +10,8 @@ const deps = (over: Partial<Deps> = {}): Deps => ({
   signedIn: () => Promise.resolve(true),
   candidates: () => Promise.resolve([spot('가', 0.002), spot('나', 0.004)]),
   hideouts: () => Promise.resolve([]),
+  claim: () => Promise.resolve(0),
+  release: () => Promise.resolve(),
   useCall: () => Promise.resolve(true),
   directions: () => Promise.resolve({ route: [[37.5, 127], [37.502, 127]], distanceM: 450 }),
   ...over,
@@ -116,7 +118,7 @@ Deno.test('handle: 길찾기·한도 확인 실패는 핀만(200)', async () => 
 Deno.test('handle: 후보 0이면 한도를 쓰지 않는다', async () => {
   let used = 0;
   const res = await handle(req(me), deps({ candidates: () => Promise.resolve([]), useCall: () => { used++; return Promise.resolve(true); } }));
-  assertEquals(await res.json(), { stops: [], route: null, distanceM: null, routeLimited: false });
+  assertEquals(await res.json(), { stops: [], route: null, distanceM: null, routeLimited: false, waitS: 0 });
   assertEquals(used, 0);
 });
 
@@ -144,4 +146,23 @@ Deno.test('handle: 오류 기록에 TourAPI 키가 남지 않는다', async () =
   assertEquals(logged.length, 1);
   assertEquals(logged[0].includes('SECRETKEY'), false);
   assertEquals(logged[0].includes('serviceKey=***'), true);
+});
+
+Deno.test('handle: 방금 추천했으면 TourAPI를 부르지 않고 남은 시간을 알려 준다', async () => {
+  let called = 0;
+  const res = await handle(req(me), deps({ claim: () => Promise.resolve(420), candidates: () => { called++; return Promise.resolve([]); } }));
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { stops: [], route: null, distanceM: null, routeLimited: false, waitS: 420 });
+  assertEquals(called, 0);
+});
+
+Deno.test('handle: 추천이 실패하면 간격을 되돌려 바로 다시 해볼 수 있다', async () => {
+  let released = 0;
+  const res = await handle(req(me), deps({ candidates: () => Promise.reject(new Error('tourapi 500')), release: () => { released++; return Promise.resolve(); } }));
+  assertEquals(res.status, 502);
+  assertEquals(released, 1);
+  const ok = await handle(req(me), deps({ release: () => { released++; return Promise.resolve(); } }));
+  assertEquals((await ok.json()).waitS, 0);
+  assertEquals(released, 1); // 성공하면 되돌리지 않는다
+  assertEquals((await handle(req(me), deps({ claim: () => Promise.reject(new Error('db')) }))).status, 502);
 });

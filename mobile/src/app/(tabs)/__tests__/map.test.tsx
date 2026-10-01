@@ -422,7 +422,7 @@ test('공유가 기다리고 있으면 찜 화면으로 넘기고 비운다', as
 });
 
 const stopA = { name: '세종로공원', address: null, lat: 37.501, lng: 126.9, legM: 110 };
-const courseOf = (over = {}) => ({ stops: [stopA], route: [[37.5, 126.9], [37.501, 126.9]], routeLimited: false, ...over });
+const courseOf = (over = {}) => ({ stops: [stopA], route: [[37.5, 126.9], [37.501, 126.9]], routeLimited: false, waitS: 0, ...over });
 const walk = () => fireEvent.press(screen.getByRole('button', { name: COURSE.button }));
 
 test('산책 → 현재 위치로 코스를 받아 카드와 지도에', async () => {
@@ -544,4 +544,34 @@ test('권한 실패 안내가 떠 있으면 위쪽 권한 배너는 숨긴다(�
   expect(screen.getByText(MSG.denied)).toBeTruthy();
   expect(screen.queryByText('위치를 켜두시면 지금 있는 곳을 보여드릴게요')).toBeNull();
   expect(screen.getAllByRole('button', { name: '설정 열기' })).toHaveLength(1);
+});
+
+test('산책: 간격 안에 다시 누르면 방금 받은 코스를 다시 보여준다', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValueOnce(courseOf());
+  await render(<MapScreen />);
+  await walk();
+  await screen.findByText('고양이가 가보고 싶대요');
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  (suggestCourse as jest.Mock).mockResolvedValueOnce(courseOf({ stops: [], route: null, waitS: 420 }));
+  await walk();
+  expect(await screen.findByText('고양이가 가보고 싶대요')).toBeTruthy();
+  expect(mockBridgeProps.course).toEqual({ stops: [{ lat: 37.501, lng: 126.9 }], route: [[37.5, 126.9], [37.501, 126.9]] });
+});
+
+test('산책: 간격 안인데 받아 둔 코스가 없으면(앱을 다시 켬) 몇 분 뒤인지 알려 준다', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf({ stops: [], route: null, waitS: 421 }));
+  await render(<MapScreen />);
+  await walk();
+  expect(await screen.findByText('방금 추천해 드렸어요. 8분 뒤에 다시 물어봐 주세요.')).toBeTruthy();
+  expect(mockBridgeProps.course).toBeNull();
+});
+
+test('산책: 방금 "다 개척했어요"였으면 간격 안엔 같은 말을 다시', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValueOnce(courseOf({ stops: [], route: null }));
+  await render(<MapScreen />);
+  await walk();
+  await screen.findByText(COURSE.empty);
+  (suggestCourse as jest.Mock).mockResolvedValueOnce(courseOf({ stops: [], route: null, waitS: 60 }));
+  await walk();
+  expect(await screen.findByText(COURSE.empty)).toBeTruthy();
 });

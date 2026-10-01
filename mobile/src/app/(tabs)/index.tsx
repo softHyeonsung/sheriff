@@ -114,6 +114,8 @@ export default function MapScreen() {
   const [courseBusy, setCourseBusy] = useState(false);
   const [courseNote, setCourseNote] = useState<string | null>(null);
   const courseReq = useRef(0);
+  // 방금 받은 추천: 간격 안에 다시 누르면 새로 찾는 대신 이걸 다시 보여준다.
+  const lastCourse = useRef<Course | null>(null);
   const coursePlan = useMemo(
     () => (course ? { stops: course.stops.map(({ lat, lng }) => ({ lat, lng })), route: course.route } : null),
     [course],
@@ -135,8 +137,14 @@ export default function MapScreen() {
     setWishId(null);
     setCourseBusy(true);
     try {
-      const c = await suggestCourse(location.lat, location.lng);
+      const got = await suggestCourse(location.lat, location.lng);
       if (id !== courseReq.current) return;
+      if (got.waitS > 0 && !lastCourse.current) {
+        setCourseNote(COURSE.tooSoon(got.waitS)); // 앱을 다시 켜서 받아 둔 게 없다
+        return;
+      }
+      const c = got.waitS > 0 && lastCourse.current ? lastCourse.current : got;
+      lastCourse.current = c;
       if (c.stops.length === 0) setCourseNote(COURSE.empty);
       else {
         setCourse(c);

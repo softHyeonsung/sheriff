@@ -1,6 +1,7 @@
 // supabase/functions/suggest-course/index.ts
 //
-// 고양이의 산책 제안: POST { lat, lng } -> { stops, route, distanceM, routeLimited }.
+// 고양이의 산책 제안: POST { lat, lng } -> { stops, route, distanceM, routeLimited, waitS }.
+// 한 번 추천하면 일정 시간(claim_course) 동안은 새로 찾지 않고 waitS(남은 초)만 돌려준다.
 // 주변 관광지(TourAPI)에서 내 아지트 50m 안(가본 곳)을 빼고, 가까운 곳부터 이어 최대 4곳.
 // 길은 카카오 모빌리티 한 번(경유지 포함). 하루 한도를 넘거나 길찾기가 실패하면 핀만.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -15,6 +16,8 @@ export interface Deps {
   signedIn(req: Request): Promise<boolean>;
   candidates(at: LatLng): Promise<Candidate[]>;
   hideouts(req: Request): Promise<LatLng[]>;
+  claim(req: Request): Promise<number>; // 0 = 지금 추천해도 됨, 양수 = 그만큼 초 뒤에
+  release(req: Request): Promise<void>;
   useCall(req: Request): Promise<boolean>;
   directions(points: LatLng[]): Promise<Route | null>;
 }
@@ -123,15 +126,21 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!at) return json({ error: 'invalid_input' }, 400);
 
   let stops: Stop[];
+  let claimed = false;
   try {
+    const waitS = await deps.claim(req);
+    if (waitS > 0) return json({ stops: [], route: null, distanceM: null, routeLimited: false, waitS }, 200);
+    claimed = true;
     const [candidates, mine] = await Promise.all([deps.candidates(at), deps.hideouts(req)]);
     stops = pickStops(at, candidates, mine);
   } catch (e) {
+    // 추천을 못 했으면 기다리게 하지 않는다.
+    if (claimed) await deps.release(req).catch((r) => console.error('코스 간격 되돌리기 실패', String(r)));
     // fetch 오류 글에는 요청 주소(= TourAPI 키)가 들어 있을 수 있다: 가리고 남긴다.
     console.error('코스 후보 실패', String(e).replace(/serviceKey=[^&)\s]+/g, 'serviceKey=***'));
     return json({ error: 'course_failed' }, 502);
   }
-  if (stops.length === 0) return json({ stops, route: null, distanceM: null, routeLimited: false }, 200);
+  if (stops.length === 0) return json({ stops, route: null, distanceM: null, routeLimited: false, waitS: 0 }, 200);
 
   // 길은 덤: 한도를 넘었거나 실패해도 핀은 보여준다.
   let found: Route | null = null;
@@ -142,7 +151,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   } catch (e) {
     console.error('코스 길찾기 실패', String(e));
   }
-  return json({ stops, route: found?.route ?? null, distanceM: found?.distanceM ?? null, routeLimited }, 200);
+  return json({ stops, route: found?.route ?? null, distanceM: found?.distanceM ?? null, routeLimited, waitS: 0 }, 200);
 }
 
 // 요청자의 토큰으로: my_hideouts·use_course_call이 그 사용자의 것으로 동작한다.
@@ -160,6 +169,15 @@ if (import.meta.main) {
         const { data, error } = await userDb(r).rpc('my_hideouts');
         if (error) throw error;
         return ((data ?? []) as LatLng[]).map(({ lat, lng }) => ({ lat, lng }));
+      },
+      claim: async (r) => {
+        const { data, error } = await userDb(r).rpc('claim_course');
+        if (error) throw error;
+        return Number(data) || 0;
+      },
+      release: async (r) => {
+        const { error } = await userDb(r).rpc('release_course');
+        if (error) throw error;
       },
       useCall: async (r) => {
         const { data, error } = await userDb(r).rpc('use_course_call');

@@ -15,10 +15,12 @@ beforeEach(() => jest.clearAllMocks());
 
 test('suggestCourse: Edge Function을 부르고 빈 값을 채운다', async () => {
   invoke.mockResolvedValueOnce({ data: { stops: [stop], route: [[37.5, 127]], distanceM: 300, routeLimited: false }, error: null });
-  expect(await suggestCourse(37.5, 127)).toEqual({ stops: [stop], route: [[37.5, 127]], routeLimited: false }); // 자동차 길 거리는 쓰지 않는다
+  expect(await suggestCourse(37.5, 127)).toEqual({ stops: [stop], route: [[37.5, 127]], routeLimited: false, waitS: 0 }); // 자동차 길 거리는 쓰지 않는다
   expect(invoke).toHaveBeenCalledWith('suggest-course', { body: { lat: 37.5, lng: 127 }, timeout: 15000 });
   invoke.mockResolvedValueOnce({ data: {}, error: null });
-  expect(await suggestCourse(37.5, 127)).toEqual({ stops: [], route: null, routeLimited: false });
+  expect(await suggestCourse(37.5, 127)).toEqual({ stops: [], route: null, routeLimited: false, waitS: 0 });
+  invoke.mockResolvedValueOnce({ data: { stops: [], route: null, routeLimited: false, waitS: 420 }, error: null });
+  expect((await suggestCourse(37.5, 127)).waitS).toBe(420);
   invoke.mockResolvedValueOnce({ data: null, error: new Error('502') });
   await expect(suggestCourse(37.5, 127)).rejects.toThrow('502');
 });

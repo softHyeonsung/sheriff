@@ -10,6 +10,7 @@ const place = (id: string, distanceM: number): KakaoCandidate =>
 const deps = (over: Partial<SuggestDeps> = {}): SuggestDeps => ({
   config: () => Promise.resolve({ radiusM: 150, accuracyMaxM: 150 }),
   nearbyMine: () => Promise.resolve([]),
+  visited: () => Promise.resolve([]),
   kakaoNearby: () => Promise.resolve([]),
   kakaoAddress: () => Promise.resolve('서울 테스트로 1'),
   ...over,
@@ -104,4 +105,43 @@ Deno.test('parseInput: 숫자 셋이 아니거나 범위 밖이면 null', () => 
   assertEquals(parseInput({ lat: '37.5', lng: 126.94, accuracy: 10 }), null);
   assertEquals(parseInput({ lat: 95, lng: 126.94, accuracy: 10 }), null);
   assertEquals(parseInput({ lat: 37.5, lng: 126.94 }), null);
+});
+
+const visit = (aidutId: string, placeId: string | null, name: string, visits: number) =>
+  ({ aidutId, placeId, name, visits, lat: 37.5, lng: 126.94, roadAddress: '서울 성수로 1' });
+
+Deno.test('재방문: 그 건물에서 간 곳을 많이 간 순으로 먼저, 고르면 그 가게로 기록되게 카카오 후보로', async () => {
+  const r = await suggestPlace(input, deps({
+    nearbyMine: () => Promise.resolve([mine('m1', 12, '111')]),
+    visited: () => Promise.resolve([visit('m1', '222', '2층 카페', 3), visit('m1', '111', '내 m1', 1)]),
+    kakaoNearby: () => Promise.resolve([place('222', 9), place('999', 20)]),
+  }));
+  if (r.status !== 'ok') throw new Error('expected ok');
+  assertEquals(r.candidates, [
+    { kind: 'kakao', placeId: '222', name: '2층 카페', lat: 37.5, lng: 126.94, roadAddress: '서울 성수로 1', distanceM: 12 },
+    { kind: 'mine', aidutId: 'm1', name: '내 m1', grade: 'paw', distanceM: 12 },
+    { kind: 'kakao', placeId: '999', name: '가게 999', lat: 37.5, lng: 126.94, roadAddress: '서울 테스트로 1', distanceM: 20 },
+  ]); // 222는 한 번만(간 곳으로), 좌표는 아지트의 것
+});
+
+Deno.test('재방문: 아지트의 원래 가게를 가장 많이 갔으면 아지트가 먼저, 가까운 아지트의 것들이 먼저', async () => {
+  const r = await suggestPlace(input, deps({
+    nearbyMine: () => Promise.resolve([mine('far', 80, '500'), mine('near', 10, '111')]),
+    visited: () => Promise.resolve([
+      visit('near', '111', '내 near', 4), visit('near', '222', '2층 카페', 2), visit('near', null, '서울 성수로 1', 1),
+      visit('far', '600', '먼 건물 2층', 9), visit('far', '500', '내 far', 1),
+    ]),
+  }));
+  if (r.status !== 'ok') throw new Error('expected ok');
+  assertEquals(r.candidates.map((c) => (c.kind === 'mine' ? c.aidutId : c.placeId)), ['near', '222', '600', 'far']);
+});
+
+Deno.test('재방문: 간 곳 조회가 실패해도 예전처럼 아지트와 주변 장소로 응답한다', async () => {
+  const r = await suggestPlace(input, deps({
+    nearbyMine: () => Promise.resolve([mine('m1', 12, '111')]),
+    visited: () => Promise.reject(new Error('db')),
+    kakaoNearby: () => Promise.resolve([place('222', 9)]),
+  }));
+  if (r.status !== 'ok') throw new Error('expected ok');
+  assertEquals(r.candidates.map((c) => (c.kind === 'mine' ? c.aidutId : c.placeId)), ['m1', '222']);
 });
