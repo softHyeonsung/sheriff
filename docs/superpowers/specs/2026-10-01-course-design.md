@@ -1,0 +1,92 @@
+# 코스 추천 = 고양이의 산책 제안 — 설계
+
+> 2026-10-01 · 서브프로젝트 ⑥-6 (⑥-1~⑥-5 ✓ → **⑥-6 코스 추천**)
+> 근거: `기획-기능명세-v1.md` §2.6("주변 후보(TourAPI) → 미방문 우선 최대 4곳 → 앰버 실선. 후보 0=다 개척했어요. 길찾기 일 50콜 한도(임박 시 핀만, 리셋 KST 09:00). 출발점=현재 위치"), `기획-카피톤-v1.md` §4(코스 후보 0), `기능명세-재개발기준.md` §3.4(옛 앱 코스 빌더), 위시리스트 `2026-09-30-wishlist-design.md`
+
+## 목표
+
+지도에서 [🐾 산책]을 누르면 고양이가 **지금 있는 곳 주변에서 아직 안 가본 곳 최대 4곳**을 골라 순서대로 이어 보여준다. 마음에 드는 곳은 찜할 수 있고, 실제 방문은 기존 발자국으로 한다.
+
+**성공 기준**
+- [🐾 산책] → 지도에 ①~④ 번호 핀과 주황 실선, 아래 카드에 장소 목록(이름·앞 지점부터의 거리).
+- 내 아지트 50m 안의 후보는 "가본 곳"으로 보고 안 가본 곳 뒤로 밀린다.
+- 카드에서 [⭐ 찜] → 지도에 ⭐ 핀(기존 찜 그대로).
+- [닫기] → 번호 핀·선이 사라진다.
+- 하루 50번을 넘기면 선 없이 핀만 나오고 안내 한 줄.
+- 주변에 후보가 없으면 "이 근처는 벌써 다 개척했어요! 대단한데요."
+
+## 결정 사항
+
+| 결정 | 값 | 이유 |
+|---|---|---|
+| 방식 | TourAPI 후보 + 길찾기 경로 | 사용자 선택 |
+| 후보 출처 | 한국관광공사 TourAPI `KorService2/locationBasedList2` (반경 2km, 거리순 `arrange=E`, 30개, 관광지 `contentTypeId=12`) | 기획 §2.6. 2026-10-01 실제 호출로 응답 확인 |
+| 길찾기 | 카카오 모빌리티 `GET apis-navi.kakaomobility.com/v1/directions` (기존 `KAKAO_REST_KEY`, `KakaoAK` 헤더) | 사용자 선택. 2026-10-01 실제 호출로 확인 |
+| 길찾기 호출 수 | 코스 1회 = **1번**(출발=현재 위치, 도착=마지막 곳, 나머지는 `waypoints`) | 옛 앱은 구간마다 불러 4번 → 한도를 빨리 씀 |
+| 자동차 길 | 그대로 쓴다. 골목·횡단보도는 반영 안 됨 | 알고 고른 한계. 걷는 길이 필요해지면 티맵 보행자 경로로 교체 |
+| 가본 곳 판정 | 후보 좌표가 내 아지트(`my_hideouts`) 50m 안 | TourAPI id와 카카오 id가 달라 좌표로만 비교 가능 |
+| 고르기 | 안 가본 곳 먼저. 현재 위치에서 가장 가까운 곳 → 거기서 가장 가까운 곳 … 최대 4곳. 안 가본 곳이 4곳 미만이면 그만큼만(가본 곳으로 채우지 않음) | "안 가본 곳" 제안이 목적 |
+| 한도 | 사용자당 하루 50번, 날짜 경계 = UTC(= KST 09:00) | 기획 §2.6 |
+| 한도 넘김·길찾기 실패 | `route: null` → 핀만 | 기획 "임박 시 핀만" |
+| 코스 저장 | 안 한다(화면 상태로만) | YAGNI |
+| 찜 연결 | 카드 [⭐ 찜] → `search-place`로 이름 검색(후보 좌표 기준 거리순) → 200m 안 첫 결과를 `add_wish`. 없으면 "이 곳은 찜할 수 없어요" | 찜·달성 판정은 카카오 장소 id 기준 |
+| 출처 표기 | 카드 아래 작은 글씨 "장소 정보: 한국관광공사" | 공공데이터 이용 조건(문구는 출시 전 사람이 확인) |
+
+## 화면
+
+### 지도 (`app/(tabs)/index.tsx`)
+- [⭐ 찜] 버튼 아래 [🐾 산책] 버튼. 누르면 현재 위치로 `suggest-course` 호출(부르는 동안 버튼 비활성).
+- 위치를 모르면 기존 위치 안내 문구, 호출 안 함.
+- 결과가 오면 지도에 번호 핀·주황 실선(`#F59E0B`), 코스 전체가 보이게 지도 범위 맞춤.
+
+### 코스 카드 (`features/course/CourseCard.tsx`)
+- 제목: "{고양이 이름}가 가보고 싶대요"
+- 줄마다: 번호 · 이름 · 주소 · 거리 · [⭐ 찜](찜한 뒤엔 "찜했어요").
+- `route`가 있으면 "전체 약 {거리}"(도보 시간은 표시 안 함 — 자동차 기준 시간이라 틀림).
+- `route`가 없고 한도 때문이면 "오늘은 길 안내를 다 썼어요. 핀만 보여드릴게요."
+- 출처 한 줄, [닫기].
+- 후보 0: 카드 대신 고양이 말풍선 문구 "이 근처는 벌써 다 개척했어요! 대단한데요." + [닫기].
+
+## 서버
+
+마이그레이션 1개 (`course_quota`):
+- 표 `course_calls(user_id uuid references users on delete cascade, day date, count int not null default 0, primary key(user_id, day))`, RLS 켜고 정책 없음(함수로만).
+- `use_course_call() returns boolean` — security definer, `auth.uid()`·`(now() at time zone 'utc')::date` 행을 `insert … on conflict do update set count = count + 1 where count < 50`, 바뀐 행이 있으면 `true`. 로그인 안 했으면 예외.
+
+Edge Function `suggest-course`:
+- POST `{ lat, lng }`(범위 검사) → `{ stops: Stop[], route: [lat, lng][] | null, distanceM: number | null, routeLimited: boolean }`. 로그인 필요.
+- `Stop = { name, address | null, lat, lng, legM }`(`legM` = 앞 지점부터 직선거리).
+- 순서: 후보(TourAPI) + 내 아지트(`my_hideouts`, 요청자의 토큰으로) → 고르기 → 곳이 1곳 이상이면 `use_course_call` → `true`면 길찾기.
+- 길찾기 응답의 `routes[0].sections[].roads[].vertexes`(경도·위도 번갈아)를 `[lat, lng]`로 펴고, 500점을 넘으면 고르게 솎는다. `result_code ≠ 0`이면 `route: null`.
+- 바깥 호출은 3초 제한. TourAPI 실패 → 502 `course_failed`. 길찾기 실패 → 핀만(200).
+- 순수 함수(`pickStops`, `flattenRoute`)와 `handle(req, deps)`를 나눠 `search-place`와 같은 모양으로.
+- env: `TOURAPI_KEY`(추가됨), `KAKAO_REST_KEY`(기존).
+
+## 앱
+
+| 파일 | 역할 |
+|---|---|
+| `features/course/courseApi.ts` | `suggestCourse(lat, lng)` |
+| `features/course/CourseCard.tsx` | 코스 카드(목록·찜·안내·출처·닫기) |
+| `features/course/copy.ts` | 문구 |
+| `map/protocol.ts`·`webview-template.ts`·`MapBridge.tsx` | `setCourse` 메시지(번호 핀 + 주황 선 + 범위 맞춤, `null`이면 지움) |
+| `app/(tabs)/index.tsx` | [🐾 산책] 버튼, 카드 표시, 찜 연결 |
+
+코스가 떠 있는 동안 아지트·⭐ 핀·안개·고양이는 그대로 둔다.
+
+## 오류 처리
+
+- 네트워크 끊김 → "연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?"(기존 문구), 그 밖 → 기존 공통 문구.
+- 찜 실패 → 버튼 원래대로 + 공통 문구.
+- 느린 응답이 [닫기] 뒤에 오면 버린다(요청 번호 비교).
+
+## 테스트
+
+- pgTAP: `use_course_call` 50번까지 `true`·51번째 `false`, 사용자별 따로, 날짜가 바뀌면 다시, 로그인 없으면 예외, 표 직접 접근 막힘.
+- Deno: 입력 검사·로그인, `pickStops`(가본 곳 제외, 가까운 순 잇기, 최대 4, 후보 0), `flattenRoute`(좌표 순서, 솎기), 한도 넘으면 길찾기 안 부르고 `routeLimited`, 길찾기 실패 → 핀만, TourAPI 실패 → 502, 후보 0이면 한도 안 씀.
+- jest: API 래퍼, 카드(목록·거리·한도 안내·출처·찜 후 표시), 지도([🐾 산책] 버튼·부르는 동안 비활성·빈 상태 문구·닫기·늦은 응답 버림·찜 연결 200m 규칙), 브리지 `setCourse`.
+- 실기기: 번호 핀·선이 보이는지, 범위 맞춤, 찜 → ⭐ 핀.
+
+## 범위 밖
+
+- 코스 저장·기록·완주 축하, 고양이가 먼저 제안하는 말풍선 힌트, 관광지 사진·설명, 탐색 모드 토글, 도보·대중교통 길찾기, 지표 이벤트(`course_view` 등 — 지표 수집을 붙일 때 함께).
