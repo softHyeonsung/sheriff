@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { readMapCache } from '@/features/map/mapCache';
+import { useHideoutPlaces } from '@/features/map/useHideoutPlaces';
 import { useMyLocation } from '@/features/map/useMyLocation';
 import { useMemories } from '@/features/memories/useMemories';
 import { getFreshFix } from '@/features/checkin/checkinApi';
@@ -15,6 +16,7 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('@/features/map/mapCache', () => ({ readMapCache: jest.fn() }));
 jest.mock('@/features/map/useMyLocation', () => ({ useMyLocation: jest.fn() }));
+jest.mock('@/features/map/useHideoutPlaces', () => ({ useHideoutPlaces: jest.fn() }));
 jest.mock('@/features/memories/useMemories', () => ({ useMemories: jest.fn() }));
 jest.mock('@/features/checkin/checkinApi', () => ({ getFreshFix: jest.fn() }));
 jest.mock('@/features/memories/MemoryButton', () => {
@@ -36,6 +38,7 @@ beforeEach(() => {
   (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [cafe], thresholds: T, fog: null });
   (useMyLocation as jest.Mock).mockReturnValue({ location: { lat: 37.5001, lng: 127, accuracy: 10 }, permission: 'granted' });
   (useMemories as jest.Mock).mockReturnValue(mem());
+  (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [], status: 'ready' });
 });
 
 test('헤더: 이름·등급·다녀온 횟수·다음 단계, 사진 없으면 빈 상태', async () => {
@@ -115,4 +118,53 @@ test('상세의 위치 확인: 흐리거나 멀면 문제를 알려 주고, 괜�
   const ok = { lat: 37.5001, lng: 127, accuracy: 10 };
   (getFreshFix as jest.Mock).mockResolvedValueOnce(ok);
   expect(await getFix()).toEqual(ok);
+});
+
+test('여기서 간 곳: 장소별 횟수', async () => {
+  (useHideoutPlaces as jest.Mock).mockReturnValue({
+    places: [{ placeId: '222', name: '2층 카페', visits: 3 }, { placeId: '111', name: '단골 카페', visits: 1 }],
+    status: 'ready',
+  });
+  await render(<HideoutDetail />);
+  await waitFor(() => expect(screen.getByText('여기서 간 곳')).toBeTruthy());
+  expect(useHideoutPlaces).toHaveBeenCalledWith('a1');
+  expect(screen.getByText('2층 카페 · 3번')).toBeTruthy();
+  expect(screen.getByText('단골 카페 · 1번')).toBeTruthy();
+});
+
+test('여기서 간 곳: 한 곳뿐이고 아지트 이름과 같으면 숨긴다, 이름이 다르면 보인다', async () => {
+  (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [{ placeId: '111', name: '단골 카페', visits: 3 }], status: 'ready' });
+  const { unmount } = await render(<HideoutDetail />);
+  await waitFor(() => expect(screen.getByText('여기서의 순간들')).toBeTruthy());
+  expect(screen.queryByText('여기서 간 곳')).toBeNull();
+  await unmount();
+  (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [{ placeId: '222', name: '2층 카페', visits: 1 }], status: 'ready' });
+  await render(<HideoutDetail />);
+  await waitFor(() => expect(screen.getByText('2층 카페 · 1번')).toBeTruthy());
+});
+
+test('여기서 간 곳: 오프라인·오류 안내', async () => {
+  (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [], status: 'offline' });
+  const { unmount } = await render(<HideoutDetail />);
+  await waitFor(() => expect(screen.getByText('연결되면 간 곳을 보여드릴게요.')).toBeTruthy());
+  await unmount();
+  (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [], status: 'error' });
+  await render(<HideoutDetail />);
+  await waitFor(() => expect(screen.getByText('간 곳을 불러오지 못했어요.')).toBeTruthy());
+});
+
+test('사진 크게 보기: 어느 장소에서 남겼는지, 모르는 옛 사진은 줄 없음', async () => {
+  (useMemories as jest.Mock).mockReturnValue(
+    mem({ photos: [
+      { id: 'm1', url: 'https://s/1', createdAt: 'x', placeName: '2층 카페' },
+      { id: 'm2', url: 'https://s/2', createdAt: 'y', placeName: null },
+    ] }),
+  );
+  await render(<HideoutDetail />);
+  await fireEvent.press(await screen.findByRole('button', { name: '사진 1 크게 보기' }));
+  expect(screen.getByText('2층 카페에서')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  await fireEvent.press(screen.getByRole('button', { name: '사진 2 크게 보기' }));
+  expect(screen.getByTestId('photo-large')).toBeTruthy();
+  expect(screen.queryByText(/에서$/)).toBeNull();
 });

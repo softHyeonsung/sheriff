@@ -10,8 +10,10 @@ import { metersBetween, OFFLINE_ACCURACY_MAX_M, OFFLINE_RADIUS_M } from '@/featu
 import { LOCATE_TIMEOUT_MS, within } from '@/features/checkin/useCheckin';
 import { readMapCache } from '@/features/map/mapCache';
 import { nextStageHint } from '@/features/map/nextStageHint';
+import { useHideoutPlaces } from '@/features/map/useHideoutPlaces';
 import type { GradeThresholds, MyHideout } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
+import type { MemoryPhoto } from '@/features/memories/memoriesApi';
 import { type FixResult, MemoryButton } from '@/features/memories/MemoryButton';
 import { useMemories } from '@/features/memories/useMemories';
 import { GRADE_LABEL } from '@/map/grades';
@@ -30,8 +32,9 @@ function Pill({ label, onPress }: { label: string; onPress: () => void }) {
 export default function HideoutDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [info, setInfo] = useState<Info>(null);
-  const [large, setLarge] = useState<string | null>(null);
+  const [large, setLarge] = useState<MemoryPhoto | null>(null);
   const memories = useMemories(id);
+  const visited = useHideoutPlaces(id);
   const { location } = useMyLocation();
 
   useFocusEffect(
@@ -64,6 +67,8 @@ export default function HideoutDetail() {
   const { hideout: h, thresholds } = info;
   const near = !!location && metersBetween(location, h) <= OFFLINE_RADIUS_M;
   const { photos, pending, status } = memories;
+  // 한 곳뿐이고 아지트 이름과 같으면 헤더와 같은 말이라 숨긴다.
+  const showPlaces = visited.places.length > 1 || (visited.places.length === 1 && visited.places[0].name !== h.name);
 
   // 지도 점은 오래됐을 수 있다: 새로 잡은 위치로 서버와 같은 기준을 먼저 본다(거절돼 사진이 사라지지 않게).
   const getFix = async (): Promise<FixResult> => {
@@ -87,6 +92,19 @@ export default function HideoutDetail() {
           <Text style={styles.body}>지금까지 {h.footprintCount}번 다녀왔어요</Text>
           {thresholds && <Text style={styles.caption}>{nextStageHint(h.footprintCount, thresholds)}</Text>}
         </View>
+
+        {visited.status === 'offline' && <Text style={[styles.caption, styles.centerText]}>연결되면 간 곳을 보여드릴게요.</Text>}
+        {visited.status === 'error' && <Text style={[styles.caption, styles.centerText]}>간 곳을 불러오지 못했어요.</Text>}
+        {showPlaces && (
+          <View style={styles.places}>
+            <Text style={styles.section}>여기서 간 곳</Text>
+            {visited.places.map((p) => (
+              <Text key={p.placeId ?? p.name} style={styles.body}>
+                {p.name} · {p.visits}번
+              </Text>
+            ))}
+          </View>
+        )}
 
         <MemoryButton
           aidutId={h.id}
@@ -116,7 +134,7 @@ export default function HideoutDetail() {
           {photos.map((p, i) => (
             <Pressable
               key={p.id}
-              onPress={() => p.url && setLarge(p.url)}
+              onPress={() => p.url && setLarge(p)}
               accessibilityRole="button"
               accessibilityLabel={`사진 ${i + 1} 크게 보기`}
               style={styles.tile}>
@@ -129,7 +147,8 @@ export default function HideoutDetail() {
       {large && (
         <Modal visible transparent animationType="fade" onRequestClose={() => setLarge(null)}>
           <View style={styles.scrim}>
-            <Image testID="photo-large" source={{ uri: large }} style={styles.large} resizeMode="contain" />
+            <Image testID="photo-large" source={{ uri: large.url ?? undefined }} style={styles.large} resizeMode="contain" />
+            {large.placeName && <Text style={styles.onScrim}>{large.placeName}에서</Text>}
             <Pill label="닫기" onPress={() => setLarge(null)} />
           </View>
         </Modal>
@@ -156,6 +175,8 @@ const styles = StyleSheet.create({
   blank: { backgroundColor: color.line, alignItems: 'center', justifyContent: 'center' },
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', gap: 16, padding: space.gutter },
   large: { width: '100%', height: '75%' },
+  places: { gap: 4 },
+  onScrim: { ...type.body, color: '#FFFFFF' },
   pill: {
     alignSelf: 'flex-start',
     minHeight: space.tapMin,
