@@ -5,7 +5,7 @@ import type { GradeThresholds } from './useMyHideouts';
 const NEXT: ('box' | 'hut' | 'tower' | 'palace')[] = ['box', 'hut', 'tower', 'palace'];
 
 // 받침 있으면 "이", 없으면 "가" (작은 집이 / 박스가).
-const subject = (word: string) => {
+export const subject = (word: string) => {
   const code = word.charCodeAt(word.length - 1) - 0xac00;
   return word + (code >= 0 && code % 28 !== 0 ? '이' : '가');
 };
