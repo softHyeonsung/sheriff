@@ -14,7 +14,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
 <html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<style>html,body,#map{margin:0;padding:0;width:100%;height:100%}.me{width:16px;height:16px;border-radius:8px;background:#E6A552;border:3px solid #FFFFFF;box-shadow:0 0 0 6px rgba(230,165,82,0.25)}.cat{position:relative;width:48px;height:48px}.cat img{width:48px;height:48px;display:block}.bubble{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#FFFFFF;color:#4A3D30;border-radius:12px;padding:6px 10px;font:14px/1.3 sans-serif;box-shadow:0 2px 6px rgba(74,61,48,0.2);display:none}</style>
+<style>html,body,#map{margin:0;padding:0;width:100%;height:100%}.me{width:16px;height:16px;border-radius:8px;background:#E6A552;border:3px solid #FFFFFF;box-shadow:0 0 0 6px rgba(230,165,82,0.25)}.cat{position:relative;width:48px;height:48px}.cat img{width:48px;height:48px;display:block}.bubble{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#FFFFFF;color:#4A3D30;border-radius:12px;padding:6px 10px;font:14px/1.3 sans-serif;box-shadow:0 2px 6px rgba(74,61,48,0.2);display:none}.stop{width:28px;height:28px;border-radius:14px;background:#F59E0B;border:2px solid #FFFFFF;color:#FFFFFF;font:bold 15px/28px sans-serif;text-align:center;box-shadow:0 2px 6px rgba(74,61,48,0.3)}</style>
 </head><body>
 <div id="map"></div>
 <script>
@@ -24,6 +24,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
   window.onerror = function (msg) { post({ type: 'error', reason: String(msg) }); };
   var map = null, pins = [], me = null, meAt = null;
   var wishPins = [];
+  var courseItems = [];
   var fog = null, cells = [], cat = null, catImg = null, bubble = null, catAt = null, catCell = null, bubbleTimer = null;
   var pose = 'sit', poseTimer = null, lieTimer = null, happyUntil = 0;
   // 한국 전체를 넉넉히 덮는 바깥 사각형(시계 방향). 구멍은 반대 방향이어야 채움 규칙과 무관하게 뚫린다.
@@ -176,6 +177,28 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
     bubbleTimer = setTimeout(function () { bubble.style.display = 'none'; }, 3000);
   }
 
+  // 코스: 주황 선 + 번호 핀. 다시 부르면 앞의 것을 지우고, null이면 지우기만.
+  function setCourse(c) {
+    courseItems.forEach(function (o) { o.setMap(null); });
+    courseItems = [];
+    if (!c) return;
+    var bounds = new kakao.maps.LatLngBounds();
+    if (meAt) bounds.extend(latLng(meAt));
+    if (c.route && c.route.length > 1) {
+      var path = c.route.map(function (p) { return new kakao.maps.LatLng(p[0], p[1]); });
+      path.forEach(function (p) { bounds.extend(p); });
+      courseItems.push(new kakao.maps.Polyline({ map: map, path: path, strokeWeight: 5, strokeColor: '#F59E0B', strokeOpacity: 0.9, zIndex: 3 }));
+    }
+    c.stops.forEach(function (s, i) {
+      var el = document.createElement('div');
+      el.className = 'stop';
+      el.textContent = String(i + 1);
+      bounds.extend(latLng(s));
+      courseItems.push(new kakao.maps.CustomOverlay({ content: el, position: latLng(s), map: map, zIndex: 6 }));
+    });
+    map.setBounds(bounds, 80, 40, 320, 40); // 아래는 코스 카드가 가린다
+  }
+
   function init() {
     map = new kakao.maps.Map(document.getElementById('map'), { center: latLng(cfg.center), level: 4 });
     kakao.maps.event.addListener(map, 'idle', function () {
@@ -190,6 +213,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
       else if (m.type === 'setFog') setFog(m.cells);
       else if (m.type === 'catSay') catSay(m.text);
       else if (m.type === 'setCat') { cfg.cat = m.poses; setPose(pose); }
+      else if (m.type === 'setCourse') setCourse(m.course);
     };
     post({ type: 'ready' });
   }

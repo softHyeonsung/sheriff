@@ -10,6 +10,8 @@ export type WishPin = { placeId: string; lat: number; lng: number };
 export type MyLocation = { lat: number; lng: number; accuracy: number };
 // 걷힌 칸 하나: 남서·북동 모서리.
 export type FogCell = { sw: LatLng; ne: LatLng };
+// 코스: 순서대로 번호 핀, 길은 [위도, 경도] 점들(없으면 핀만).
+export type CoursePlan = { stops: LatLng[]; route: [number, number][] | null };
 
 export type AppToMap =
   | { type: 'setHideouts'; hideouts: HideoutPin[] }
@@ -18,7 +20,8 @@ export type AppToMap =
   | ({ type: 'panTo' } & LatLng)
   | { type: 'setFog'; cells: FogCell[] }
   | { type: 'catSay'; text: string }
-  | { type: 'setCat'; poses: Record<CatPose, string> };
+  | { type: 'setCat'; poses: Record<CatPose, string> }
+  | { type: 'setCourse'; course: CoursePlan | null };
 
 export type MapToApp =
   | { type: 'ready' }

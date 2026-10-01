@@ -8,7 +8,7 @@ import { catPoses } from './catArt';
 import type { CatColor } from './catColors';
 import { GRADES } from './grades';
 import { markerFor, WISH_MARKER } from './markers';
-import { type AppToMap, type FogCell, type HideoutPin, type LatLng, type MyLocation, type WishPin, parseMapMessage, toMapScript } from './protocol';
+import { type AppToMap, type CoursePlan, type FogCell, type HideoutPin, type LatLng, type MyLocation, type WishPin, parseMapMessage, toMapScript } from './protocol';
 import { buildMapHtml } from './webview-template';
 
 export type MapBridgeHandle = { panTo: (lat: number, lng: number) => void; catSay: (text: string) => void };
@@ -25,12 +25,13 @@ type Props = {
   onIdle: (center: LatLng) => void;
   onCatTap: () => void;
   catColor: CatColor;
+  course: CoursePlan | null;
 };
 
 const ORIGIN = 'http://localhost'; // registered as a Web platform domain in the Kakao console
 
 export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
-  { hideouts, wishes, onWishTap, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap, catColor },
+  { hideouts, wishes, onWishTap, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap, catColor, course },
   ref,
 ) {
   const jsKey = process.env.EXPO_PUBLIC_KAKAO_JS_KEY ?? '';
@@ -68,6 +69,10 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   useEffect(() => {
     if (ready) send({ type: 'setCat', poses: catPoses(catColor) });
   }, [ready, catColor]);
+
+  useEffect(() => {
+    if (ready) send({ type: 'setCourse', course });
+  }, [ready, course]);
 
   useEffect(() => {
     if (ready && myLocation) send({ type: 'setMyLocation', ...myLocation });

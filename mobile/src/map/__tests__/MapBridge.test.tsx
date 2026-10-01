@@ -20,7 +20,7 @@ jest.mock('react-native-webview', () => {
 });
 
 const pins = [{ id: 'a1', lat: 37.5, lng: 126.9, grade: 'hut' as const }];
-const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn(), catColor: 'cheese' as const, wishes: [], onWishTap: jest.fn() };
+const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn(), catColor: 'cheese' as const, wishes: [], onWishTap: jest.fn(), course: null };
 const send = async (data: string) => act(async () => mockWebProps.onMessage({ nativeEvent: { data } }));
 
 beforeEach(() => {
@@ -32,7 +32,8 @@ test('지도 준비 전엔 보내지 않고, ready 이후에 보낸다', async (
   await render(<MapBridge {...base} />);
   expect(mockInject).not.toHaveBeenCalled();
   await send('{"type":"ready"}');
-  expect(mockInject).toHaveBeenCalledTimes(4);
+  expect(mockInject).toHaveBeenCalledTimes(5);
+  expect(mockInject.mock.calls.some(([s]) => s.includes('setCourse'))).toBe(true);
   expect(mockInject.mock.calls[0][0]).toContain('setHideouts');
   expect(mockInject.mock.calls[0][0]).toContain('a1');
   expect(mockInject.mock.calls.some(([s]) => s.includes('setWishes'))).toBe(true);
@@ -164,4 +165,13 @@ test('고양이를 바꾸면 지도에 새 자세 묶음을 보낸다(앱을 다
   mockInject.mockClear();
   await rerender(<MapBridge {...base} catColor="white" />);
   expect(mockInject.mock.calls.some(([s]) => s.includes('setCat'))).toBe(true);
+});
+
+test('코스가 바뀌면 setCourse를 보낸다', async () => {
+  const { rerender } = await render(<MapBridge {...base} />);
+  await send('{"type":"ready"}');
+  mockInject.mockClear();
+  await rerender(<MapBridge {...base} course={{ stops: [{ lat: 37.5, lng: 127 }], route: null }} />);
+  expect(mockInject).toHaveBeenCalledTimes(1);
+  expect(mockInject.mock.calls[0][0]).toContain('setCourse');
 });

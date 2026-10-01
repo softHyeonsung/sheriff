@@ -48,3 +48,9 @@ test('wishTap을 읽는다(모양이 틀리면 버린다)', () => {
 test('setCat은 자세 묶음을 싣는다', () => {
   expect(toMapScript({ type: 'setCat', poses: { sit: 'a', walk: 'b', lie: 'c', happy: 'd', look: 'e' } })).toContain('setCat');
 });
+
+test('setCourse는 좌표를 문자열 안에 실어 보낸다', () => {
+  const script = toMapScript({ type: 'setCourse', course: { stops: [{ lat: 37.5, lng: 127 }], route: [[37.5, 127]] } });
+  expect(script).toContain('setCourse');
+  expect(script.startsWith('window.__onAppMessage(JSON.parse(')).toBe(true);
+});

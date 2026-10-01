@@ -174,6 +174,7 @@ export default function MapScreen() {
         fog={fog.cells}
         onIdle={dongAt.onIdle}
         catColor={catColor}
+        course={null}
         onCatTap={() => bridge.current?.catSay(pickCatLine(dongAt.dong?.ratio ?? null, catTaps.current++))}
         onError={(reason) => {
           console.warn('지도 오류', reason);

@@ -20,6 +20,8 @@ test('카카오 SDK를 JS 키로 불러오고 설정을 싣는다', () => {
   expect(html).toContain("type: 'wishTap'");
   expect(html).toContain('setPose');
   expect(html).toContain("m.type === 'setCat'");
+  expect(html).toContain("m.type === 'setCourse'");
+  expect(html).toContain('#F59E0B');
 });
 
 test('설정 값이 </script>를 품어도 스크립트 블록이 깨지지 않는다', () => {

@@ -12,6 +12,9 @@ const cell = (col: number) => ({ sw: { lat: 37.5, lng: 126.9 + col * W }, ne: { 
 function boot() {
   const posted: any[] = [];
   const cats: any[] = [];
+  const stops: any[] = [];
+  const lines: any[] = [];
+  const fitted: any[] = [];
   const el = (): any => ({ style: {}, appendChild() {}, addEventListener() {} });
   let sdk: any;
   const document = { getElementById: () => ({}), createElement: el, head: { appendChild: (s: any) => (sdk = s) } };
@@ -27,6 +30,7 @@ function boot() {
       LatLng,
       Map: function (this: any) {
         this.getCenter = () => new (LatLng as any)(37.5, 126.9);
+        this.setBounds = (b: any) => fitted.push(b);
       },
       Polygon: function (this: any) {
         this.setMap = () => {};
@@ -37,6 +41,17 @@ function boot() {
         this.setPosition = (p: any) => this.path.push(p);
         this.setMap = (m: any) => (this.map = m);
         if (o.zIndex === 5) cats.push(this);
+        if (o.zIndex === 6) stops.push(this);
+      },
+      Polyline: function (this: any, o: any) {
+        this.map = o.map;
+        this.path = o.path;
+        this.setMap = (m: any) => (this.map = m);
+        lines.push(this);
+      },
+      LatLngBounds: function (this: any) {
+        this.points = [];
+        this.extend = (p: any) => this.points.push(p);
       },
       event: { addListener() {} },
     },
@@ -47,7 +62,7 @@ function boot() {
   // eslint-disable-next-line no-new-func
   new Function('window', 'document', 'kakao', 'requestAnimationFrame', body)(window, document, kakao, (f: () => void) => setTimeout(f, 16));
   sdk.onload();
-  return { send: (m: unknown) => window.__onAppMessage(m), posted, cats };
+  return { send: (m: unknown) => window.__onAppMessage(m), posted, cats, stops, lines, fitted };
 }
 
 beforeEach(() => jest.useFakeTimers());
@@ -73,4 +88,27 @@ test('고양이는 안개 낀 칸을 가로지르지 않는다(두 칸 떨어진
   const fogged = cell(1);
   const crossed = page.cats[0].path.some((p: any) => p.lng > fogged.sw.lng && p.lng < fogged.ne.lng);
   expect(crossed).toBe(false);
+});
+
+test('코스: 번호 핀과 선을 그리고 범위를 맞춘다, null이면 지운다', () => {
+  const page = boot();
+  page.send({ type: 'setMyLocation', lat: 37.5, lng: 126.9, accuracy: 10 });
+  page.send({ type: 'setCourse', course: { stops: [{ lat: 37.501, lng: 126.9 }, { lat: 37.502, lng: 126.9 }], route: [[37.5, 126.9], [37.502, 126.9]] } });
+  expect(page.stops).toHaveLength(2);
+  expect(page.lines).toHaveLength(1);
+  expect(page.lines[0].path).toHaveLength(2);
+  expect(page.fitted[0].points).toHaveLength(5); // 내 위치 + 경로 2 + 핀 2
+  page.send({ type: 'setCourse', course: null });
+  expect(page.stops.every((s: any) => s.map === null)).toBe(true);
+  expect(page.lines[0].map).toBeNull();
+});
+
+test('코스: 경로가 없으면 핀만, 다시 보내면 앞의 것을 지운다', () => {
+  const page = boot();
+  page.send({ type: 'setCourse', course: { stops: [{ lat: 37.501, lng: 126.9 }], route: null } });
+  expect(page.lines).toHaveLength(0);
+  page.send({ type: 'setCourse', course: { stops: [{ lat: 37.6, lng: 127 }], route: null } });
+  expect(page.stops).toHaveLength(2);
+  expect(page.stops[0].map).toBeNull();
+  expect(page.stops[1].map).not.toBeNull();
 });
