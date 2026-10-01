@@ -112,3 +112,11 @@ test('코스: 경로가 없으면 핀만, 다시 보내면 앞의 것을 지운�
   expect(page.stops[0].map).toBeNull();
   expect(page.stops[1].map).not.toBeNull();
 });
+
+test('코스: 그리다 오류가 나도 지도는 살아 있다', () => {
+  const page = boot();
+  expect(() => page.send({ type: 'setCourse', course: { stops: null, route: null } })).not.toThrow();
+  expect(page.posted.some((m: any) => m.type === 'error')).toBe(false);
+  page.send({ type: 'setCourse', course: { stops: [{ lat: 37.501, lng: 126.9 }], route: null } });
+  expect(page.stops).toHaveLength(1);
+});

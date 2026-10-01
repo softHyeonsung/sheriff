@@ -47,7 +47,9 @@ export function TermsSheet({
   const all = ITEMS.every((i) => checked[i.key]);
   const setAll = (v: boolean) => setChecked({ age: v, service: v, privacy: v, location: v });
 
+  // 저장 중에 닫으면, 닫았다고 생각한 뒤에 가입이 끝나 버린다.
   const close = () => {
+    if (busy) return;
     setAll(false);
     onClose();
   };

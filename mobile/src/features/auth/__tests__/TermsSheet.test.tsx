@@ -55,3 +55,12 @@ test('실패하면 시트 안에 다시 해보라는 안내', async () => {
   await render(<TermsSheet {...props} failed />);
   expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
 });
+
+test('저장 중엔 닫히지 않는다', async () => {
+  const { rerender } = await render(<TermsSheet {...props} busy />);
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(props.onClose).not.toHaveBeenCalled();
+  await rerender(<TermsSheet {...props} />);
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(props.onClose).toHaveBeenCalledTimes(1);
+});

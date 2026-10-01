@@ -2,11 +2,14 @@
 import * as Location from 'expo-location';
 import { supabase } from '@/services/supabase';
 import { CheckinError, getFreshFix, submitCheckin, suggestPlace, targetFor } from '../checkinApi';
+import { messageFor } from '../copy';
 
 jest.mock('@/services/supabase', () => ({ supabase: { rpc: jest.fn(), functions: { invoke: jest.fn() } } }));
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
+  requestForegroundPermissionsAsync: jest.fn(),
+  hasServicesEnabledAsync: jest.fn(() => Promise.resolve(true)),
   Accuracy: { High: 4 },
 }));
 
@@ -70,4 +73,25 @@ test('연결이 안 되면 offline', async () => {
   await expect(suggestPlace(fix)).rejects.toMatchObject({ code: 'offline' });
   rpc.mockResolvedValue({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
   await expect(submitCheckin(fix, { kind: 'new', roadAddress: null })).rejects.toMatchObject({ code: 'offline' });
+});
+
+test('새 위치: 아직 묻지 않은 권한은 거절로 치지 않고 지금 묻는다', async () => {
+  (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined' });
+  (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValueOnce({ status: 'granted' });
+  (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({ coords: { latitude: 37.5, longitude: 126.9, accuracy: 12 } });
+  await expect(getFreshFix()).resolves.toEqual(fix);
+  (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValueOnce({ status: 'denied' });
+  await expect(getFreshFix()).resolves.toBe('denied');
+  (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
+  (Location.requestForegroundPermissionsAsync as jest.Mock).mockClear();
+  await expect(getFreshFix()).resolves.toBe('denied');
+  expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled(); // 이미 거절한 사람에게 또 묻지 않는다
+});
+
+test('새 위치: 휴대폰 위치 서비스가 꺼져 있으면 location_off', async () => {
+  (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+  (Location.hasServicesEnabledAsync as jest.Mock).mockResolvedValueOnce(false);
+  await expect(getFreshFix()).rejects.toMatchObject({ code: 'location_off' });
+  expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+  expect(messageFor(new CheckinError('location_off'))).toBe('휴대폰의 위치 서비스가 꺼져 있어요. 켜고 다시 해볼까요?');
 });

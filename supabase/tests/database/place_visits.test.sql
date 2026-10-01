@@ -76,17 +76,17 @@ select is(
   (select array_agg(place_name) from public.my_memories((select id from public.aidut where kakao_place_id = '111'))),
   array['1층 편의점', '2층 카페'], '사진마다 그때 간 가게(최근 사진 먼저, 먼저 올린 사진은 그대로)');
 
--- 5) 가게 이름이 바뀐 뒤 다시 방문 → 같은 번호는 한 줄, 새 이름
+-- 5) 가게 이름이 바뀐 뒤 다시 방문 → 같은 번호는 한 줄, 새 이름(가나다순으로는 옛 이름보다 앞: max(이름)으로는 통과 못 한다)
 reset role;
 select pg_temp.age_checkins();
 set local role authenticated;
 select pg_temp.as_user('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 select is(
-  (public.submit_checkin(37.5, 126.94, 10, '{"kind":"kakao","placeId":"222","name":"2층 카페 리뉴얼","lat":37.50005,"lng":126.94,"roadAddress":null}') ->> 'footprintCount'),
+  (public.submit_checkin(37.5, 126.94, 10, '{"kind":"kakao","placeId":"222","name":"1호점 카페","lat":37.50005,"lng":126.94,"roadAddress":null}') ->> 'footprintCount'),
   '4', '카페 다시');
 select is(
   (select array_agg(place_id || ':' || name || ':' || visits) from public.my_places((select id from public.aidut where kakao_place_id = '111'))),
-  array['222:2층 카페 리뉴얼:2', '111:1층 편의점:2'], 'my_places: 장소별 횟수, 같으면 최근 순, 이름은 최근 것');
+  array['222:1호점 카페:2', '111:1층 편의점:2'], 'my_places: 장소별 횟수, 같으면 최근 순, 이름은 최근 것');
 
 -- 5b) 주소를 못 받은 "새로 만들기"(오프라인 등)가 기존 아지트로 합쳐지면 그 아지트의 원래 장소로 센다
 reset role;
@@ -97,7 +97,7 @@ select is(
   '5', '주소 없는 새로 만들기가 기존 아지트로 합쳐진다');
 select is(
   (select array_agg(place_id || ':' || name || ':' || visits) from public.my_places((select id from public.aidut where kakao_place_id = '111'))),
-  array['111:1층 편의점:3', '222:2층 카페 리뉴얼:2'], '같은 이름이 두 줄로 갈라지지 않는다');
+  array['111:1층 편의점:3', '222:1호점 카페:2'], '같은 이름이 두 줄로 갈라지지 않는다');
 
 -- 6) 새로 만들기 → 번호 없이 주소 이름
 select is(

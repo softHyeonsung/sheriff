@@ -71,12 +71,13 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   }, [ready, catColor]);
 
   useEffect(() => {
-    if (ready) send({ type: 'setCourse', course });
-  }, [ready, course]);
-
-  useEffect(() => {
     if (ready && myLocation) send({ type: 'setMyLocation', ...myLocation });
   }, [ready, myLocation]);
+
+  // 내 위치 뒤에: 코스 범위를 맞출 때 내 위치도 들어가게.
+  useEffect(() => {
+    if (ready) send({ type: 'setCourse', course });
+  }, [ready, course]);
 
   // A panTo before the map is ready (the screen centering on the first fix) is kept, not dropped.
   const pendingPan = useRef<LatLng | null>(null);
@@ -126,7 +127,8 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
       onContentProcessDidTerminate={() => onError('content_process_gone')}
       onRenderProcessGone={() => onError('render_process_gone')}
       // Kakao logo / copyright links would navigate the WebView away and lose the map.
-      onShouldStartLoadWithRequest={(req) => req.url.startsWith(ORIGIN) || req.url.startsWith('about:')}
+      // 주소 앞부분만 보면 http://localhost.evil.example 도 통과한다: 우리 주소 그 자체이거나 그 아래 경로만.
+      onShouldStartLoadWithRequest={(req) => req.url === ORIGIN || req.url.startsWith(`${ORIGIN}/`) || req.url.startsWith('about:')}
       style={{ flex: 1 }}
     />
   );

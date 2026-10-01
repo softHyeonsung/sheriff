@@ -168,3 +168,20 @@ test('사진 크게 보기: 어느 장소에서 남겼는지, 모르는 옛 사�
   expect(screen.getByTestId('photo-large')).toBeTruthy();
   expect(screen.queryByText(/에서$/)).toBeNull();
 });
+
+test('장소 이름이 빈 글자인 사진도 크게 보기가 깨지지 않는다', async () => {
+  (useMemories as jest.Mock).mockReturnValue(mem({ photos: [{ id: 'm1', url: 'https://s/1', createdAt: 'x', placeName: '' }] }));
+  await render(<HideoutDetail />);
+  await fireEvent.press(await screen.findByRole('button', { name: '사진 1 크게 보기' }));
+  expect(screen.getByTestId('photo-large')).toBeTruthy();
+  expect(screen.queryByText(/에서$/)).toBeNull();
+});
+
+test('상세의 위치 확인: 위치 서비스가 꺼져 있으면 그렇게 알려 준다', async () => {
+  await render(<HideoutDetail />);
+  await waitFor(() => expect(screen.getByText('btn:on')).toBeTruthy());
+  const getFix = mockBtnProps.getFix as () => Promise<unknown>;
+  const { CheckinError } = jest.requireActual('@/features/checkin/errors');
+  (getFreshFix as jest.Mock).mockRejectedValueOnce(new CheckinError('location_off'));
+  expect(await getFix()).toEqual({ problem: '휴대폰의 위치 서비스가 꺼져 있어요. 켜고 다시 해볼까요?' });
+});

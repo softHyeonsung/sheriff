@@ -239,7 +239,7 @@ test('실패 안내 + 다시 시도, 권한 문제면 설정 열기', async () =
   expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.')).toBeTruthy();
   await fireEvent.press(screen.getAllByRole('button', { name: '설정 열기' }).at(-1)!);
   expect(open).toHaveBeenCalled();
-  await fireEvent.press(screen.getByRole('button', { name: '다시 해볼게요' }));
+  await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
   expect(api.start).toHaveBeenCalled();
 });
 
@@ -422,7 +422,7 @@ test('공유가 기다리고 있으면 찜 화면으로 넘기고 비운다', as
 });
 
 const stopA = { name: '세종로공원', address: null, lat: 37.501, lng: 126.9, legM: 110 };
-const courseOf = (over = {}) => ({ stops: [stopA], route: [[37.5, 126.9], [37.501, 126.9]], distanceM: 300, routeLimited: false, ...over });
+const courseOf = (over = {}) => ({ stops: [stopA], route: [[37.5, 126.9], [37.501, 126.9]], routeLimited: false, ...over });
 const walk = () => fireEvent.press(screen.getByRole('button', { name: COURSE.button }));
 
 test('산책 → 현재 위치로 코스를 받아 카드와 지도에', async () => {
@@ -454,7 +454,7 @@ test('산책: 찾는 동안 버튼 비활성, 닫은 뒤 늦게 온 응답은 �
 });
 
 test('산책: 후보가 없으면 다 개척했다는 문구', async () => {
-  (suggestCourse as jest.Mock).mockResolvedValue(courseOf({ stops: [], route: null, distanceM: null }));
+  (suggestCourse as jest.Mock).mockResolvedValue(courseOf({ stops: [], route: null }));
   await render(<MapScreen />);
   await walk();
   expect(await screen.findByText(COURSE.empty)).toBeTruthy();
@@ -535,4 +535,13 @@ test('찜 화면에서 찾기는 괄호를 뗀 이름으로 연다', async () =>
   await fireEvent.press(await screen.findByRole('button', { name: `${long.name} ⭐ 찜` }));
   await fireEvent.press(await screen.findByRole('button', { name: /찜 화면에서 찾기$/ }));
   expect(router.push).toHaveBeenCalledWith({ pathname: '/wishlist', params: { shared: '세종로공원' } });
+});
+
+test('권한 실패 안내가 떠 있으면 위쪽 권한 배너는 숨긴다(같은 말·같은 버튼이 두 번 나오지 않게)', async () => {
+  (useMyLocation as jest.Mock).mockReturnValue({ location: null, permission: 'denied' });
+  (useCheckin as jest.Mock).mockReturnValue({ state: { name: 'failed', message: MSG.denied, needsSettings: true }, start: jest.fn(), choose: jest.fn(), close: jest.fn() });
+  await render(<MapScreen />);
+  expect(screen.getByText(MSG.denied)).toBeTruthy();
+  expect(screen.queryByText('위치를 켜두시면 지금 있는 곳을 보여드릴게요')).toBeNull();
+  expect(screen.getAllByRole('button', { name: '설정 열기' })).toHaveLength(1);
 });

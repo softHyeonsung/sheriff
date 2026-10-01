@@ -18,6 +18,14 @@ export type MyHideout = {
 };
 export type GradeThresholds = { box: number; hut: number; tower: number; palace: number };
 
+// 서버 설정이 잘못 들어가면(글자·빠진 값·뒤집힌 순서) 다음 단계 안내가 "NaN번 더"가 된다: 쓰지 않는다.
+export function isThresholds(v: unknown): v is GradeThresholds {
+  if (typeof v !== 'object' || v === null) return false;
+  const { box, hut, tower, palace } = v as Record<string, unknown>;
+  const n = [box, hut, tower, palace];
+  return n.every((x) => typeof x === 'number' && Number.isFinite(x)) && (n as number[]).every((x, i) => x > (i ? (n as number[])[i - 1] : 0));
+}
+
 type Row = { id: string; name: string; grade: string; footprint_count: number; lat: number; lng: number; last_visited_at: string | null };
 
 export function useMyHideouts() {
@@ -33,6 +41,8 @@ export function useMyHideouts() {
       ]);
       if (rows.error) throw rows.error;
       if (cfg.error) throw cfg.error;
+      if (!isThresholds(cfg.data.value)) throw new Error('grade_thresholds 설정이 올바르지 않아요');
+      const limits = cfg.data.value;
       const list = ((rows.data ?? []) as Row[])
         // an unknown grade has no marker art — skip it rather than crash the map
         .filter((r) => isGrade(r.grade))
@@ -48,8 +58,8 @@ export function useMyHideouts() {
       setHideouts(list);
       // 도착 알림 감시 목록도 같이 갱신. 실패해도 지도는 그대로(다음 포커스에 다시).
       syncArrivalRegions(list).catch((e) => console.warn('도착 알림 등록 실패', e));
-      setThresholds(cfg.data.value as GradeThresholds);
-      saveHideouts(list, cfg.data.value as GradeThresholds).catch((e) => console.warn('지도 저장 실패', e));
+      setThresholds(limits);
+      saveHideouts(list, limits).catch((e) => console.warn('지도 저장 실패', e));
       setStatus('ready');
     } catch (e) {
       // 저장본이 있으면 빈 지도 대신 보여준다. "끊겼어요"는 정말 연결 문제일 때만 —

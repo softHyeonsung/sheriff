@@ -81,3 +81,16 @@ test('연결은 되는데 서버가 실패하면 저장본을 보여주되 error
   await waitFor(() => expect(result.current.status).toBe('error'));
   expect(result.current.hideouts).toEqual([cached]);
 });
+
+test('등급 설정 값이 이상하면(숫자가 아니거나 순서가 뒤집힘) 쓰지 않고 오류로', async () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  rpc.mockResolvedValue({ data: [], error: null });
+  for (const bad of [{ box: '2', hut: 5, tower: 10, palace: 20 }, { box: 2, hut: 5, tower: 10 }, { box: 5, hut: 2, tower: 10, palace: 20 }, null]) {
+    from.mockReturnValue(thresholdsQuery(bad));
+    const { result, unmount } = await renderHook(() => useMyHideouts());
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.thresholds).toBeNull();
+    expect(saveHideouts).not.toHaveBeenCalled();
+    await unmount();
+  }
+});

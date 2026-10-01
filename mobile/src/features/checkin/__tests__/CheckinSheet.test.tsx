@@ -58,3 +58,14 @@ test('오프라인이면 내 아지트만 보여준다고 알린다', async () =
   await render(<CheckinSheet state={state({ offline: true })} {...props} />);
   expect(screen.getByText('연결이 끊겨 있어서 내 아지트만 보여드려요')).toBeTruthy();
 });
+
+test('보이는 닫기 버튼으로 닫고, 다른 곳이에요도 저장 중엔 비활성으로 읽힌다', async () => {
+  const { rerender } = await render(<CheckinSheet {...props} state={state()} />);
+  expect(screen.getAllByRole('button', { name: '닫기' })).toHaveLength(1); // 배경은 따로 읽히지 않는다
+  expect(screen.getByText('닫기')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(props.onClose).toHaveBeenCalledTimes(1);
+  await rerender(<CheckinSheet {...props} state={state({ busy: true })} />);
+  expect(screen.getByRole('button', { name: '다른 곳이에요', disabled: true })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '닫기', disabled: true })).toBeTruthy();
+});

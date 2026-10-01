@@ -42,7 +42,8 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} accessibilityRole="button" accessibilityLabel="닫기" />
+      {/* 배경을 눌러도 닫히지만, 읽어 주는 닫기는 아래 보이는 버튼 하나만. */}
+      <Pressable style={styles.backdrop} onPress={close} accessible={false} importantForAccessibility="no" />
       <SafeAreaView edges={['bottom']} style={styles.sheet}>
         {state.offline && <Text style={styles.caption}>연결이 끊겨 있어서 내 아지트만 보여드려요</Text>}
         {view === 'confirm' && first ? (
@@ -68,6 +69,7 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
               disabled={state.busy}
               accessibilityRole="button"
               accessibilityLabel="다른 곳이에요"
+              accessibilityState={{ disabled: state.busy }}
               style={styles.secondary}>
               <Text style={styles.secondaryText}>다른 곳이에요</Text>
             </Pressable>
@@ -94,6 +96,15 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
         <Text style={styles.error} accessibilityLiveRegion="polite">
           {state.error ?? ' '}
         </Text>
+        <Pressable
+          onPress={close}
+          disabled={state.busy}
+          accessibilityRole="button"
+          accessibilityLabel="닫기"
+          accessibilityState={{ disabled: state.busy }}
+          style={styles.secondary}>
+          <Text style={[styles.secondaryText, styles.closeText]}>닫기</Text>
+        </Pressable>
       </SafeAreaView>
     </Modal>
   );
@@ -128,5 +139,6 @@ const styles = StyleSheet.create({
   ctaText: { fontFamily: font.semibold, fontSize: 16, color: color.onPrimary },
   secondary: { minHeight: space.tapMin, justifyContent: 'center' },
   secondaryText: { ...type.body, color: color.inkSub, textDecorationLine: 'underline' },
+  closeText: { textAlign: 'center' },
   error: { ...type.caption, color: color.ink, marginTop: 12, marginBottom: 8, minHeight: 18, textAlign: 'center' },
 });

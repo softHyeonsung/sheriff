@@ -81,6 +81,9 @@ test('외부 페이지 이동 차단(카카오 로고 등을 눌러도 지도가
   expect(allow({ url: 'http://localhost/', isTopFrame: true })).toBe(true);
   expect(allow({ url: 'about:blank', isTopFrame: true })).toBe(true);
   expect(allow({ url: 'https://map.kakao.com/', isTopFrame: true })).toBe(false);
+  expect(allow({ url: 'http://localhost', isTopFrame: true })).toBe(true);
+  expect(allow({ url: 'http://localhost.evil.example/', isTopFrame: true })).toBe(false); // 앞부분만 같은 주소
+  expect(allow({ url: 'http://localhost:8080/', isTopFrame: true })).toBe(false);
   expect(mockWebProps.source.baseUrl).toBe('http://localhost');
 });
 
@@ -174,4 +177,11 @@ test('코스가 바뀌면 setCourse를 보낸다', async () => {
   await rerender(<MapBridge {...base} course={{ stops: [{ lat: 37.5, lng: 127 }], route: null }} />);
   expect(mockInject).toHaveBeenCalledTimes(1);
   expect(mockInject.mock.calls[0][0]).toContain('setCourse');
+});
+
+test('코스보다 내 위치를 먼저 보낸다(범위에 내 위치가 들어가게)', async () => {
+  await render(<MapBridge {...base} myLocation={{ lat: 37.51, lng: 126.95, accuracy: 10 }} course={{ stops: [{ lat: 37.5, lng: 127 }], route: null }} />);
+  await send('{"type":"ready"}');
+  const order = mockInject.mock.calls.map(([s]) => (s.includes('setMyLocation') ? 'me' : s.includes('setCourse') ? 'course' : null)).filter(Boolean);
+  expect(order).toEqual(['me', 'course']);
 });

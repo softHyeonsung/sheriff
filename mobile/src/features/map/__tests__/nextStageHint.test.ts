@@ -1,5 +1,5 @@
 // mobile/src/features/map/__tests__/nextStageHint.test.ts
-import { nextStageHint } from '../nextStageHint';
+import { nextStageHint, subject } from '../nextStageHint';
 
 const t = { box: 2, hut: 5, tower: 10, palace: 20 };
 
@@ -14,4 +14,11 @@ test('다음 단계까지 남은 횟수와 조사', () => {
 test('최고 단계', () => {
   expect(nextStageHint(20, t)).toBe('🏰 캣 팰리스. 여긴 당신의 인생 장소예요.');
   expect(nextStageHint(57, t)).toBe('🏰 캣 팰리스. 여긴 당신의 인생 장소예요.');
+});
+
+test('subject: 받침 있으면 이, 없으면 가, 한글이 아니면 (이)가', () => {
+  expect(subject('콩')).toBe('콩이');
+  expect(subject('나비')).toBe('나비가');
+  expect(subject('Tom')).toBe('Tom(이)가');
+  expect(subject('냥2')).toBe('냥2(이)가');
 });

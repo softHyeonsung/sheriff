@@ -6,6 +6,8 @@ import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Tex
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { color, font, radius, space, type } from '@/constants/tokens';
 import { getFreshFix } from '@/features/checkin/checkinApi';
+import { messageFor } from '@/features/checkin/copy';
+import { CheckinError } from '@/features/checkin/errors';
 import { metersBetween, OFFLINE_ACCURACY_MAX_M, OFFLINE_RADIUS_M } from '@/features/checkin/offline';
 import { LOCATE_TIMEOUT_MS, within } from '@/features/checkin/useCheckin';
 import { readMapCache } from '@/features/map/mapCache';
@@ -72,7 +74,13 @@ export default function HideoutDetail() {
 
   // 지도 점은 오래됐을 수 있다: 새로 잡은 위치로 서버와 같은 기준을 먼저 본다(거절돼 사진이 사라지지 않게).
   const getFix = async (): Promise<FixResult> => {
-    const fix = await within(getFreshFix(), LOCATE_TIMEOUT_MS);
+    let fix: Awaited<ReturnType<typeof getFreshFix>>;
+    try {
+      fix = await within(getFreshFix(), LOCATE_TIMEOUT_MS);
+    } catch (e) {
+      if (e instanceof CheckinError && e.code === 'location_off') return { problem: messageFor(e) };
+      throw e;
+    }
     if (fix === 'denied') return fix;
     if (fix.accuracy > OFFLINE_ACCURACY_MAX_M) return { problem: '위치가 흐려요. 조금 뒤에 다시 해볼까요?' };
     if (metersBetween(fix, h) > OFFLINE_RADIUS_M) return { problem: '조금만 더 가까이 가면 순간을 남길 수 있어요.' };
@@ -99,7 +107,7 @@ export default function HideoutDetail() {
           <View style={styles.places}>
             <Text style={styles.section}>여기서 간 곳</Text>
             {visited.places.map((p) => (
-              <Text key={p.placeId ?? p.name} style={styles.body}>
+              <Text key={p.placeId ? `id:${p.placeId}` : `name:${p.name}`} style={styles.body}>
                 {p.name} · {p.visits}번
               </Text>
             ))}
@@ -148,7 +156,7 @@ export default function HideoutDetail() {
         <Modal visible transparent animationType="fade" onRequestClose={() => setLarge(null)}>
           <View style={styles.scrim}>
             <Image testID="photo-large" source={{ uri: large.url ?? undefined }} style={styles.large} resizeMode="contain" />
-            {large.placeName && <Text style={styles.onScrim}>{large.placeName}에서</Text>}
+            {!!large.placeName && <Text style={styles.onScrim}>{large.placeName}에서</Text>}
             <Pill label="닫기" onPress={() => setLarge(null)} />
           </View>
         </Modal>

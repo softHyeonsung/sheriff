@@ -35,6 +35,8 @@ export function messageFor(e: unknown): string {
     }
     case 'offline':
       return MSG.offline;
+    case 'location_off':
+      return '휴대폰의 위치 서비스가 꺼져 있어요. 켜고 다시 해볼까요?';
     default:
       return MSG.unknown;
   }

@@ -68,7 +68,7 @@ export function CourseCard({ catName, course, onWish, onFind, onClose }: Props) 
           {rows[i] === 'notFound' && <Text style={styles.caption}>{COURSE.notFound}</Text>}
         </View>
       ))}
-      {/* 자동차 길 거리(course.distanceM)는 걷는 거리와 크게 달라 쓰지 않는다: 구간 직선거리의 합. */}
+      {/* 자동차 길 거리는 걷는 거리와 크게 달라 쓰지 않는다: 구간 직선거리의 합. */}
       <Text style={styles.body}>전체 {fmtM(course.stops.reduce((sum, s) => sum + s.legM, 0))}</Text>
       {course.routeLimited && <Text style={styles.body}>{COURSE.limited}</Text>}
       {note && <Text style={styles.body}>{note}</Text>}

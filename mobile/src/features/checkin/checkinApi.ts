@@ -44,8 +44,12 @@ const KNOWN: CheckinErrorCode[] = ['too_far', 'weak_gps', 'cooldown', 'not_yours
 
 // A fresh, accurate fix taken at the moment of the tap — the map's dot may be minutes old.
 export async function getFreshFix(): Promise<Fix | 'denied'> {
-  const perm = await Location.getForegroundPermissionsAsync();
+  let perm = await Location.getForegroundPermissionsAsync();
+  // 아직 묻지 않았으면 거절로 치지 않고 지금 묻는다. 이미 거절한 사람에게는 다시 묻지 않는다.
+  if (perm.status === 'undetermined') perm = await Location.requestForegroundPermissionsAsync();
   if (perm.status !== 'granted') return 'denied';
+  // 권한은 있는데 휴대폰의 위치 서비스가 꺼져 있으면 위치가 끝내 오지 않는다: 기다리게 하지 않고 바로 알린다.
+  if (!(await Location.hasServicesEnabledAsync())) throw new CheckinError('location_off');
   const p = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
   return { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy ?? 999 };
 }

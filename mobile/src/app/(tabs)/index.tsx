@@ -239,7 +239,8 @@ export default function MapScreen() {
 
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
         <DongBadge dong={offline ? null : dongAt.dong} />
-        {permission === 'denied' && (
+        {/* 발자국 실패 안내가 같은 말과 [설정 열기]를 이미 보여주고 있으면 이 배너는 숨긴다. */}
+        {permission === 'denied' && !(checkin.state.name === 'failed' && checkin.state.needsSettings) && (
           <View style={styles.banner}>
             <Text style={styles.bannerText}>위치를 켜두시면 지금 있는 곳을 보여드릴게요</Text>
             <Pill label="설정 열기" onPress={() => Linking.openSettings()} />
@@ -317,7 +318,7 @@ export default function MapScreen() {
           )}
           {checkin.state.name === 'failed' && (
             <View style={styles.row}>
-              <Pill label="다시 해볼게요" onPress={checkin.start} />
+              <Pill label="다시 시도" onPress={checkin.start} />
               {checkin.state.needsSettings && <Pill label="설정 열기" onPress={() => Linking.openSettings()} />}
               <Pill label="닫기" onPress={checkin.close} />
             </View>

@@ -196,7 +196,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
       bounds.extend(latLng(s));
       courseItems.push(new kakao.maps.CustomOverlay({ content: el, position: latLng(s), map: map, zIndex: 6 }));
     });
-    map.setBounds(bounds, 80, 40, 320, 40); // 아래는 코스 카드가 가린다
+    map.setBounds(bounds, 80, 40, 460, 40); // 아래는 코스 카드(네 줄 + 아래 여백)가 가린다
   }
 
   function init() {
@@ -213,7 +213,10 @@ export function buildMapHtml({ jsKey, markers, center, cat, fogColor, wish }: Op
       else if (m.type === 'setFog') setFog(m.cells);
       else if (m.type === 'catSay') catSay(m.text);
       else if (m.type === 'setCat') { cfg.cat = m.poses; setPose(pose); }
-      else if (m.type === 'setCourse') setCourse(m.course);
+      else if (m.type === 'setCourse') {
+        // 코스는 덤: 그리다 실패해도 지도 전체(window.onerror → 실패 화면)를 잃지 않는다.
+        try { setCourse(m.course); } catch (e) { try { setCourse(null); } catch (e2) {} }
+      }
     };
     post({ type: 'ready' });
   }
