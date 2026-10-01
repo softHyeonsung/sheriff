@@ -1,6 +1,6 @@
 // supabase/functions/kakao-custom-token/index.test.ts
 import { assertEquals, assertRejects, assertThrows } from 'jsr:@std/assert';
-import { assertKakaoOwner, handleRequest, profileSeed, termsDecision, verifyKakaoAccessToken } from './index.ts';
+import { assertKakaoOwner, handleRequest, profileSeed, respond, termsDecision, verifyKakaoAccessToken } from './index.ts';
 
 const OUR_APP_ID = 1234567;
 const tokenInfo = (body: unknown, status = 200) => () =>
@@ -112,4 +112,22 @@ Deno.test('handleRequest: 토큰이 없으면 400이고 카카오도 부르지 �
 
 Deno.test('profileSeed: 프로필 행만 만들고 닉네임은 넣지 않는다(카카오 번호·내부 id 노출 없음)', () => {
   assertEquals(profileSeed('u1'), { user_id: 'u1' });
+});
+
+Deno.test('respond: 서버 안쪽 오류 글은 밖으로 내보내지 않는다', async () => {
+  const logged: string[] = [];
+  const orig = console.error;
+  console.error = (...a: unknown[]) => { logged.push(a.map(String).join(' ')); };
+  try {
+    const failing = { verify: () => Promise.reject(new Error('relation "users" does not exist')), lookupTerms: () => Promise.resolve(null), createSession: () => Promise.reject(new Error('x')) };
+    const res = await respond(new Request('http://x', { method: 'POST', body: JSON.stringify({ kakaoAccessToken: 't' }) }), failing);
+    assertEquals(res.status, 500);
+    assertEquals(await res.json(), { error: 'internal' });
+    const bad = await respond(new Request('http://x', { method: 'POST', body: 'not json' }), failing);
+    assertEquals(bad.status, 400);
+    assertEquals(await bad.json(), { error: 'invalid_input' });
+  } finally {
+    console.error = orig;
+  }
+  assertEquals(logged.some((l) => l.includes('does not exist')), true); // 기록에는 남는다
 });

@@ -1,6 +1,6 @@
 // supabase/functions/suggest-place/index.test.ts
 import { assertEquals } from 'jsr:@std/assert';
-import { kakaoAddress, kakaoNearby, type KakaoCandidate, type MineCandidate, suggestPlace, type SuggestDeps } from './index.ts';
+import { kakaoAddress, kakaoNearby, parseInput, type KakaoCandidate, type MineCandidate, suggestPlace, type SuggestDeps } from './index.ts';
 
 const mine = (id: string, distanceM: number, kakaoPlaceId: string | null = null) =>
   ({ kind: 'mine', aidutId: id, name: `내 ${id}`, grade: 'paw', distanceM, kakaoPlaceId }) as MineCandidate & { kakaoPlaceId: string | null };
@@ -95,4 +95,13 @@ Deno.test({
     assertEquals(await kakaoAddress(37.5, 126.94, ok({ documents: [{ road_address: null, address: { address_name: '지번 1' } }] }) as typeof fetch, 'k'), '지번 1');
     assertEquals(await kakaoAddress(37.5, 126.94, (() => Promise.resolve(new Response('x', { status: 401 }))) as typeof fetch, 'k'), null);
   },
+});
+
+Deno.test('parseInput: 숫자 셋이 아니거나 범위 밖이면 null', () => {
+  assertEquals(parseInput({ lat: 37.5, lng: 126.94, accuracy: 10 }), { lat: 37.5, lng: 126.94, accuracy: 10 });
+  assertEquals(parseInput(null), null);
+  assertEquals(parseInput('x'), null);
+  assertEquals(parseInput({ lat: '37.5', lng: 126.94, accuracy: 10 }), null);
+  assertEquals(parseInput({ lat: 95, lng: 126.94, accuracy: 10 }), null);
+  assertEquals(parseInput({ lat: 37.5, lng: 126.94 }), null);
 });

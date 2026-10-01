@@ -154,11 +154,20 @@ export function liveDeps(db: SupabaseClient, fetchImpl: typeof fetch = fetch): S
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
+export function parseInput(body: unknown): { lat: number; lng: number; accuracy: number } | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const { lat, lng, accuracy } = body as Record<string, unknown>;
+  if (typeof lat !== 'number' || typeof lng !== 'number' || typeof accuracy !== 'number') return null;
+  if (![lat, lng, accuracy].every(Number.isFinite) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng, accuracy };
+}
+
 Deno.serve(async (req) => {
   try {
-    const { lat, lng, accuracy } = await req.json();
-    const nums = [lat, lng, accuracy].every((n) => typeof n === 'number' && Number.isFinite(n));
-    if (!nums || Math.abs(lat) > 90 || Math.abs(lng) > 180) return json({ error: 'invalid_input' }, 400);
+    // 잘못된 요청(JSON이 아님 포함)은 서버 오류(500)가 아니라 400.
+    const input = parseInput(await req.json().catch(() => null));
+    if (!input) return json({ error: 'invalid_input' }, 400);
+    const { lat, lng, accuracy } = input;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
     });

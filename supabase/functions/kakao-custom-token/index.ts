@@ -167,11 +167,17 @@ const liveDeps: HandlerDeps = {
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-Deno.serve(async (req) => {
+// 서버 안쪽 오류 글(표 이름·SDK 문구)은 기록에만 남기고 밖으로는 내보내지 않는다.
+export async function respond(req: Request, deps: HandlerDeps): Promise<Response> {
+  const input = await req.json().catch(() => null);
+  if (typeof input !== 'object' || input === null) return json({ error: 'invalid_input' }, 400);
   try {
-    const { status, body } = await handleRequest(await req.json(), liveDeps);
+    const { status, body } = await handleRequest(input, deps);
     return json(body, status);
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    console.error('kakao-custom-token 실패', e);
+    return json({ error: 'internal' }, 500);
   }
-});
+}
+
+Deno.serve((req) => respond(req, liveDeps));
