@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 발자국을 찍으면 서버가 근접·GPS·쿨다운을 판정하고, 한 트랜잭션으로 내 아지트를 5단계로 키우고 안개 한 칸을 걷는다. 앱은 `suggest-place`로 "여기 ○○ 맞나요?" 후보를 받는다.
+**Goal:** 발자국을 찍으면 서버가 근접·GPS·쿨다운을 판정하고, 한 트랜잭션으로 내 아지트를 5단계로 키우고 안개 한 칸을 걷는다. 앱은 `suggest-place`로 "여기 ○○ 맞냥?" 후보를 받는다.
 
 **Architecture:** 규칙과 쓰기는 전부 Postgres 함수 `submit_checkin`(security definer, `auth.uid()`, 사용자별 advisory lock)에 둔다. 튜닝 값은 기존 `app_config` 테이블에서 읽는다. 후보 조회만 Edge Function `suggest-place`가 맡는다(카카오 로컬 API 키 은닉). 이 함수는 I/O를 주입받는 순수 함수 `suggestPlace`와 얇은 `Deno.serve` 래퍼로 나뉜다.
 
@@ -592,7 +592,7 @@ Expected: FAIL — `Module not found "./index.ts"`.
 ```ts
 // supabase/functions/suggest-place/index.ts
 //
-// "여기 ○○ 맞나요?" 후보: 150m 안의 내 아지트(먼저) + 카카오 주변 장소, 거리순 최대 5개.
+// "여기 ○○ 맞냥?" 후보: 150m 안의 내 아지트(먼저) + 카카오 주변 장소, 거리순 최대 5개.
 // POST { lat, lng, accuracy } -> SuggestResult. 기록은 하지 않는다(submit_checkin RPC가 한다).
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 

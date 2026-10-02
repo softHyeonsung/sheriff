@@ -17,12 +17,12 @@
 - 대기열 올리기 결과: 성공 → 축하, `too_far`·`weak_gps`·`not_yours` → 빼고 거절 수 +1, `cooldown` → 조용히 빼기, 그 밖 → 멈추고 남김. **7일** 넘은 항목은 버린다.
 - 서버 변경 없음. 발자국 시각은 올라간 시각.
 - 문구:
-  - 챙김: `"발자국을 챙겨뒀어요. 연결되면 남길게요 🐾"`
-  - 시트(오프라인): `"연결이 끊겨 있어서 내 아지트만 보여드려요"`
-  - 지도 배지: `"연결이 끊겨 있어요. 마지막으로 본 지도예요."`
+  - 챙김: `"발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾"`
+  - 시트(오프라인): `"연결이 끊겨 있어서 내 아지트만 보여줄게냥"`
+  - 지도 배지: `"연결이 끊겨 있다냥. 마지막으로 본 지도냥."`
   - 대기 개수: `"챙겨둔 발자국 N개"`
-  - 거절: `"챙겨둔 발자국 N개는 남기지 못했어요. 너무 멀었거나 위치가 흐렸어요."`
-  - `offline` 오류 기본 문구: `"연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?"`
+  - 거절: `"챙겨둔 발자국 N개는 남기지 못했다냥. 너무 멀었거나 위치가 흐렸다냥."`
+  - `offline` 오류 기본 문구: `"연결이 끊겨 있다냥. 잠시 뒤에 다시 해볼까냥?"`
 - 파일 첫 줄 경로 주석, 한국어 주석은 주변처럼 짧게. 테스트는 `cd mobile` 후 `npx jest …`(PowerShell).
 
 ## Review Focus
@@ -409,7 +409,7 @@ git commit -m "feat: network state and network-error detection"
 
 **Interfaces:**
 - Consumes: `isNetworkError` (Task 2).
-- Produces: `CheckinErrorCode`에 `'offline'` 추가. `suggestPlace`·`submitCheckin`이 연결 실패면 `CheckinError('offline')`(console.error 없이). `messageFor(new CheckinError('offline'))` = `"연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?"`.
+- Produces: `CheckinErrorCode`에 `'offline'` 추가. `suggestPlace`·`submitCheckin`이 연결 실패면 `CheckinError('offline')`(console.error 없이). `messageFor(new CheckinError('offline'))` = `"연결이 끊겨 있다냥. 잠시 뒤에 다시 해볼까냥?"`.
 
 - [ ] **Step 1: 실패하는 테스트** — `checkinApi.test.ts` 끝에:
 
@@ -426,7 +426,7 @@ test('연결이 안 되면 offline', async () => {
 
 ```ts
 test('offline 문구', () => {
-  expect(messageFor(new CheckinError('offline'))).toBe('연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?');
+  expect(messageFor(new CheckinError('offline'))).toBe('연결이 끊겨 있다냥. 잠시 뒤에 다시 해볼까냥?');
 });
 ```
 
@@ -435,7 +435,7 @@ test('offline 문구', () => {
 - [ ] **Step 3: 구현**
   - `errors.ts`: `export type CheckinErrorCode = 'too_far' | 'weak_gps' | 'cooldown' | 'not_yours' | 'offline' | 'unknown';`
   - `checkinApi.ts`: import `import { isNetworkError } from '@/lib/networkError';`. `suggestPlace`의 `if (error) {` 바로 안 첫 줄에 `if (isNetworkError(error)) throw new CheckinError('offline');`. `submitCheckin`의 `if (error) {` 바로 안 첫 줄에 같은 줄.
-  - `copy.ts`: `MSG`에 `offline: '연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?',` 추가, `messageFor`의 switch에 `case 'offline': return MSG.offline;` 추가(`default` 앞).
+  - `copy.ts`: `MSG`에 `offline: '연결이 끊겨 있다냥. 잠시 뒤에 다시 해볼까냥?',` 추가, `messageFor`의 switch에 `case 'offline': return MSG.offline;` 추가(`default` 앞).
 
 - [ ] **Step 4: 통과 확인** — 같은 명령. Expected: 전부 PASS.
 
@@ -1017,7 +1017,7 @@ test('챙기기(파일 쓰기)가 실패하면 시트에 안내', async () => {
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
-  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' });
+  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?' });
 });
 ```
 
@@ -1026,7 +1026,7 @@ test('챙기기(파일 쓰기)가 실패하면 시트에 안내', async () => {
 ```tsx
 test('오프라인이면 내 아지트만 보여준다고 알린다', async () => {
   await render(<CheckinSheet state={{ ...state, offline: true }} footprintsById={{}} onChoose={jest.fn()} onClose={jest.fn()} />);
-  expect(screen.getByText('연결이 끊겨 있어서 내 아지트만 보여드려요')).toBeTruthy();
+  expect(screen.getByText('연결이 끊겨 있어서 내 아지트만 보여줄게냥')).toBeTruthy();
 });
 ```
 
@@ -1037,7 +1037,7 @@ test('오프라인에서 챙긴 첫 발자국 → 안내 후 다음으로(막히
   const onDone = jest.fn();
   const h = api({ name: 'queued' });
   await render(<FirstFootprintStep onDone={onDone} />);
-  expect(screen.getByText('발자국을 챙겨뒀어요. 연결되면 남길게요 🐾')).toBeTruthy();
+  expect(screen.getByText('발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '다음' }));
   expect(h.close).toHaveBeenCalled();
   expect(onDone).toHaveBeenCalledWith(false);
@@ -1098,7 +1098,7 @@ function nameFor(target: CheckinTarget, candidates: Candidate[]): string {
       }
       try {
         const result = await submitCheckin(fix, target);
-        // 이미 남겼으니 곧 울릴 "발자국 남길까요?" 알림은 거둔다.
+        // 이미 남겼으니 곧 울릴 "발자국 남길까냥?" 알림은 거둔다.
         cancelArrivalAlert(result.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
         sheet.current = null;
         setState({ name: 'celebrating', result });
@@ -1118,7 +1118,7 @@ function nameFor(target: CheckinTarget, candidates: Candidate[]): string {
   `CheckinSheet.tsx`: `<SafeAreaView edges={['bottom']} style={styles.sheet}>` 바로 다음 줄에
 
 ```tsx
-        {state.offline && <Text style={styles.caption}>연결이 끊겨 있어서 내 아지트만 보여드려요</Text>}
+        {state.offline && <Text style={styles.caption}>연결이 끊겨 있어서 내 아지트만 보여줄게냥</Text>}
 ```
 
   `FirstFootprintStep.tsx`: `{state.name === 'failed' && <Text style={styles.body}>{state.message}</Text>}` 다음 줄에(파일에 `PrimaryButton`이 import돼 있지 않으면 `./ui`에서 import):
@@ -1126,7 +1126,7 @@ function nameFor(target: CheckinTarget, candidates: Candidate[]): string {
 ```tsx
       {state.name === 'queued' && (
         <>
-          <Text style={styles.body}>발자국을 챙겨뒀어요. 연결되면 남길게요 🐾</Text>
+          <Text style={styles.body}>발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾</Text>
           <PrimaryButton
             label="다음"
             onPress={() => {
@@ -1363,7 +1363,7 @@ test('오프라인이면 저장본 배지·챙긴 개수, 동 배지는 숨긴�
     refresh: jest.fn(),
   });
   await render(<MapScreen />);
-  expect(screen.getByText('연결이 끊겨 있어요. 마지막으로 본 지도예요.')).toBeTruthy();
+  expect(screen.getByText('연결이 끊겨 있다냥. 마지막으로 본 지도냥.')).toBeTruthy();
   expect(screen.getByText('챙겨둔 발자국 2개')).toBeTruthy();
   expect(screen.queryByText(/사직동/)).toBeNull();
 });
@@ -1373,7 +1373,7 @@ test('챙기면 안내 + 닫기, 대기 개수 새로 셈', async () => {
   const q = queueState();
   (useCheckinQueue as jest.Mock).mockReturnValue(q);
   await render(<MapScreen />);
-  expect(screen.getByText('발자국을 챙겨뒀어요. 연결되면 남길게요 🐾')).toBeTruthy();
+  expect(screen.getByText('발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾')).toBeTruthy();
   expect(q.refresh).toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(api.close).toHaveBeenCalled();
@@ -1399,7 +1399,7 @@ test('거절된 발자국 안내 + 닫기', async () => {
   const q = queueState({ dropped: 2 });
   (useCheckinQueue as jest.Mock).mockReturnValue(q);
   await render(<MapScreen />);
-  expect(screen.getByText('챙겨둔 발자국 2개는 남기지 못했어요. 너무 멀었거나 위치가 흐렸어요.')).toBeTruthy();
+  expect(screen.getByText('챙겨둔 발자국 2개는 남기지 못했다냥. 너무 멀었거나 위치가 흐렸다냥.')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(q.clearDropped).toHaveBeenCalled();
 });
@@ -1443,7 +1443,7 @@ test('거절된 발자국 안내 + 닫기', async () => {
 ```tsx
         {offline && (
           <View style={styles.banner}>
-            <Text style={styles.bannerText}>연결이 끊겨 있어요. 마지막으로 본 지도예요.</Text>
+            <Text style={styles.bannerText}>연결이 끊겨 있다냥. 마지막으로 본 지도냥.</Text>
           </View>
         )}
         {queue.pending > 0 && (
@@ -1458,7 +1458,7 @@ test('거절된 발자국 안내 + 닫기', async () => {
 ```tsx
       {checkin.state.name === 'queued' && (
         <View style={styles.checkinNote}>
-          <Text style={styles.bannerText}>발자국을 챙겨뒀어요. 연결되면 남길게요 🐾</Text>
+          <Text style={styles.bannerText}>발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾</Text>
           <View style={styles.row}>
             <Pill label="닫기" onPress={checkin.close} />
           </View>

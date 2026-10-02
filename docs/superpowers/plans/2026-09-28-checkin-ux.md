@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 지도에서 "발자국 남기기" → "여기 ○○ 맞나요?"(아니면 후보 목록·새로 만들기) → 발자국 → 성장 축하 → 지도 마커 갱신.
+**Goal:** 지도에서 "발자국 남기기" → "여기 ○○ 맞냥?"(아니면 후보 목록·새로 만들기) → 발자국 → 성장 축하 → 지도 마커 갱신.
 
 **Architecture:** 서버와의 대화는 `features/checkin/checkinApi.ts` 하나(`suggest-place` Edge Function, `submit_checkin` RPC, 새 위치 받기). 흐름은 `useCheckin()` 상태 기계가 갖고, 문구는 `copy.ts` 순수 함수가 고른다. 화면 조각은 `CheckinSheet`(확인/목록)과 `Celebration`(스프링 팝+파티클+햅틱). 지도 화면은 조립만.
 
@@ -18,15 +18,15 @@
 - 규칙 판정은 서버. 앱은 위치를 보내고 결과·거절을 보여줄 뿐.
 - 서버 계약(①): `suggest-place` → `{ status: 'weak_gps' } | { status: 'ok', hereAddress: string | null, candidates: Candidate[] }`; `submit_checkin(p_lat, p_lng, p_accuracy, p_target)` → `{ aidutId, name, footprintCount, grade, gradeChanged, newCellsCleared }`, 거절은 `error.message` ∈ `too_far|weak_gps|cooldown|not_yours|…`, 쿨다운 다음 시각은 `error.details`(ISO 문자열).
 - 문구(정확히):
-  - 버튼 `발자국 남기기` · 확인 `여기 ○○ 맞나요?` · `다른 곳이에요` · `여기에 새로 만들기` · 축하 닫기 `좋아요`
+  - 버튼 `발자국 남기기` · 확인 `여기 ○○ 맞냥?` · `다른 곳이에요` · `여기에 새로 만들기` · 축하 닫기 `좋아요`
   - 위치 확인 중/GPS 약함 `잠깐, 위치를 확인하고 있어요…`
-  - 너무 멂 `조금만 더 가까이 가면 발자국을 남길 수 있어요.`
-  - 쿨다운 `여긴 아까 다녀왔어요. H시 M분부터 다시 남길 수 있어요.`(현지 시각, 24시간), 시각을 모르면 `여긴 아까 다녀왔어요. 조금 뒤에 다시 남겨볼까요?`
-  - 위치 권한 없음 `위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.`(카피톤 §3.6 원문 — 스펙의 "②와 같은 안내"를 카피톤의 체크인 전용 문구로 구체화) + `설정 열기`
-  - 그 외 `앗, 잠깐 문제가 생겼어요. 다시 해볼까요?`
-  - 첫 발자국 `🐾 첫 발자국이 찍혔어요. 여기서부터 시작이에요.`
-  - 등급업 box `여기 박스가 생겼어요 📦 마음에 드나 봐요.` · hut `작은 집이 됐어요 🛖 자주 오시는군요.` · tower `캣타워예요 🗼 여긴 우리 단골이네요.` · palace `🏰 캣 팰리스. 여긴 당신의 인생 장소예요.`
-  - 같은 등급 `🐾 발자국을 남겼어요` + `nextStageHint`(②)
+  - 너무 멂 `조금만 더 가까이 가면 발자국을 남길 수 있다냥.`
+  - 쿨다운 `여긴 아까 다녀왔어요. H시 M분부터 다시 남길 수 있어요.`(현지 시각, 24시간), 시각을 모르면 `여긴 아까 다녀왔다냥. 조금 뒤에 다시 남겨볼까냥?`
+  - 위치 권한 없음 `위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.`(카피톤 §3.6 원문 — 스펙의 "②와 같은 안내"를 카피톤의 체크인 전용 문구로 구체화) + `설정 열기`
+  - 그 외 `앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?`
+  - 첫 발자국 `🐾 첫 발자국이 찍혔다냥. 여기서부터 시작이냥.`
+  - 등급업 box `여기 박스가 생겼다냥 📦 마음에 드나 보다냥.` · hut `작은 집이 됐다냥 🛖 자주 오는구냥.` · tower `캣타워다냥 🗼 여긴 우리 단골이냥.` · palace `🏰 캣 팰리스다냥. 여긴 네 인생 장소냥.`
+  - 같은 등급 `🐾 발자국을 남겼다냥` + `nextStageHint`(②)
 - 명령은 PowerShell(`npx`는 Git Bash에서 WSL 오류). jest는 `mobile/`에서.
 
 ## Review Focus
@@ -144,10 +144,10 @@ const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const r = (over: object) => ({ aidutId: 'a', name: 'x', footprintCount: 3, grade: 'box', gradeChanged: false, newCellsCleared: 0, ...over }) as never;
 
 test('거절 문구', () => {
-  expect(messageFor(new CheckinError('too_far'))).toBe('조금만 더 가까이 가면 발자국을 남길 수 있어요.');
+  expect(messageFor(new CheckinError('too_far'))).toBe('조금만 더 가까이 가면 발자국을 남길 수 있다냥.');
   expect(messageFor(new CheckinError('weak_gps'))).toBe('잠깐, 위치를 확인하고 있어요…');
-  expect(messageFor(new CheckinError('not_yours'))).toBe('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?');
-  expect(messageFor(new Error('boom'))).toBe('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?');
+  expect(messageFor(new CheckinError('not_yours'))).toBe('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?');
+  expect(messageFor(new Error('boom'))).toBe('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?');
 });
 
 test('쿨다운은 현지 시각으로', () => {
@@ -159,18 +159,18 @@ test('쿨다운은 현지 시각으로', () => {
 });
 
 test('쿨다운인데 시각을 모르면 시각 없는 문구', () => {
-  expect(messageFor(new CheckinError('cooldown'))).toBe('여긴 아까 다녀왔어요. 조금 뒤에 다시 남겨볼까요?');
-  expect(messageFor(new CheckinError('cooldown', 'not-a-date'))).toBe('여긴 아까 다녀왔어요. 조금 뒤에 다시 남겨볼까요?');
+  expect(messageFor(new CheckinError('cooldown'))).toBe('여긴 아까 다녀왔다냥. 조금 뒤에 다시 남겨볼까냥?');
+  expect(messageFor(new CheckinError('cooldown', 'not-a-date'))).toBe('여긴 아까 다녀왔다냥. 조금 뒤에 다시 남겨볼까냥?');
 });
 
 test('축하 문구: 첫 발자국 / 등급업 4종 / 같은 등급', () => {
-  expect(celebrationCopy(r({ footprintCount: 1, grade: 'paw' }), T)).toEqual({ title: '🐾 첫 발자국이 찍혔어요. 여기서부터 시작이에요.', hint: null });
-  expect(celebrationCopy(r({ footprintCount: 2, grade: 'box', gradeChanged: true }), T).title).toBe('여기 박스가 생겼어요 📦 마음에 드나 봐요.');
-  expect(celebrationCopy(r({ footprintCount: 5, grade: 'hut', gradeChanged: true }), T).title).toBe('작은 집이 됐어요 🛖 자주 오시는군요.');
-  expect(celebrationCopy(r({ footprintCount: 10, grade: 'tower', gradeChanged: true }), T).title).toBe('캣타워예요 🗼 여긴 우리 단골이네요.');
-  expect(celebrationCopy(r({ footprintCount: 20, grade: 'palace', gradeChanged: true }), T).title).toBe('🏰 캣 팰리스. 여긴 당신의 인생 장소예요.');
-  expect(celebrationCopy(r({ footprintCount: 3, grade: 'box' }), T)).toEqual({ title: '🐾 발자국을 남겼어요', hint: '2번 더 오면 작은 집이 돼요' });
-  expect(celebrationCopy(r({ footprintCount: 3, grade: 'box' }), null)).toEqual({ title: '🐾 발자국을 남겼어요', hint: null });
+  expect(celebrationCopy(r({ footprintCount: 1, grade: 'paw' }), T)).toEqual({ title: '🐾 첫 발자국이 찍혔다냥. 여기서부터 시작이냥.', hint: null });
+  expect(celebrationCopy(r({ footprintCount: 2, grade: 'box', gradeChanged: true }), T).title).toBe('여기 박스가 생겼다냥 📦 마음에 드나 보다냥.');
+  expect(celebrationCopy(r({ footprintCount: 5, grade: 'hut', gradeChanged: true }), T).title).toBe('작은 집이 됐다냥 🛖 자주 오는구냥.');
+  expect(celebrationCopy(r({ footprintCount: 10, grade: 'tower', gradeChanged: true }), T).title).toBe('캣타워다냥 🗼 여긴 우리 단골이냥.');
+  expect(celebrationCopy(r({ footprintCount: 20, grade: 'palace', gradeChanged: true }), T).title).toBe('🏰 캣 팰리스다냥. 여긴 네 인생 장소냥.');
+  expect(celebrationCopy(r({ footprintCount: 3, grade: 'box' }), T)).toEqual({ title: '🐾 발자국을 남겼다냥', hint: '2번 더 오면 작은 집이 된다냥' });
+  expect(celebrationCopy(r({ footprintCount: 3, grade: 'box' }), null)).toEqual({ title: '🐾 발자국을 남겼다냥', hint: null });
 });
 ```
 
@@ -275,28 +275,28 @@ import { CheckinError, type CheckinResult } from './checkinApi';
 
 export const MSG = {
   locating: '잠깐, 위치를 확인하고 있어요…',
-  denied: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.',
-  unknown: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?',
+  denied: '위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.',
+  unknown: '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?',
 };
 
 const GRADE_UP: Record<Exclude<Grade, 'paw'>, string> = {
-  box: '여기 박스가 생겼어요 📦 마음에 드나 봐요.',
-  hut: '작은 집이 됐어요 🛖 자주 오시는군요.',
-  tower: '캣타워예요 🗼 여긴 우리 단골이네요.',
-  palace: '🏰 캣 팰리스. 여긴 당신의 인생 장소예요.',
+  box: '여기 박스가 생겼다냥 📦 마음에 드나 보다냥.',
+  hut: '작은 집이 됐다냥 🛖 자주 오는구냥.',
+  tower: '캣타워다냥 🗼 여긴 우리 단골이냥.',
+  palace: '🏰 캣 팰리스다냥. 여긴 네 인생 장소냥.',
 };
 
 export function messageFor(e: unknown): string {
   if (!(e instanceof CheckinError)) return MSG.unknown;
   switch (e.code) {
     case 'too_far':
-      return '조금만 더 가까이 가면 발자국을 남길 수 있어요.';
+      return '조금만 더 가까이 가면 발자국을 남길 수 있다냥.';
     case 'weak_gps':
       return MSG.locating;
     case 'cooldown': {
       const d = e.nextAt ? new Date(e.nextAt) : null;
       // A missing or unparsable time must not render as "NaN시".
-      if (!d || Number.isNaN(d.getTime())) return '여긴 아까 다녀왔어요. 조금 뒤에 다시 남겨볼까요?';
+      if (!d || Number.isNaN(d.getTime())) return '여긴 아까 다녀왔다냥. 조금 뒤에 다시 남겨볼까냥?';
       return `여긴 아까 다녀왔어요. ${d.getHours()}시 ${d.getMinutes()}분부터 다시 남길 수 있어요.`;
     }
     default:
@@ -305,9 +305,9 @@ export function messageFor(e: unknown): string {
 }
 
 export function celebrationCopy(r: CheckinResult, t: GradeThresholds | null): { title: string; hint: string | null } {
-  if (r.footprintCount === 1) return { title: '🐾 첫 발자국이 찍혔어요. 여기서부터 시작이에요.', hint: null };
+  if (r.footprintCount === 1) return { title: '🐾 첫 발자국이 찍혔다냥. 여기서부터 시작이냥.', hint: null };
   if (r.gradeChanged && r.grade !== 'paw') return { title: GRADE_UP[r.grade], hint: null };
-  return { title: '🐾 발자국을 남겼어요', hint: t ? nextStageHint(r.footprintCount, t) : null };
+  return { title: '🐾 발자국을 남겼다냥', hint: t ? nextStageHint(r.footprintCount, t) : null };
 }
 ```
 
@@ -397,7 +397,7 @@ test('위치 권한 없음 → 설정 안내', async () => {
   await act(async () => h.current.start());
   expect(h.current.state).toEqual({
     name: 'failed',
-    message: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.',
+    message: '위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.',
     needsSettings: true,
   });
   expect(suggest).not.toHaveBeenCalled();
@@ -407,7 +407,7 @@ test('후보 조회 실패 → 멈추지 않고 다시 시도할 수 있는 안�
   suggest.mockRejectedValue(new api.CheckinError('unknown'));
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
-  expect(h.current.state).toEqual({ name: 'failed', message: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?', needsSettings: false });
+  expect(h.current.state).toEqual({ name: 'failed', message: '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?', needsSettings: false });
   suggest.mockResolvedValue(ok);
   await act(async () => h.current.start());
   expect(h.current.state.name).toBe('choosing');
@@ -418,7 +418,7 @@ test('기록 거절 → 시트는 열린 채 안내(다른 후보 고르기 가�
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
-  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '조금만 더 가까이 가면 발자국을 남길 수 있어요.' });
+  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '조금만 더 가까이 가면 발자국을 남길 수 있다냥.' });
 });
 
 test('진행 중 두 번째 요청 무시(연타)', async () => {
@@ -594,8 +594,8 @@ beforeEach(() => jest.clearAllMocks());
 
 test('첫 후보를 물어보고, 맞으면 그 장소로', async () => {
   await render(<CheckinSheet {...props} state={state()} />);
-  expect(screen.getByText('여기 단골 카페 맞나요?')).toBeTruthy();
-  expect(screen.getByText('지금까지 3번 다녀왔어요')).toBeTruthy();
+  expect(screen.getByText('여기 단골 카페 맞냥?')).toBeTruthy();
+  expect(screen.getByText('지금까지 3번 다녀왔다냥')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
   expect(props.onChoose).toHaveBeenCalledWith({ kind: 'mine', aidutId: 'a1' });
 });
@@ -622,8 +622,8 @@ test('후보가 없으면 바로 목록(새로 만들기만)', async () => {
 });
 
 test('거절 안내는 시트 안에', async () => {
-  await render(<CheckinSheet {...props} state={state({ error: '조금만 더 가까이 가면 발자국을 남길 수 있어요.' })} />);
-  expect(screen.getByText('조금만 더 가까이 가면 발자국을 남길 수 있어요.')).toBeTruthy();
+  await render(<CheckinSheet {...props} state={state({ error: '조금만 더 가까이 가면 발자국을 남길 수 있다냥.' })} />);
+  expect(screen.getByText('조금만 더 가까이 가면 발자국을 남길 수 있다냥.')).toBeTruthy();
 });
 
 test('저장 중엔 닫히지 않는다', async () => {
@@ -652,7 +652,7 @@ beforeEach(() => jest.clearAllMocks());
 test('등급업 문구·햅틱·닫기', async () => {
   const onClose = jest.fn();
   await render(<Celebration result={up} thresholds={T} onClose={onClose} />);
-  expect(screen.getByText('작은 집이 됐어요 🛖 자주 오시는군요.')).toBeTruthy();
+  expect(screen.getByText('작은 집이 됐다냥 🛖 자주 오는구냥.')).toBeTruthy();
   expect(screen.getByText('카페')).toBeTruthy();
   expect(Haptics.notificationAsync).toHaveBeenCalledWith('success');
   await fireEvent.press(screen.getByRole('button', { name: '좋아요' }));
@@ -661,14 +661,14 @@ test('등급업 문구·햅틱·닫기', async () => {
 
 test('같은 등급은 다음 단계 힌트까지', async () => {
   await render(<Celebration result={{ ...up, footprintCount: 6, gradeChanged: false }} thresholds={T} onClose={jest.fn()} />);
-  expect(screen.getByText('🐾 발자국을 남겼어요')).toBeTruthy();
-  expect(screen.getByText('4번 더 오면 캣타워가 돼요')).toBeTruthy();
+  expect(screen.getByText('🐾 발자국을 남겼다냥')).toBeTruthy();
+  expect(screen.getByText('4번 더 오면 캣타워가 된다냥')).toBeTruthy();
 });
 
 test('모션 줄이기면 애니메이션 없이도 같은 내용', async () => {
   (useReducedMotion as jest.Mock).mockReturnValue(true);
   await render(<Celebration result={up} thresholds={T} onClose={jest.fn()} />);
-  expect(screen.getByText('작은 집이 됐어요 🛖 자주 오시는군요.')).toBeTruthy();
+  expect(screen.getByText('작은 집이 됐다냥 🛖 자주 오는구냥.')).toBeTruthy();
 });
 ```
 
@@ -728,7 +728,7 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
           <View style={styles.confirm}>
             {first.kind === 'mine' && <Image source={{ uri: markerFor(first.grade).uri }} style={styles.art} />}
             <Text style={styles.title} accessibilityRole="header">
-              여기 {first.name} 맞나요?
+              여기 {first.name} 맞냥?
             </Text>
             {first.kind === 'mine' && footprintsById[first.aidutId] !== undefined && (
               <Text style={styles.caption}>지금까지 {footprintsById[first.aidutId]}번 다녀왔어요</Text>
@@ -1002,10 +1002,10 @@ test('축하 닫기 → 새로고침(마커가 자란 모습으로)', async () =
 });
 
 test('실패 안내 + 다시 시도, 권한 문제면 설정 열기', async () => {
-  const api = checkin({ name: 'failed', message: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.', needsSettings: true });
+  const api = checkin({ name: 'failed', message: '위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.', needsSettings: true });
   const open = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
   await render(<MapScreen />);
-  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.')).toBeTruthy();
+  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.')).toBeTruthy();
   await fireEvent.press(screen.getAllByRole('button', { name: '설정 열기' }).at(-1)!);
   expect(open).toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '다시 해볼게요' }));
@@ -1133,4 +1133,4 @@ git commit -m "feat(mobile): 발자국 남기기 on the map — sheet, celebrati
 
 1. `expo-haptics`가 새 네이티브 모듈 → dev build 다시(`npx expo run:android`).
 2. 로컬 스택(`npx supabase start`) + `npx supabase functions serve --env-file supabase/functions/.env.local` 실행, 폰의 `EXPO_PUBLIC_SUPABASE_URL`은 PC 내부 IP.
-3. 실제로 장소에 가서: 발자국 남기기 → "여기 ○○ 맞나요?" → 축하 → 지도 마커. 같은 곳 바로 다시 → 쿨다운 안내. 150m 밖 후보 → 가까이 오라는 안내.
+3. 실제로 장소에 가서: 발자국 남기기 → "여기 ○○ 맞냥?" → 축하 → 지도 마커. 같은 곳 바로 다시 → 쿨다운 안내. 150m 밖 후보 → 가까이 오라는 안내.

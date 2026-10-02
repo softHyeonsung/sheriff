@@ -15,8 +15,8 @@
 - 반경 150m · 체류 2분 · 장소별 6시간 · 하루 8번(기기 시간 자정 기준) · 야간 22:00~08:00 · 최대 20곳 — 앱 코드 상수(`ARRIVAL`).
 - 규칙 판단은 알림 **발송 예정 시각**(진입 + 2분) 기준.
 - 알림 identifier `arrival:<아지트 id>`, 안드로이드 채널 `arrival`(온보딩에서 이미 만듦), `data: { hideoutId }`.
-- 문구(카피톤 §3.2): 기본 `"{이름} 오셨네요. 발자국 남길까요?"`, 등급 `hut`/`tower`/`palace`면 `"또 왔네요, {이름}. 여기 자주 오시네요 :)"`.
-- 권한 카드 문구: 제목 `"다음에 여기 오면 제가 알려드릴까요?"`, 보조 `"앱을 안 켜도 알려드리려면 위치를 '항상 허용'으로 바꿔주세요."`, 버튼 `[좋아요]` `[괜찮아요]`. 평생 한 번.
+- 문구(카피톤 §3.2): 기본 `"{이름} 왔다냥! 발자국 남길까냥?"`, 등급 `hut`/`tower`/`palace`면 `"또 왔다냥, {이름}. 여기 자주 오는구냥 :)"`.
+- 권한 카드 문구: 제목 `"다음에 여기 오면 내가 알려줄까냥?"`, 보조 `"앱을 안 켜도 알려드리려면 위치를 '항상 허용'으로 바꿔주세요."`, 버튼 `[좋아요]` `[괜찮아요]`. 평생 한 번.
 - 태스크 안 오류는 전부 잡아 `console.error`만. 저장 파일이 없거나 깨지면 빈 값.
 - 서버·FCM·기기 토큰 없음.
 - 한국어 주석은 주변 코드처럼 짧게. 파일 첫 줄에 경로 주석(`// mobile/src/...`).
@@ -159,10 +159,10 @@ test('pickNearest는 가까운 순으로 n개', () => {
 });
 
 test('문구: 작은 집 이상은 단골 문구', () => {
-  expect(arrivalMessage('동네 빵집', 'paw')).toBe('동네 빵집 오셨네요. 발자국 남길까요?');
-  expect(arrivalMessage('동네 빵집', 'box')).toBe('동네 빵집 오셨네요. 발자국 남길까요?');
-  expect(arrivalMessage('동네 빵집', 'hut')).toBe('또 왔네요, 동네 빵집. 여기 자주 오시네요 :)');
-  expect(arrivalMessage('동네 빵집', 'palace')).toBe('또 왔네요, 동네 빵집. 여기 자주 오시네요 :)');
+  expect(arrivalMessage('동네 빵집', 'paw')).toBe('동네 빵집 왔다냥! 발자국 남길까냥?');
+  expect(arrivalMessage('동네 빵집', 'box')).toBe('동네 빵집 왔다냥! 발자국 남길까냥?');
+  expect(arrivalMessage('동네 빵집', 'hut')).toBe('또 왔다냥, 동네 빵집. 여기 자주 오는구냥 :)');
+  expect(arrivalMessage('동네 빵집', 'palace')).toBe('또 왔다냥, 동네 빵집. 여기 자주 오는구냥 :)');
 });
 ```
 
@@ -212,7 +212,7 @@ export function pickNearest<T extends { lat: number; lng: number }>(items: T[], 
 const REGULAR: Grade[] = ['hut', 'tower', 'palace'];
 
 export function arrivalMessage(name: string, grade: Grade): string {
-  return REGULAR.includes(grade) ? `또 왔네요, ${name}. 여기 자주 오시네요 :)` : `${name} 오셨네요. 발자국 남길까요?`;
+  return REGULAR.includes(grade) ? `또 왔네요, ${name}. 여기 자주 오시네요 :)` : `${name} 오셨네요. 발자국 남길까냥?`;
 }
 ```
 
@@ -394,7 +394,7 @@ test('진입하면 2분 뒤 알림을 예약하고 기록한다', async () => {
   await handleGeofenceEvent({ eventType: 1, region }, now);
   expect(schedule).toHaveBeenCalledWith({
     identifier: 'arrival:a',
-    content: { body: '또 왔네요, 동네 빵집. 여기 자주 오시네요 :)', data: { hideoutId: 'a' } },
+    content: { body: '또 왔다냥, 동네 빵집. 여기 자주 오는구냥 :)', data: { hideoutId: 'a' } },
     trigger: { type: 'timeInterval', seconds: 120, channelId: 'arrival' },
   });
   expect(write).toHaveBeenCalledWith({ ...data(), log: [{ id: 'a', at: now + 120000 }] }, now);
@@ -764,7 +764,7 @@ import { ArrivalOffer } from '../ArrivalOffer';
 test('문구와 두 버튼', async () => {
   const onAnswer = jest.fn();
   await render(<ArrivalOffer onAnswer={onAnswer} />);
-  expect(screen.getByText('다음에 여기 오면 제가 알려드릴까요?')).toBeTruthy();
+  expect(screen.getByText('다음에 여기 오면 내가 알려줄까냥?')).toBeTruthy();
   expect(screen.getByText("앱을 안 켜도 알려드리려면 위치를 '항상 허용'으로 바꿔주세요.")).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: '좋아요' }));
   fireEvent.press(screen.getByRole('button', { name: '괜찮아요' }));
@@ -827,7 +827,7 @@ import { PrimaryButton, TextButton } from '@/features/onboarding/ui';
 export function ArrivalOffer({ onAnswer }: { onAnswer: (accept: boolean) => void }) {
   return (
     <View style={styles.card} accessibilityViewIsModal>
-      <Text style={styles.title}>다음에 여기 오면 제가 알려드릴까요?</Text>
+      <Text style={styles.title}>다음에 여기 오면 내가 알려줄까냥?</Text>
       <Text style={styles.body}>앱을 안 켜도 알려드리려면 위치를 &apos;항상 허용&apos;으로 바꿔주세요.</Text>
       <PrimaryButton label="좋아요" onPress={() => onAnswer(true)} />
       <TextButton label="괜찮아요" onPress={() => onAnswer(false)} />

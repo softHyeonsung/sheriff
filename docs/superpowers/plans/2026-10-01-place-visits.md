@@ -16,7 +16,7 @@
 - 장소는 사용자가 고른 것: 카카오 후보 → 그 후보의 번호·이름 / 내 아지트 → 아지트의 원래 번호·이름 / 새로 만들기 → 번호 없음, 이름 = 도로명 주소(없으면 아지트 이름).
 - 같은 장소 = 번호가 있으면 번호, 없으면 이름. 표시 이름은 가장 최근 것.
 - 사진의 장소 = 그 아지트에서 내가 가장 최근에 남긴 발자국의 장소(발자국이 없으면 아지트의 원래 장소).
-- 문구(그대로): "여기서 간 곳" / "{이름} · {N}번" / "연결되면 간 곳을 보여드릴게요." / "{장소 이름}에서".
+- 문구(그대로): "여기서 간 곳" / "{이름} · {N}번" / "연결되면 간 곳을 보여줄게냥." / "{장소 이름}에서".
 - 명령: jest·tsc·lint는 `mobile`, supabase는 리포 루트(PowerShell). 로컬 스택: Docker Desktop → `npx supabase start`, 끝나면 `npx supabase stop` + Docker 끄기.
 - 커밋 메시지 끝: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
 
@@ -494,11 +494,11 @@ test('여기서 간 곳: 한 곳뿐이고 아지트 이름과 같으면 숨긴�
 test('여기서 간 곳: 오프라인·오류 안내', async () => {
   (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [], status: 'offline' });
   const { unmount } = await render(<HideoutDetail />);
-  await waitFor(() => expect(screen.getByText('연결되면 간 곳을 보여드릴게요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('연결되면 간 곳을 보여줄게냥.')).toBeTruthy());
   await unmount();
   (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [], status: 'error' });
   await render(<HideoutDetail />);
-  await waitFor(() => expect(screen.getByText('간 곳을 불러오지 못했어요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('간 곳을 불러오지 못했다냥.')).toBeTruthy());
 });
 
 test('사진 크게 보기: 어느 장소에서 남겼는지, 모르는 옛 사진은 줄 없음', async () => {
@@ -541,8 +541,8 @@ import type { MemoryPhoto } from '@/features/memories/memoriesApi';
 - 헤더 `</View>`와 `<MemoryButton` 사이에:
 
 ```tsx
-        {visited.status === 'offline' && <Text style={[styles.caption, styles.centerText]}>연결되면 간 곳을 보여드릴게요.</Text>}
-        {visited.status === 'error' && <Text style={[styles.caption, styles.centerText]}>간 곳을 불러오지 못했어요.</Text>}
+        {visited.status === 'offline' && <Text style={[styles.caption, styles.centerText]}>연결되면 간 곳을 보여줄게냥.</Text>}
+        {visited.status === 'error' && <Text style={[styles.caption, styles.centerText]}>간 곳을 불러오지 못했다냥.</Text>}
         {showPlaces && (
           <View style={styles.places}>
             <Text style={styles.section}>여기서 간 곳</Text>
@@ -586,7 +586,7 @@ git commit -m "feat(places): hideout detail lists visited places and photo place
 
 - [ ] **Step 1: 전체 테스트** — Docker Desktop 켜기 → `npx supabase start` → `npx supabase db reset` → `npx supabase test db`(PASS, 파일·개수 기록) → `mobile`에서 `npx jest`(개수 기록)·`npx tsc --noEmit`·`npx expo lint` → `npx supabase stop`, Docker 끄기.
 
-- [ ] **Step 2: 명세 맞추기** — 명세 "앱" 절의 `오류: 기존 공통 문구.`를 `오류: "간 곳을 불러오지 못했어요."`로, "테스트" 절의 `기존 행 채우기`를 `발자국 없는 아지트의 사진은 아지트의 원래 장소`로.
+- [ ] **Step 2: 명세 맞추기** — 명세 "앱" 절의 `오류: 기존 공통 문구.`를 `오류: "간 곳을 불러오지 못했다냥."`로, "테스트" 절의 `기존 행 채우기`를 `발자국 없는 아지트의 사진은 아지트의 원래 장소`로.
 
 - [ ] **Step 3: `docs/진행상황.md` 갱신**
   - 맨 위 날짜 `2026-10-01`.

@@ -18,7 +18,7 @@
 - 계약: `POST { kakaoAccessToken: string, agreedTermsVersion?: string }` → `200 { access_token, refresh_token }` | `412 { error: 'terms_required', termsVersion }` | `500 { error }`.
 - 새 컬럼(`kakao_id`, `terms_version`, 기존 `terms_agreed_at`)은 service role만 쓴다. `authenticated`의 update 권한은 `home_address`만(기존 유지).
 - 화면 코드에 raw hex 금지 — `mobile/src/constants/tokens.ts`의 `color`/`type`/`radius`/`space`/`font`만.
-- 카피는 해요체(`docs/기획-카피톤-v1.md`). 오류 문구는 정확히 "앗, 잠깐 문제가 생겼어요. 다시 해볼까요?".
+- 카피는 해요체(`docs/기획-카피톤-v1.md`). 오류 문구는 정확히 "앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?".
 - 화면에서 `supabase.auth` 직접 호출 금지 — `features/auth/kakaoLogin.ts`를 거친다.
 - Deno 실행: `npx -y deno test --node-modules-dir=none --allow-net --allow-env <file>` (PowerShell에서. Git Bash의 npx는 이 머신에서 WSL 오류가 남).
 - Expo 패키지 추가는 `npx expo install`만. 이 플랜은 새 의존성이 없다.
@@ -412,7 +412,7 @@ test('닫으면 체크가 초기화된다', async () => {
 
 test('실패하면 시트 안에 다시 해보라는 안내', async () => {
   await render(<TermsSheet {...props} failed />);
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
 });
 ```
 
@@ -524,7 +524,7 @@ export function TermsSheet({
         </Pressable>
 
         <Text style={styles.error} accessibilityLiveRegion="polite">
-          {failed ? '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' : ' '}
+          {failed ? '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?' : ' '}
         </Text>
       </SafeAreaView>
     </Modal>
@@ -614,7 +614,7 @@ jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn() }));
 // Decorative hero; reanimated's jest mock has no useReducedMotion.
 jest.mock('@/features/auth/FogReveal', () => ({ FogReveal: () => null }));
 
-const ERROR = '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?';
+const ERROR = '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?';
 const SHEET_TITLE = '시작하기 전에 확인해 주세요';
 const login = loginWithKakao as jest.Mock;
 const exchange = exchangeKakaoToken as jest.Mock;
@@ -802,7 +802,7 @@ export default function LoginScreen() {
         </Pressable>
 
         <Text style={styles.error} accessibilityLiveRegion="polite">
-          {failed && !pending ? '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' : ' '}
+          {failed && !pending ? '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?' : ' '}
         </Text>
       </View>
 

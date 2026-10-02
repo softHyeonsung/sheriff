@@ -19,13 +19,13 @@
 - 검증은 서버가 최종(이름 trim 1~10자, 색 `cheese|gray|black`, 동네 trim 1~40자). 앱 검증은 버튼 활성화용.
 - 단계 순서: `welcome → cat → location → notifications → homeDong → tutorial → firstFootprint → done`. 건너뛰기: cat=이름 있음, location=이미 물어봄, notifications=이미 물어봄, homeDong=동네 있음, firstFootprint=아지트 있음. welcome·tutorial은 항상.
 - 문구(정확히):
-  - 환영 `안녕하세요. 저랑 같이 우리 동네를 누벼볼까요?` · 버튼 `시작할게요`
-  - 고양이 `이 친구, 이름을 지어줄래요? 털색도 골라봐요.` · 입력 라벨 `고양이 이름` · 털색 `치즈` `회색` `까망` · 버튼 `이 친구로 할게요` · 검증 `이름은 1~10자로 지어주세요`
-  - 위치 `어디를 다녀왔는지 알아야 발자국을 남길 수 있어요. 위치를 켜주실래요?` · 알림 `도착하면 제가 살짝 알려드릴게요. 알림만 켜두시면 돼요.` · 버튼 `켜기` `나중에`
-  - 동네 확인 `여기가 우리 동네가 맞나요?` · `맞아요` `다른 동네예요` · 검색 `우리 동네 이름을 알려주세요` · 입력 라벨 `동네 이름` · `찾기` · 0건 `음, 못 찾았어요. 다른 이름으로 찾아볼까요?`
-  - 튜토리얼 `다녀온 곳에 발자국을 남기고` / `발자국이 쌓이면 아지트가 자라요` / `안개가 걷히면 제가 뛰어놀 곳이 넓어져요.` · 버튼 `다음` 마지막 `알겠어요`
-  - 첫 발자국 `자, 지금 여기. 첫 발자국을 남겨볼까요?` · `발자국 남기기` `나중에 할게요` · 설정 `설정 열기`
-  - 오류 `앗, 잠깐 문제가 생겼어요. 다시 해볼까요?` · `다시 시도`
+  - 환영 `안녕하냥! 나랑 같이 우리 동네를 누벼볼까냥?` · 버튼 `시작할게요`
+  - 고양이 `이 친구, 이름을 지어줄래냥? 털색도 골라보라냥.` · 입력 라벨 `고양이 이름` · 털색 `치즈` `회색` `까망` · 버튼 `이 친구로 할게요` · 검증 `이름은 1~10자로 지어주세요`
+  - 위치 `어디를 다녀왔는지 알아야 발자국을 남길 수 있다냥. 위치를 켜줄래냥?` · 알림 `도착하면 내가 살짝 알려줄게냥. 알림만 켜두면 된다냥.` · 버튼 `켜기` `나중에`
+  - 동네 확인 `여기가 우리 동네가 맞냥?` · `맞아요` `다른 동네예요` · 검색 `우리 동네 이름을 알려주세요` · 입력 라벨 `동네 이름` · `찾기` · 0건 `음, 못 찾았다냥. 다른 이름으로 찾아볼까냥?`
+  - 튜토리얼 `다녀온 곳에 발자국을 남기고` / `발자국이 쌓이면 아지트가 자란다냥` / `안개가 걷히면 내가 뛰어놀 곳이 넓어진다냥.` · 버튼 `다음` 마지막 `알겠어요`
+  - 첫 발자국 `자, 지금 여기. 첫 발자국을 남겨볼까냥?` · `발자국 남기기` `나중에 할게요` · 설정 `설정 열기`
+  - 오류 `앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?` · `다시 시도`
 
 ## Review Focus
 
@@ -278,7 +278,7 @@ Deno.test('입력 검사', () => {
 // supabase/functions/home-region/index.ts
 //
 // 온보딩 "내 동네": 좌표 → 행정동 추정, 이름 → 동 검색. 카카오 키는 서버에만.
-// POST { lat, lng } | { query } -> { dongs: { name }[] }. 카카오 실패는 빈 목록(앱이 검색·"못 찾았어요"로).
+// POST { lat, lng } | { query } -> { dongs: { name }[] }. 카카오 실패는 빈 목록(앱이 검색·"못 찾았다냥"로).
 const KAKAO_REST_KEY = Deno.env.get('KAKAO_REST_KEY') ?? '';
 const MAX = 10;
 
@@ -689,7 +689,7 @@ export default function RootLayout() {
       {/* Wait for the session and my onboarding state before routing, or the wrong screen flashes. */}
       {!loading && route === 'error' && (
         <View style={styles.center}>
-          <Text style={styles.body}>앗, 잠깐 문제가 생겼어요. 다시 해볼까요?</Text>
+          <Text style={styles.body}>앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?</Text>
           <Pressable onPress={retry} accessibilityRole="button" accessibilityLabel="다시 시도" style={styles.btn}>
             <Text style={styles.btnText}>다시 시도</Text>
           </Pressable>
@@ -883,7 +883,7 @@ test('이름·털색을 저장하고 넘어간다', async () => {
   (saveCat as jest.Mock).mockResolvedValue(undefined);
   const onDone = jest.fn();
   await render(<CatStep onDone={onDone} />);
-  expect(screen.getByText('이 친구, 이름을 지어줄래요? 털색도 골라봐요.')).toBeTruthy();
+  expect(screen.getByText('이 친구, 이름을 지어줄래냥? 털색도 골라보라냥.')).toBeTruthy();
   await fireEvent.changeText(name(), '  나비 ');
   await fireEvent.press(screen.getByRole('radio', { name: '까망' }));
   expect(screen.getByRole('radio', { name: '까망', selected: true })).toBeTruthy();
@@ -910,7 +910,7 @@ test('저장 실패 → 입력 유지 + 오류 + 다시 누를 수 있음', asyn
   await render(<CatStep onDone={onDone} />);
   await fireEvent.changeText(name(), '나비');
   await fireEvent.press(submit());
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   expect(name().props.value).toBe('나비');
   expect(onDone).not.toHaveBeenCalled();
   await fireEvent.press(submit());
@@ -926,7 +926,7 @@ import { PermissionStep } from '../PermissionStep';
 test('켜기 → 요청 후 다음으로(거절해도 다음으로)', async () => {
   const ask = jest.fn().mockResolvedValue(false);
   const onDone = jest.fn();
-  await render(<PermissionStep text="위치를 켜주실래요?" ask={ask} onDone={onDone} />);
+  await render(<PermissionStep text="위치를 켜줄래냥?" ask={ask} onDone={onDone} />);
   await fireEvent.press(screen.getByRole('button', { name: '켜기' }));
   expect(ask).toHaveBeenCalled();
   expect(onDone).toHaveBeenCalled();
@@ -960,9 +960,9 @@ test('세 컷을 넘기고 마지막에 알겠어요', async () => {
   await render(<Tutorial onDone={onDone} />);
   expect(screen.getByText('다녀온 곳에 발자국을 남기고')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '다음' }));
-  expect(screen.getByText('발자국이 쌓이면 아지트가 자라요')).toBeTruthy();
+  expect(screen.getByText('발자국이 쌓이면 아지트가 자란다냥')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '다음' }));
-  expect(screen.getByText('안개가 걷히면 제가 뛰어놀 곳이 넓어져요.')).toBeTruthy();
+  expect(screen.getByText('안개가 걷히면 내가 뛰어놀 곳이 넓어진다냥.')).toBeTruthy();
   expect(onDone).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '알겠어요' }));
   expect(onDone).toHaveBeenCalled();
@@ -1064,7 +1064,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
     <StepScreen footer={<PrimaryButton label="시작할게요" onPress={onDone} />}>
       <Image source={{ uri: CAT_IMAGES.cheese }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
-        안녕하세요. 저랑 같이 우리 동네를 누벼볼까요?
+        안녕하냥! 나랑 같이 우리 동네를 누벼볼까냥?
       </Text>
     </StepScreen>
   );
@@ -1119,7 +1119,7 @@ export function CatStep({ onDone }: { onDone: (name: string, color: CatColor) =>
     <StepScreen footer={<PrimaryButton label="이 친구로 할게요" onPress={submit} disabled={!ok || saving} />}>
       <Image source={{ uri: CAT_IMAGES[coat] }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
-        이 친구, 이름을 지어줄래요? 털색도 골라봐요.
+        이 친구, 이름을 지어줄래냥? 털색도 골라보라냥.
       </Text>
       <TextInput
         value={name}
@@ -1222,8 +1222,8 @@ import { PrimaryButton, StepScreen } from './ui';
 // ponytail: 버튼으로만 넘긴다(스와이프 없음) — 스와이프가 필요하면 가로 ScrollView pagingEnabled로.
 const CUTS = [
   { text: '다녀온 곳에 발자국을 남기고', art: markerFor('paw').uri },
-  { text: '발자국이 쌓이면 아지트가 자라요', art: markerFor('hut').uri },
-  { text: '안개가 걷히면 제가 뛰어놀 곳이 넓어져요.', art: CAT_IMAGES.cheese },
+  { text: '발자국이 쌓이면 아지트가 자란다냥', art: markerFor('hut').uri },
+  { text: '안개가 걷히면 내가 뛰어놀 곳이 넓어진다냥.', art: CAT_IMAGES.cheese },
 ];
 
 export function Tutorial({ onDone }: { onDone: () => void }) {
@@ -1283,7 +1283,7 @@ test('GPS로 추정 → 맞아요 → 저장', async () => {
   const onDone = jest.fn();
   await render(<HomeDongStep onDone={onDone} />);
   await waitFor(() => expect(screen.getByText('서울특별시 종로구 사직동')).toBeTruthy());
-  expect(screen.getByText('여기가 우리 동네가 맞나요?')).toBeTruthy();
+  expect(screen.getByText('여기가 우리 동네가 맞냥?')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '맞아요' }));
   expect(setHomeDong).toHaveBeenCalledWith('서울특별시 종로구 사직동');
   expect(onDone).toHaveBeenCalledWith('서울특별시 종로구 사직동');
@@ -1302,7 +1302,7 @@ test('위치 없으면 바로 검색, 결과를 골라 저장', async () => {
   expect(onDone).toHaveBeenCalledWith('부산광역시 동래구 사직동');
 });
 
-test('추정 실패 → 검색, 0건이면 못 찾았어요', async () => {
+test('추정 실패 → 검색, 0건이면 못 찾았다냥', async () => {
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   (getFreshFix as jest.Mock).mockRejectedValue(new Error('gps'));
   (searchRegion as jest.Mock).mockResolvedValue([]);
@@ -1310,7 +1310,7 @@ test('추정 실패 → 검색, 0건이면 못 찾았어요', async () => {
   await waitFor(() => expect(screen.getByText('우리 동네 이름을 알려주세요')).toBeTruthy());
   await fireEvent.changeText(screen.getByLabelText('동네 이름'), '없는동');
   await fireEvent.press(screen.getByRole('button', { name: '찾기' }));
-  expect(await screen.findByText('음, 못 찾았어요. 다른 이름으로 찾아볼까요?')).toBeTruthy();
+  expect(await screen.findByText('음, 못 찾았다냥. 다른 이름으로 찾아볼까냥?')).toBeTruthy();
 });
 
 test('다른 동네예요 → 검색 모드', async () => {
@@ -1329,7 +1329,7 @@ test('저장 실패 → 오류, 다시 누를 수 있음', async () => {
   const onDone = jest.fn();
   await render(<HomeDongStep onDone={onDone} />);
   await fireEvent.press(await screen.findByRole('button', { name: '맞아요' }));
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '맞아요' }));
   expect(onDone).toHaveBeenCalled();
 });
@@ -1362,7 +1362,7 @@ const api = (state: object) => {
 test('발자국 남기기 → 체크인 시작', async () => {
   const a = api({ name: 'idle' });
   await render(<FirstFootprintStep onDone={jest.fn()} />);
-  expect(screen.getByText('자, 지금 여기. 첫 발자국을 남겨볼까요?')).toBeTruthy();
+  expect(screen.getByText('자, 지금 여기. 첫 발자국을 남겨볼까냥?')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
   expect(a.start).toHaveBeenCalled();
 });
@@ -1377,10 +1377,10 @@ test('축하를 닫으면 끝(찍음)', async () => {
 });
 
 test('실패(권한 없음) → 안내 + 설정 열기 + 나중에 할게요', async () => {
-  api({ name: 'failed', message: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.', needsSettings: true });
+  api({ name: 'failed', message: '위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.', needsSettings: true });
   const onDone = jest.fn();
   await render(<FirstFootprintStep onDone={onDone} />);
-  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.')).toBeTruthy();
+  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.')).toBeTruthy();
   expect(screen.getByRole('button', { name: '설정 열기' })).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '나중에 할게요' }));
   expect(onDone).toHaveBeenCalledWith(false);
@@ -1475,7 +1475,7 @@ test('완료 저장 실패 → 오류 + 다시 시도', async () => {
   await waitFor(() => expect(current()).toBe('welcome'));
   await done();
   await done();
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   expect(useMeStore.getState().me?.onboarded).toBe(false);
   await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
   expect(useMeStore.getState().me?.onboarded).toBe(true);
@@ -1576,7 +1576,7 @@ export function HomeDongStep({ onDone }: { onDone: (name: string) => void }) {
           </>
         }>
         <Text style={styles.title} accessibilityRole="header">
-          여기가 우리 동네가 맞나요?
+          여기가 우리 동네가 맞냥?
         </Text>
         <Text style={styles.dong}>{mode.dong}</Text>
         {error && <Text style={styles.body}>{MSG.unknown}</Text>}
@@ -1604,7 +1604,7 @@ export function HomeDongStep({ onDone }: { onDone: (name: string) => void }) {
           <PrimaryButton label="찾기" onPress={search} disabled={busy || !query.trim()} />
         </View>
       </View>
-      {results?.length === 0 && <Text style={styles.body}>음, 못 찾았어요. 다른 이름으로 찾아볼까요?</Text>}
+      {results?.length === 0 && <Text style={styles.body}>음, 못 찾았다냥. 다른 이름으로 찾아볼까냥?</Text>}
       {results?.map((d) => (
         <TextButton key={d} label={d} onPress={() => save(d)} />
       ))}
@@ -1660,7 +1660,7 @@ export function FirstFootprintStep({ onDone }: { onDone: (made: boolean) => void
         </>
       }>
       <Text style={styles.title} accessibilityRole="header">
-        자, 지금 여기. 첫 발자국을 남겨볼까요?
+        자, 지금 여기. 첫 발자국을 남겨볼까냥?
       </Text>
       {locating && <Text style={styles.body}>{MSG.locating}</Text>}
       {state.name === 'failed' && <Text style={styles.body}>{state.message}</Text>}
@@ -1760,9 +1760,9 @@ export default function Onboarding() {
         />
       );
     case 'location':
-      return <PermissionStep text="어디를 다녀왔는지 알아야 발자국을 남길 수 있어요. 위치를 켜주실래요?" ask={askLocation} onDone={() => advance({ locationAsked: true })} />;
+      return <PermissionStep text="어디를 다녀왔는지 알아야 발자국을 남길 수 있다냥. 위치를 켜줄래냥?" ask={askLocation} onDone={() => advance({ locationAsked: true })} />;
     case 'notifications':
-      return <PermissionStep text="도착하면 제가 살짝 알려드릴게요. 알림만 켜두시면 돼요." ask={askNotifications} onDone={() => advance({ notificationsAsked: true })} />;
+      return <PermissionStep text="도착하면 내가 살짝 알려줄게냥. 알림만 켜두면 된다냥." ask={askNotifications} onDone={() => advance({ notificationsAsked: true })} />;
     case 'homeDong':
       return (
         <HomeDongStep

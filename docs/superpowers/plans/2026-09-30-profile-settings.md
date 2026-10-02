@@ -18,11 +18,11 @@
 - 온보딩 순서: welcome → **nickname** → cat → location → notifications → homeDong → tutorial → firstFootprint → done. 닉네임이 있으면 건너뜀.
 - 탈퇴: 즉시. `delete-account` → `clearLocalData()` → 카카오 `unlink()`(실패 무시) → `signOut({ scope: 'local' })`.
 - 문구:
-  - 닉네임 단계 제목 `"뭐라고 불러드릴까요?"`, 보조 `"2~12자, 한글·영문·숫자·_"`, 버튼 `"🎲 다른 이름"`·`"이걸로 할게요"`(설정에서는 `"저장할게요"`)
-  - 오류: `"2~12자의 한글·영문·숫자·_ 로 지어주세요."`, `"다른 집사가 쓰고 있어요. 다른 이름은 어때요?"`, 그 밖 `MSG.unknown`
-  - 프로필: 섹션 `"닉네임"`·`"내 고양이"`·`"내 동네"`·`"도착 알림"`·`"약관"`, 버튼 `"바꾸기"`(닉네임 없으면 `"정하기"`), 닉네임 없음 `"아직 닉네임이 없어요"`, 동네 없음 `"아직 정하지 않았어요"`, 알림 설명 `"아지트 근처에 도착하면 알려드려요"`, 알림 설정 안내 `"설정에서 위치를 '항상 허용'으로 바꿔주세요"` + `"설정 열기"`, 약관 `"이용약관"`·`"개인정보 처리방침"`·`"위치정보 이용약관"`
-  - 로그아웃 확인 `"로그아웃할까요?"` [`"취소"`, `"로그아웃"`]
-  - 탈퇴 확인 제목 `"정말 떠나시겠어요?"`, 본문 `"그동안 함께 누빈 동네와 순간들이 모두 지워져요."` [`"취소"`, `"떠나기"`(destructive)], 버튼 `"계정 탈퇴"`, 진행 `"떠나는 중…"`, 실패 `"지금은 떠날 수 없어요. 잠시 뒤 다시 해볼까요?"`
+  - 닉네임 단계 제목 `"뭐라고 불러줄까냥?"`, 보조 `"2~12자, 한글·영문·숫자·_"`, 버튼 `"🎲 다른 이름"`·`"이걸로 할게요"`(설정에서는 `"저장할게요"`)
+  - 오류: `"2~12자의 한글·영문·숫자·_ 로 지어주세요."`, `"다른 집사가 쓰고 있다냥. 다른 이름은 어때냥?"`, 그 밖 `MSG.unknown`
+  - 프로필: 섹션 `"닉네임"`·`"내 고양이"`·`"내 동네"`·`"도착 알림"`·`"약관"`, 버튼 `"바꾸기"`(닉네임 없으면 `"정하기"`), 닉네임 없음 `"아직 닉네임이 없다냥"`, 동네 없음 `"아직 정하지 않았다냥"`, 알림 설명 `"아지트 근처에 도착하면 알려줄게냥"`, 알림 설정 안내 `"설정에서 위치를 '항상 허용'으로 바꿔주세요"` + `"설정 열기"`, 약관 `"이용약관"`·`"개인정보 처리방침"`·`"위치정보 이용약관"`
+  - 로그아웃 확인 `"로그아웃할까냥?"` [`"취소"`, `"로그아웃"`]
+  - 탈퇴 확인 제목 `"정말 떠나냥?"`, 본문 `"그동안 함께 누빈 동네와 순간들이 모두 지워진다냥."` [`"취소"`, `"떠나기"`(destructive)], 버튼 `"계정 탈퇴"`, 진행 `"떠나는 중…"`, 실패 `"지금은 떠날 수 없다냥. 잠시 뒤 다시 해볼까냥?"`
 - 명령: jest·tsc·lint는 `mobile`에서, supabase·deno는 리포 루트(PowerShell). Deno: `npx -y deno test --node-modules-dir=none --allow-net --allow-env <file>`. 로컬 스택: Docker Desktop → `npx supabase start`, 끝나면 `npx supabase stop` + Docker 끄기.
 
 ## Review Focus
@@ -426,7 +426,7 @@ beforeEach(() => {
 
 test('처음부터 추천이 채워져 있고, 🎲 다른 이름으로 계속 바꿀 수 있다', async () => {
   await render(<NicknameStep onDone={jest.fn()} />);
-  expect(screen.getByText('뭐라고 불러드릴까요?')).toBeTruthy();
+  expect(screen.getByText('뭐라고 불러줄까냥?')).toBeTruthy();
   expect(input().props.value).toBe('졸린식빵');
   await fireEvent.press(screen.getByRole('button', { name: '🎲 다른 이름' }));
   expect(input().props.value).toBe('용감한고등어');
@@ -456,7 +456,7 @@ test('겹치면 안내하고 새 추천을 채운다', async () => {
   const onDone = jest.fn();
   await render(<NicknameStep onDone={onDone} />);
   await fireEvent.press(save());
-  expect(screen.getByText('다른 집사가 쓰고 있어요. 다른 이름은 어때요?')).toBeTruthy();
+  expect(screen.getByText('다른 집사가 쓰고 있다냥. 다른 이름은 어때냥?')).toBeTruthy();
   expect(input().props.value).toBe('용감한고등어');
   expect(onDone).not.toHaveBeenCalled();
 });
@@ -466,7 +466,7 @@ test('그 밖의 실패는 공통 안내, 입력은 그대로', async () => {
   (setNickname as jest.Mock).mockRejectedValue(new Error('network'));
   await render(<NicknameStep onDone={jest.fn()} />);
   await fireEvent.press(save());
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   expect(input().props.value).toBe('졸린식빵');
 });
 
@@ -547,7 +547,7 @@ import { PrimaryButton, StepScreen, TextButton } from './ui';
 
 export const NICKNAME_MSG = {
   invalid: '2~12자의 한글·영문·숫자·_ 로 지어주세요.',
-  taken: '다른 집사가 쓰고 있어요. 다른 이름은 어때요?',
+  taken: '다른 집사가 쓰고 있다냥. 다른 이름은 어때냥?',
 };
 
 type Props = { onDone: (name: string) => void; initial?: string; cta?: string };
@@ -590,7 +590,7 @@ export function NicknameStep({ onDone, initial, cta = '이걸로 할게요' }: P
   return (
     <StepScreen footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
       <Text style={styles.title} accessibilityRole="header">
-        뭐라고 불러드릴까요?
+        뭐라고 불러줄까냥?
       </Text>
       <TextInput
         value={name}
@@ -1231,9 +1231,9 @@ test('닉네임·고양이·동네를 보여주고 바꾸기로 간다', async (
 test('닉네임이 없으면 정하기, 동네가 없으면 안내', async () => {
   useMeStore.setState({ me: { ...me, nickname: null, homeDong: null } });
   await render(<ProfileScreen />);
-  expect(screen.getByText('아직 닉네임이 없어요')).toBeTruthy();
+  expect(screen.getByText('아직 닉네임이 없다냥')).toBeTruthy();
   expect(screen.getByRole('button', { name: '정하기' })).toBeTruthy();
-  expect(screen.getByText('아직 정하지 않았어요')).toBeTruthy();
+  expect(screen.getByText('아직 정하지 않았다냥')).toBeTruthy();
 });
 
 test('도착 알림 스위치, 설정이 필요하면 안내 + 설정 열기', async () => {
@@ -1258,7 +1258,7 @@ test('약관 링크를 연다', async () => {
 test('로그아웃은 한 번 확인하고', async () => {
   await render(<ProfileScreen />);
   await fireEvent.press(screen.getByRole('button', { name: '로그아웃' }));
-  expect((Alert.alert as jest.Mock).mock.calls[0][0]).toBe('로그아웃할까요?');
+  expect((Alert.alert as jest.Mock).mock.calls[0][0]).toBe('로그아웃할까냥?');
   expect(auth.signOut).not.toHaveBeenCalled();
   await alertButton('로그아웃');
   expect(auth.signOut).toHaveBeenCalled();
@@ -1270,12 +1270,12 @@ test('탈퇴: 확인 문구, 떠나기를 누르면 진행, 실패하면 안내'
   await render(<ProfileScreen />);
   await fireEvent.press(screen.getByRole('button', { name: '계정 탈퇴' }));
   const [title, body, buttons] = (Alert.alert as jest.Mock).mock.calls[0];
-  expect(title).toBe('정말 떠나시겠어요?');
-  expect(body).toBe('그동안 함께 누빈 동네와 순간들이 모두 지워져요.');
+  expect(title).toBe('정말 떠나냥?');
+  expect(body).toBe('그동안 함께 누빈 동네와 순간들이 모두 지워진다냥.');
   expect((buttons as AlertButton[]).map((b) => b.text)).toEqual(['취소', '떠나기']);
   await alertButton('떠나기');
   expect(auth.deleteAccount).toHaveBeenCalled();
-  expect(screen.getByText('지금은 떠날 수 없어요. 잠시 뒤 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('지금은 떠날 수 없다냥. 잠시 뒤 다시 해볼까냥?')).toBeTruthy();
 });
 ```
 
@@ -1329,7 +1329,7 @@ export default function ProfileScreen() {
   const [leaveFailed, setLeaveFailed] = useState(false);
 
   const confirmSignOut = () =>
-    Alert.alert('로그아웃할까요?', undefined, [
+    Alert.alert('로그아웃할까냥?', undefined, [
       { text: '취소', style: 'cancel' },
       { text: '로그아웃', onPress: () => signOut() },
     ]);
@@ -1347,7 +1347,7 @@ export default function ProfileScreen() {
   };
 
   const confirmLeave = () =>
-    Alert.alert('정말 떠나시겠어요?', '그동안 함께 누빈 동네와 순간들이 모두 지워져요.', [
+    Alert.alert('정말 떠나냥?', '그동안 함께 누빈 동네와 순간들이 모두 지워진다냥.', [
       { text: '취소', style: 'cancel' },
       { text: '떠나기', style: 'destructive', onPress: leave },
     ]);
@@ -1359,7 +1359,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Section title="닉네임">
           <View style={styles.row}>
-            <Text style={me?.nickname ? styles.big : styles.body}>{me?.nickname ?? '아직 닉네임이 없어요'}</Text>
+            <Text style={me?.nickname ? styles.big : styles.body}>{me?.nickname ?? '아직 닉네임이 없다냥'}</Text>
             <Pill label={me?.nickname ? '바꾸기' : '정하기'} onPress={() => router.push('/settings/nickname')} />
           </View>
         </Section>
@@ -1377,14 +1377,14 @@ export default function ProfileScreen() {
 
         <Section title="내 동네">
           <View style={styles.row}>
-            <Text style={[styles.body, styles.grow]}>{me?.homeDong ?? '아직 정하지 않았어요'}</Text>
+            <Text style={[styles.body, styles.grow]}>{me?.homeDong ?? '아직 정하지 않았다냥'}</Text>
             <Pill label="바꾸기" onPress={() => router.push('/settings/home')} />
           </View>
         </Section>
 
         <Section title="도착 알림">
           <View style={styles.row}>
-            <Text style={[styles.body, styles.grow]}>아지트 근처에 도착하면 알려드려요</Text>
+            <Text style={[styles.body, styles.grow]}>아지트 근처에 도착하면 알려줄게냥</Text>
             <Switch
               value={arrival.on}
               onValueChange={arrival.toggle}
@@ -1420,7 +1420,7 @@ export default function ProfileScreen() {
           hitSlop={8}>
           <Text style={styles.leave}>{leaving ? '떠나는 중…' : '계정 탈퇴'}</Text>
         </Pressable>
-        {leaveFailed && <Text style={styles.body}>지금은 떠날 수 없어요. 잠시 뒤 다시 해볼까요?</Text>}
+        {leaveFailed && <Text style={styles.body}>지금은 떠날 수 없다냥. 잠시 뒤 다시 해볼까냥?</Text>}
       </ScrollView>
     </SafeAreaView>
   );
