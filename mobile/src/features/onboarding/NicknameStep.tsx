@@ -9,8 +9,8 @@ import { setNickname } from './onboardingApi';
 import { PrimaryButton, StepScreen, TextButton } from './ui';
 
 export const NICKNAME_MSG = {
-  invalid: '2~12자의 한글·영문·숫자·_ 로 지어주세요.',
-  taken: '다른 집사가 쓰고 있어요. 다른 이름은 어때요?',
+  invalid: '2~12자의 한글·영문·숫자·_ 로 지어달라냥.',
+  taken: '다른 집사가 쓰고 있다냥. 다른 이름은 어떠냥?',
 };
 
 type Props = { onDone: (name: string) => void; initial?: string; cta?: string; onBack?: () => void };
@@ -53,7 +53,7 @@ export function NicknameStep({ onDone, initial, cta = '이걸로 할게요', onB
   return (
     <StepScreen onBack={onBack} footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
       <Text style={styles.title} accessibilityRole="header">
-        뭐라고 불러드릴까요?
+        뭐라고 부를까냥?
       </Text>
       <TextInput
         value={name}

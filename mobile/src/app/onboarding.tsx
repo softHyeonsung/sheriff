@@ -82,9 +82,9 @@ export default function Onboarding() {
         />
       );
     case 'location':
-      return <PermissionStep text="어디를 다녀왔는지 알아야 발자국을 남길 수 있어요. 위치를 켜주실래요?" ask={askLocation} onDone={() => advance({ locationAsked: true })} />;
+      return <PermissionStep text="어디를 다녀왔는지 알아야 발자국을 남길 수 있다냥. 위치를 켜줄래냥?" ask={askLocation} onDone={() => advance({ locationAsked: true })} />;
     case 'notifications':
-      return <PermissionStep text="도착하면 제가 살짝 알려드릴게요. 알림만 켜두시면 돼요." ask={askNotifications} onDone={() => advance({ notificationsAsked: true })} />;
+      return <PermissionStep text="도착하면 내가 살짝 알려줄게냥. 알림만 켜두면 된다냥." ask={askNotifications} onDone={() => advance({ notificationsAsked: true })} />;
     case 'homeDong':
       return (
         <HomeDongStep

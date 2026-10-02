@@ -44,22 +44,22 @@ beforeEach(() => {
 test('헤더: 이름·등급·다녀온 횟수·다음 단계, 사진 없으면 빈 상태', async () => {
   await render(<HideoutDetail />);
   await waitFor(() => expect(screen.getByText('단골 카페')).toBeTruthy());
-  expect(screen.getByText('지금까지 3번 다녀왔어요')).toBeTruthy();
-  expect(screen.getByText('2번 더 오면 작은 집이 돼요')).toBeTruthy();
+  expect(screen.getByText('지금까지 3번 다녀왔다냥')).toBeTruthy();
+  expect(screen.getByText('2번 더 오면 작은 집이 된다냥')).toBeTruthy();
   expect(screen.getByText('여기서의 순간들')).toBeTruthy();
-  expect(screen.getByText('아직 남긴 순간이 없어요. 다음에 오면 하나 남겨볼까요?')).toBeTruthy();
+  expect(screen.getByText('아직 남긴 순간이 없다냥. 다음에 오면 하나 남겨볼까냥?')).toBeTruthy();
 });
 
 test('150m 안이면 버튼 활성, 밖이면 비활성 + 안내', async () => {
   const { unmount } = await render(<HideoutDetail />);
   await waitFor(() => expect(screen.getByText('btn:on')).toBeTruthy());
   expect(mockBtnProps.aidutId).toBe('a1');
-  expect(screen.queryByText('가까이 가면 순간을 남길 수 있어요.')).toBeNull();
+  expect(screen.queryByText('가까이 가면 순간을 남길 수 있다냥.')).toBeNull();
   await unmount();
   (useMyLocation as jest.Mock).mockReturnValue({ location: { lat: 37.51, lng: 127, accuracy: 10 }, permission: 'granted' });
   await render(<HideoutDetail />);
   await waitFor(() => expect(screen.getByText('btn:off')).toBeTruthy());
-  expect(screen.getByText('가까이 가면 순간을 남길 수 있어요.')).toBeTruthy();
+  expect(screen.getByText('가까이 가면 순간을 남길 수 있다냥.')).toBeTruthy();
 });
 
 test('사진 격자 + 올라가는 중 칸, 누르면 크게 보기', async () => {
@@ -68,7 +68,7 @@ test('사진 격자 + 올라가는 중 칸, 누르면 크게 보기', async () =
   );
   await render(<HideoutDetail />);
   await waitFor(() => expect(screen.getByText('올라가는 중')).toBeTruthy());
-  expect(screen.queryByText('아직 남긴 순간이 없어요. 다음에 오면 하나 남겨볼까요?')).toBeNull();
+  expect(screen.queryByText('아직 남긴 순간이 없다냥. 다음에 오면 하나 남겨볼까냥?')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: '사진 1 크게 보기' }));
   expect(screen.getByTestId('photo-large')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
@@ -87,12 +87,12 @@ test('올라가면 목록을 새로 부른다', async () => {
 test('오프라인·오류 안내', async () => {
   (useMemories as jest.Mock).mockReturnValue(mem({ status: 'offline' }));
   const { unmount } = await render(<HideoutDetail />);
-  await waitFor(() => expect(screen.getByText('연결되면 순간들을 보여드릴게요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('연결되면 순간들을 보여줄게냥.')).toBeTruthy());
   await unmount();
   const m = mem({ status: 'error' });
   (useMemories as jest.Mock).mockReturnValue(m);
   await render(<HideoutDetail />);
-  await waitFor(() => expect(screen.getByText('순간들을 불러오지 못했어요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('순간들을 불러오지 못했다냥.')).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
   expect(m.refresh).toHaveBeenCalled();
 });
@@ -100,7 +100,7 @@ test('오프라인·오류 안내', async () => {
 test('모르는 아지트면 안내 + 돌아가기', async () => {
   (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [], thresholds: T, fog: null });
   await render(<HideoutDetail />);
-  await waitFor(() => expect(screen.getByText('이 아지트를 찾지 못했어요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('이 아지트를 찾지 못했다냥.')).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: '돌아가기' }));
   expect(router.back).toHaveBeenCalled();
 });
@@ -110,9 +110,9 @@ test('상세의 위치 확인: 흐리거나 멀면 문제를 알려 주고, 괜�
   await waitFor(() => expect(screen.getByText('btn:on')).toBeTruthy());
   const getFix = mockBtnProps.getFix as () => Promise<unknown>;
   (getFreshFix as jest.Mock).mockResolvedValueOnce({ lat: 37.5001, lng: 127, accuracy: 200 });
-  expect(await getFix()).toEqual({ problem: '위치가 흐려요. 조금 뒤에 다시 해볼까요?' });
+  expect(await getFix()).toEqual({ problem: '위치가 흐리다냥. 조금 뒤에 다시 해볼까냥?' });
   (getFreshFix as jest.Mock).mockResolvedValueOnce({ lat: 37.51, lng: 127, accuracy: 10 });
-  expect(await getFix()).toEqual({ problem: '조금만 더 가까이 가면 순간을 남길 수 있어요.' });
+  expect(await getFix()).toEqual({ problem: '조금만 더 가까이 가면 순간을 남길 수 있다냥.' });
   (getFreshFix as jest.Mock).mockResolvedValueOnce('denied');
   expect(await getFix()).toBe('denied');
   const ok = { lat: 37.5001, lng: 127, accuracy: 10 };
@@ -146,11 +146,11 @@ test('여기서 간 곳: 한 곳뿐이고 아지트 이름과 같으면 숨긴�
 test('여기서 간 곳: 오프라인·오류 안내', async () => {
   (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [], status: 'offline' });
   const { unmount } = await render(<HideoutDetail />);
-  await waitFor(() => expect(screen.getByText('연결되면 간 곳을 보여드릴게요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('연결되면 간 곳을 보여줄게냥.')).toBeTruthy());
   await unmount();
   (useHideoutPlaces as jest.Mock).mockReturnValue({ places: [], status: 'error' });
   await render(<HideoutDetail />);
-  await waitFor(() => expect(screen.getByText('간 곳을 불러오지 못했어요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('간 곳을 불러오지 못했다냥.')).toBeTruthy());
 });
 
 test('사진 크게 보기: 어느 장소에서 남겼는지, 모르는 옛 사진은 줄 없음', async () => {
@@ -183,5 +183,5 @@ test('상세의 위치 확인: 위치 서비스가 꺼져 있으면 그렇게 �
   const getFix = mockBtnProps.getFix as () => Promise<unknown>;
   const { CheckinError } = jest.requireActual('@/features/checkin/errors');
   (getFreshFix as jest.Mock).mockRejectedValueOnce(new CheckinError('location_off'));
-  expect(await getFix()).toEqual({ problem: '휴대폰의 위치 서비스가 꺼져 있어요. 켜고 다시 해볼까요?' });
+  expect(await getFix()).toEqual({ problem: '휴대폰의 위치 서비스가 꺼져 있다냥. 켜고 다시 해볼까냥?' });
 });

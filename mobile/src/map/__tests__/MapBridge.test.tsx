@@ -19,8 +19,8 @@ jest.mock('react-native-webview', () => {
   };
 });
 
-const pins = [{ id: 'a1', lat: 37.5, lng: 126.9, grade: 'hut' as const }];
-const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn(), catColor: 'cheese' as const, wishes: [], onWishTap: jest.fn(), course: null };
+const pins = [{ id: 'a1', lat: 37.5, lng: 126.9, grade: 'hut' as const, name: '단골 카페' }];
+const base = { hideouts: pins, myLocation: null, center: { lat: 37.5665, lng: 126.978 }, onHideoutTap: jest.fn(), onError: jest.fn(), fog: [], onIdle: jest.fn(), onCatTap: jest.fn(), catColor: 'cheese' as const, wishes: [], onWishTap: jest.fn(), course: null, focus: null };
 const send = async (data: string) => act(async () => mockWebProps.onMessage({ nativeEvent: { data } }));
 
 beforeEach(() => {
@@ -32,7 +32,8 @@ test('지도 준비 전엔 보내지 않고, ready 이후에 보낸다', async (
   await render(<MapBridge {...base} />);
   expect(mockInject).not.toHaveBeenCalled();
   await send('{"type":"ready"}');
-  expect(mockInject).toHaveBeenCalledTimes(5);
+  expect(mockInject).toHaveBeenCalledTimes(6);
+  expect(mockInject.mock.calls.some(([s]) => s.includes('setFocus'))).toBe(true);
   expect(mockInject.mock.calls.some(([s]) => s.includes('setCourse'))).toBe(true);
   expect(mockInject.mock.calls[0][0]).toContain('setHideouts');
   expect(mockInject.mock.calls[0][0]).toContain('a1');
@@ -184,4 +185,13 @@ test('코스보다 내 위치를 먼저 보낸다(범위에 내 위치가 들어
   await send('{"type":"ready"}');
   const order = mockInject.mock.calls.map(([s]) => (s.includes('setMyLocation') ? 'me' : s.includes('setCourse') ? 'course' : null)).filter(Boolean);
   expect(order).toEqual(['me', 'course']);
+});
+
+test('검색한 곳(focus)이 바뀌면 setFocus를 보낸다', async () => {
+  const { rerender } = await render(<MapBridge {...base} />);
+  await send('{"type":"ready"}');
+  mockInject.mockClear();
+  await rerender(<MapBridge {...base} focus={{ lat: 37.58, lng: 126.98 }} />);
+  expect(mockInject).toHaveBeenCalledTimes(1);
+  expect(mockInject.mock.calls[0][0]).toContain('setFocus');
 });

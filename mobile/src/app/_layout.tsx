@@ -39,7 +39,7 @@ function RootContent() {
       )}
       {!loading && route === 'error' && (
         <View style={styles.center}>
-          <Text style={styles.body}>앗, 잠깐 문제가 생겼어요. 다시 해볼까요?</Text>
+          <Text style={styles.body}>앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?</Text>
           <Pressable onPress={retry} accessibilityRole="button" accessibilityLabel="다시 시도" style={styles.btn}>
             <Text style={styles.btnText}>다시 시도</Text>
           </Pressable>

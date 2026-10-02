@@ -95,7 +95,7 @@ export function HomeDongStep({ onDone, onBack }: { onDone: (name: string) => voi
           </>
         }>
         <Text style={styles.title} accessibilityRole="header">
-          여기가 우리 동네가 맞나요?
+          여기가 우리 동네가 맞냥?
         </Text>
         <Text style={styles.dong}>{mode.dong}</Text>
         {error && <Text style={styles.body}>{MSG.unknown}</Text>}
@@ -106,7 +106,7 @@ export function HomeDongStep({ onDone, onBack }: { onDone: (name: string) => voi
   return (
     <StepScreen onBack={onBack}>
       <Text style={styles.title} accessibilityRole="header">
-        우리 동네 이름을 알려주세요
+        우리 동네 이름을 알려달라냥
       </Text>
       <View style={styles.row}>
         <TextInput
@@ -123,7 +123,7 @@ export function HomeDongStep({ onDone, onBack }: { onDone: (name: string) => voi
           <PrimaryButton label="찾기" onPress={search} disabled={busy || !query.trim()} />
         </View>
       </View>
-      {results?.length === 0 && <Text style={styles.body}>음, 못 찾았어요. 다른 이름으로 찾아볼까요?</Text>}
+      {results?.length === 0 && <Text style={styles.body}>음, 못 찾았다냥. 다른 이름으로 찾아볼까냥?</Text>}
       {results?.map((d) => (
         <TextButton key={d} label={d} onPress={() => save(d)} />
       ))}
@@ -134,7 +134,7 @@ export function HomeDongStep({ onDone, onBack }: { onDone: (name: string) => voi
 
 const styles = StyleSheet.create({
   title: { ...type.title, color: color.ink, textAlign: 'center' },
-  dong: { ...type.subtitle, color: color.primaryDeep, textAlign: 'center' },
+  dong: { ...type.subtitle, color: color.skyInk, textAlign: 'center' },
   body: { ...type.body, color: color.ink, textAlign: 'center' },
   row: { alignSelf: 'stretch', flexDirection: 'row', gap: 8 },
   input: {

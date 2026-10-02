@@ -13,8 +13,8 @@ export const subject = (word: string) => {
 
 export function nextStageHint(footprintCount: number, t: GradeThresholds): string {
   const next = NEXT.find((g) => footprintCount < t[g]);
-  if (!next) return '🏰 캣 팰리스. 여긴 당신의 인생 장소예요.';
+  if (!next) return '🏰 캣 팰리스다냥. 여긴 네 인생 장소냥.';
   const left = t[next] - footprintCount;
   const name = subject(GRADE_LABEL[next]);
-  return left === 1 ? `한 번 더 오면 여기가 ${name} 돼요` : `${left}번 더 오면 ${name} 돼요`;
+  return left === 1 ? `한 번 더 오면 여기가 ${name} 된다냥` : `${left}번 더 오면 ${name} 된다냥`;
 }

@@ -53,7 +53,7 @@ describe('진입/이탈', () => {
     await handleGeofenceEvent({ eventType: 1, region }, now);
     expect(schedule).toHaveBeenCalledWith({
       identifier: 'arrival:a',
-      content: { body: '또 왔네요, 동네 빵집. 여기 자주 오시네요 :)', data: { hideoutId: 'a' } },
+      content: { body: '또 왔다냥, 동네 빵집. 여기 자주 오는구냥 :)', data: { hideoutId: 'a' } },
       trigger: { type: 'timeInterval', seconds: 120, channelId: 'arrival' },
     });
     expect(written).toEqual({ ...data(), log: [{ id: 'a', at: now + 120000 }] });
@@ -94,7 +94,7 @@ describe('진입/이탈', () => {
   test('찜한 곳이면 찜 문구', async () => {
     useStore({ ...data(), regions: { 'wish:1': { name: '찜한 카페', grade: 'paw', lastVisitedAt: null, wish: true } } });
     await handleGeofenceEvent({ eventType: 1, region: { ...region, identifier: 'wish:1' } }, now);
-    expect(schedule.mock.calls[0][0].content.body).toBe('가고 싶다던 찜한 카페, 드디어 왔어요!');
+    expect(schedule.mock.calls[0][0].content.body).toBe('가고 싶다던 찜한 카페, 드디어 왔다냥!');
   });
 
   test('발자국을 남기면 그곳 예약 알림을 취소한다(기록은 남겨 하루 횟수에 센다)', async () => {

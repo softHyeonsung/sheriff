@@ -21,7 +21,7 @@ beforeEach(() => {
 
 test('처음부터 추천이 채워져 있고, 🎲 다른 이름으로 계속 바꿀 수 있다', async () => {
   await render(<NicknameStep onDone={jest.fn()} />);
-  expect(screen.getByText('뭐라고 불러드릴까요?')).toBeTruthy();
+  expect(screen.getByText('뭐라고 부를까냥?')).toBeTruthy();
   expect(input().props.value).toBe('졸린식빵');
   await fireEvent.press(screen.getByRole('button', { name: '🎲 다른 이름' }));
   expect(input().props.value).toBe('용감한고등어');
@@ -43,7 +43,7 @@ test('규칙에 안 맞으면 저장 버튼 비활성 + 안내', async () => {
   await render(<NicknameStep onDone={jest.fn()} />);
   await fireEvent.changeText(input(), '공 백');
   expect(save().props.accessibilityState).toMatchObject({ disabled: true });
-  expect(screen.getByText('2~12자의 한글·영문·숫자·_ 로 지어주세요.')).toBeTruthy();
+  expect(screen.getByText('2~12자의 한글·영문·숫자·_ 로 지어달라냥.')).toBeTruthy();
 });
 
 test('겹치면 안내하고 새 추천을 채운다', async () => {
@@ -51,7 +51,7 @@ test('겹치면 안내하고 새 추천을 채운다', async () => {
   const onDone = jest.fn();
   await render(<NicknameStep onDone={onDone} />);
   await fireEvent.press(save());
-  expect(screen.getByText('다른 집사가 쓰고 있어요. 다른 이름은 어때요?')).toBeTruthy();
+  expect(screen.getByText('다른 집사가 쓰고 있다냥. 다른 이름은 어떠냥?')).toBeTruthy();
   expect(input().props.value).toBe('용감한고등어');
   expect(onDone).not.toHaveBeenCalled();
 });
@@ -61,7 +61,7 @@ test('그 밖의 실패는 공통 안내, 입력은 그대로', async () => {
   (setNickname as jest.Mock).mockRejectedValue(new Error('network'));
   await render(<NicknameStep onDone={jest.fn()} />);
   await fireEvent.press(save());
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   expect(input().props.value).toBe('졸린식빵');
 });
 

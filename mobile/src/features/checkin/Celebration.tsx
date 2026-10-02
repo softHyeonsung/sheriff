@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { color, font, radius, space, type } from '@/constants/tokens';
+import { color, radius, scrim, space, type } from '@/constants/tokens';
 import type { GradeThresholds } from '@/features/map/useMyHideouts';
 import { catArt } from '@/map/catArt';
 import { markerFor } from '@/map/markers';
@@ -74,6 +74,8 @@ export function Celebration({
         <View style={styles.card}>
           <View style={styles.stage}>
             {!reduceMotion && Array.from({ length: PARTICLES }, (_, i) => <Particle key={i} index={i} progress={burst} />)}
+            {/* 자란 아지트는 초원 위에 선다 */}
+            <Image source={require('@/assets/images/meadow.jpg')} style={styles.ground} />
             <Animated.Image source={{ uri: markerFor(result.grade).uri }} style={[styles.art, popStyle]} />
             <Image testID="celebration-cat" source={{ uri: catArt(catColor, 'happy') }} style={styles.cat} />
           </View>
@@ -95,9 +97,10 @@ export function Celebration({
 }
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(74, 61, 48, 0.35)', alignItems: 'center', justifyContent: 'center', padding: space.gutter }, // color.ink @ 35%
-  card: { alignSelf: 'stretch', backgroundColor: color.surface, borderRadius: radius.sheet, padding: space.section, alignItems: 'center', gap: 8 },
+  scrim: { flex: 1, backgroundColor: scrim.strong, alignItems: 'center', justifyContent: 'center', padding: space.gutter },
+  card: { alignSelf: 'stretch', backgroundColor: color.surfaceCard, borderRadius: radius.sheet, padding: space.section, alignItems: 'center', gap: 8 },
   stage: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center' },
+  ground: { position: 'absolute', width: 176, height: 176, borderRadius: 88 },
   art: { width: 140, height: 140 },
   cat: { position: 'absolute', right: -8, bottom: -8, width: 64, height: 64 },
   particle: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: color.primary },
@@ -107,11 +110,11 @@ const styles = StyleSheet.create({
   cta: {
     alignSelf: 'stretch',
     marginTop: 12,
-    height: 52,
+    height: 54,
     borderRadius: radius.btn,
     backgroundColor: color.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ctaText: { fontFamily: font.semibold, fontSize: 16, color: color.onPrimary },
+  ctaText: { ...type.label, color: color.onPrimary },
 });

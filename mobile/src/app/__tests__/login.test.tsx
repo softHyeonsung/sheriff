@@ -9,8 +9,8 @@ jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn() }));
 // Decorative hero; reanimated's jest mock has no useReducedMotion.
 jest.mock('@/features/auth/FogReveal', () => ({ FogReveal: () => null }));
 
-const ERROR = '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?';
-const SHEET_TITLE = '시작하기 전에 확인해 주세요';
+const ERROR = '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?';
+const SHEET_TITLE = '시작하기 전에 확인해 달라냥';
 const login = loginWithKakao as jest.Mock;
 const exchange = exchangeKakaoToken as jest.Mock;
 

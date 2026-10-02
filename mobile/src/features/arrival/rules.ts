@@ -39,6 +39,6 @@ export function pickNearest<T extends { lat: number; lng: number }>(items: T[], 
 const REGULAR: Grade[] = ['hut', 'tower', 'palace'];
 
 export function arrivalMessage(name: string, grade: Grade, wish = false): string {
-  if (wish) return `가고 싶다던 ${name}, 드디어 왔어요!`;
-  return REGULAR.includes(grade) ? `또 왔네요, ${name}. 여기 자주 오시네요 :)` : `${name} 오셨네요. 발자국 남길까요?`;
+  if (wish) return `가고 싶다던 ${name}, 드디어 왔다냥!`;
+  return REGULAR.includes(grade) ? `또 왔다냥, ${name}. 여기 자주 오는구냥 :)` : `${name} 왔다냥! 발자국 남길까냥?`;
 }

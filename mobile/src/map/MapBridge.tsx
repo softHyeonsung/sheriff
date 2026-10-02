@@ -3,15 +3,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
-import { color } from '@/constants/tokens';
 import { catPoses } from './catArt';
 import type { CatColor } from './catColors';
 import { GRADES } from './grades';
-import { markerFor, WISH_MARKER } from './markers';
+import { GROUND } from './ground-images.generated';
+import { markerFor } from './markers';
 import { type AppToMap, type CoursePlan, type FogCell, type HideoutPin, type LatLng, type MyLocation, type WishPin, parseMapMessage, toMapScript } from './protocol';
 import { buildMapHtml } from './webview-template';
 
-export type MapBridgeHandle = { panTo: (lat: number, lng: number) => void; catSay: (text: string) => void };
+// panTo의 level: 그만큼 가까이 당기며 이동(이미 더 가까우면 그대로).
+export type MapBridgeHandle = { panTo: (lat: number, lng: number, level?: number) => void; catSay: (text: string) => void };
 
 type Props = {
   hideouts: HideoutPin[];
@@ -26,12 +27,13 @@ type Props = {
   onCatTap: () => void;
   catColor: CatColor;
   course: CoursePlan | null;
+  focus: LatLng | null; // 검색해서 고른 곳
 };
 
 const ORIGIN = 'http://localhost'; // registered as a Web platform domain in the Kakao console
 
 export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
-  { hideouts, wishes, onWishTap, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap, catColor, course },
+  { hideouts, wishes, onWishTap, myLocation, center, onHideoutTap, onError, fog, onIdle, onCatTap, catColor, course, focus },
   ref,
 ) {
   const jsKey = process.env.EXPO_PUBLIC_KAKAO_JS_KEY ?? '';
@@ -41,7 +43,7 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   const [initialCenter] = useState(center);
   const [initialCat] = useState(catColor); // 페이지는 한 번만 만든다 — 이후 교체는 setCat으로
   const html = useMemo(
-    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: catPoses(initialCat), fogColor: color.fog, wish: WISH_MARKER }),
+    () => buildMapHtml({ jsKey, markers: Object.fromEntries(GRADES.map((g) => [g, markerFor(g)])) as never, center: initialCenter, cat: catPoses(initialCat), ground: GROUND }),
     [jsKey, initialCenter, initialCat],
   );
 
@@ -79,8 +81,12 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
     if (ready) send({ type: 'setCourse', course });
   }, [ready, course]);
 
+  useEffect(() => {
+    if (ready) send({ type: 'setFocus', at: focus });
+  }, [ready, focus]);
+
   // A panTo before the map is ready (the screen centering on the first fix) is kept, not dropped.
-  const pendingPan = useRef<LatLng | null>(null);
+  const pendingPan = useRef<(LatLng & { level?: number }) | null>(null);
   useEffect(() => {
     if (ready && pendingPan.current) {
       send({ type: 'panTo', ...pendingPan.current });
@@ -91,9 +97,9 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
   useImperativeHandle(
     ref,
     () => ({
-      panTo: (lat, lng) => {
-        if (ready) send({ type: 'panTo', lat, lng });
-        else pendingPan.current = { lat, lng };
+      panTo: (lat, lng, level) => {
+        if (ready) send({ type: 'panTo', lat, lng, level });
+        else pendingPan.current = { lat, lng, level };
       },
       // A line said before the map is ready has no cat to say it — dropped.
       catSay: (text) => {

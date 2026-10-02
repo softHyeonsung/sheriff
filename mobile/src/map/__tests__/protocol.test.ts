@@ -31,7 +31,7 @@ test('이상한 메시지는 버린다', () => {
 test('주입 스크립트는 값을 데이터로만 전달한다(따옴표·스크립트 문자가 실행되지 않음)', () => {
   const msg: AppToMap = {
     type: 'setHideouts',
-    hideouts: [{ id: `x");alert(1);//</script>`, lat: 37.5, lng: 126.9, grade: 'hut' }],
+    hideouts: [{ id: `x");alert(1);//</script>`, lat: 37.5, lng: 126.9, grade: 'hut', name: '단골 카페' }],
   };
   const received: unknown[] = [];
   const fakeWindow = { __onAppMessage: (m: unknown) => received.push(m) };

@@ -83,7 +83,7 @@ test('완료 저장 실패 → 오류 + 다시 시도', async () => {
   await waitFor(() => expect(current()).toBe('welcome'));
   await done();
   await done();
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   expect(useMeStore.getState().me?.onboarded).toBe(false);
   await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
   expect(useMeStore.getState().me?.onboarded).toBe(true);

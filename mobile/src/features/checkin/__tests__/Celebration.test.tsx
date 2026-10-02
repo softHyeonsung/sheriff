@@ -22,7 +22,7 @@ beforeEach(() => jest.clearAllMocks());
 test('등급업 문구·햅틱·닫기', async () => {
   const onClose = jest.fn();
   await render(<Celebration result={up} thresholds={T} onClose={onClose} />);
-  expect(screen.getByText('작은 집이 됐어요 🛖 자주 오시는군요.')).toBeTruthy();
+  expect(screen.getByText('작은 집이 됐다냥 🛖 자주 오는구냥.')).toBeTruthy();
   expect(screen.getByText('카페')).toBeTruthy();
   expect(Haptics.notificationAsync).toHaveBeenCalledWith('success');
   await fireEvent.press(screen.getByRole('button', { name: '좋아요' }));
@@ -31,21 +31,21 @@ test('등급업 문구·햅틱·닫기', async () => {
 
 test('같은 등급은 다음 단계 힌트까지', async () => {
   await render(<Celebration result={{ ...up, footprintCount: 6, gradeChanged: false }} thresholds={T} onClose={jest.fn()} />);
-  expect(screen.getByText('🐾 발자국을 남겼어요')).toBeTruthy();
-  expect(screen.getByText('4번 더 오면 캣타워가 돼요')).toBeTruthy();
+  expect(screen.getByText('🐾 발자국을 남겼다냥')).toBeTruthy();
+  expect(screen.getByText('4번 더 오면 캣타워가 된다냥')).toBeTruthy();
 });
 
 test('모션 줄이기면 애니메이션 없이도 같은 내용', async () => {
   (useReducedMotion as jest.Mock).mockReturnValue(true);
   await render(<Celebration result={up} thresholds={T} onClose={jest.fn()} />);
-  expect(screen.getByText('작은 집이 됐어요 🛖 자주 오시는군요.')).toBeTruthy();
+  expect(screen.getByText('작은 집이 됐다냥 🛖 자주 오는구냥.')).toBeTruthy();
 });
 
 test('동네 단계가 오르면 한 줄 더', async () => {
   await render(
     <Celebration result={{ ...up, dong: { name: '사직동', stage: 'sprout', stageChanged: true } }} thresholds={T} onClose={jest.fn()} />,
   );
-  expect(screen.getByText('우리 동네가 이제 개척지가 됐어요 🌱')).toBeTruthy();
+  expect(screen.getByText('우리 동네가 이제 개척지가 됐다냥 🌱')).toBeTruthy();
 });
 
 test('memory가 있으면 순간 남기기 버튼, 없으면 없음', async () => {
@@ -57,7 +57,7 @@ test('memory가 있으면 순간 남기기 버튼, 없으면 없음', async () =
 
 test('찜한 곳이면 달성 한 줄', async () => {
   await render(<Celebration result={{ ...up, wishAchieved: true }} thresholds={T} onClose={jest.fn()} />);
-  expect(screen.getByText('가고 싶다던 카페, 드디어 왔어요!')).toBeTruthy();
+  expect(screen.getByText('가고 싶다던 카페, 드디어 왔다냥!')).toBeTruthy();
 });
 
 test('기뻐 뛰는 내 고양이', async () => {

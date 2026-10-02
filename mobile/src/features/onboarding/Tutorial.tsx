@@ -10,8 +10,8 @@ import { PrimaryButton, StepScreen } from './ui';
 // ponytail: 버튼으로만 넘긴다(스와이프 없음) — 스와이프가 필요하면 가로 ScrollView pagingEnabled로.
 const CUTS = [
   { text: '다녀온 곳에 발자국을 남기고', art: markerFor('paw').uri },
-  { text: '발자국이 쌓이면 아지트가 자라요', art: markerFor('hut').uri },
-  { text: '안개가 걷히면 제가 뛰어놀 곳이 넓어져요.', art: null }, // 내 고양이가 걷는 그림(렌더 때)
+  { text: '발자국이 쌓이면 아지트가 자란다냥', art: markerFor('hut').uri },
+  { text: '안개가 걷히면 내가 뛰어놀 곳이 넓어진다냥.', art: null }, // 내 고양이가 걷는 그림(렌더 때)
 ];
 
 export function Tutorial({ onDone }: { onDone: () => void }) {

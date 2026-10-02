@@ -1,7 +1,11 @@
 # mobile/scripts/make_markers.py
 """Map marker art -> mobile/assets/markers/*.png + src/map/marker-images.generated.ts.
 
-Re-run whenever art changes (e.g. when the tower/palace images arrive):
+Re-run whenever art changes.
+
+One sheet with the five stages side by side on a transparent background (the usual way):
+  python mobile/scripts/make_markers.py --sheet SHEET.png [--preview]
+Separate files (older art):
   python mobile/scripts/make_markers.py --paw PAW --box BOX --hut HUT [--tower T] [--palace P]
 Missing tower/palace -> amber placeholder.
 """
@@ -15,7 +19,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 
 AMBER = (0xE6, 0xA5, 0x52)  # color.primary
 AMBER_DEEP = (0xC9, 0x8A, 0x3C)  # color.primaryDeep
-SIZE = 128
+SIZE = 256  # shown up to ~140dp (celebration); 256px stays crisp on 2x and acceptable on 3x
 WORK = 512  # cut backgrounds at this size: faster, and soft glows become smoother
 MOBILE = Path(__file__).resolve().parents[1]
 
@@ -76,6 +80,36 @@ def harden_alpha(path, threshold=128):
     return img
 
 
+def split_sheet(path, gap=12):
+    """Five stages left to right on a transparent sheet -> five RGBA crops.
+    Columns with (almost) no opaque pixels separate the stages; watercolor leaves faint specks
+    between them, so a column counts as empty below a small opaque-pixel count."""
+    src = Image.open(path).convert("RGBA")
+    # generated art keeps a yellowish semi-transparent fringe: keep only solid pixels, then shave 1px
+    mask = src.getchannel("A").point(lambda v: 255 if v >= 200 else 0)
+    mask = mask.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.MinFilter(3))
+    src.putalpha(mask)
+    w, h = src.size
+    cols = [sum(1 for v in mask.crop((x, 0, x + 1, h)).getdata() if v) for x in range(w)]
+    runs, start, empty = [], None, 0
+    for x, n in enumerate(cols):
+        if n > 2:
+            if start is None:
+                start = x
+            empty = 0
+        elif start is not None:
+            empty += 1
+            if empty >= gap:
+                runs.append((start, x - empty + 1))
+                start = None
+    if start is not None:
+        runs.append((start, w))
+    runs = [r for r in runs if r[1] - r[0] > 20]  # drop stray specks
+    if len(runs) != 5:
+        raise SystemExit(f"expected 5 stages on the sheet, found {len(runs)}: {runs}")
+    return [src.crop((a, 0, b, h)) for a, b in runs]
+
+
 def cut(path, tol):
     """Pick the background remover: sources with a transparent corner already have alpha."""
     src = Image.open(path)
@@ -105,21 +139,28 @@ def placeholder(rings):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--paw", required=True)
-    ap.add_argument("--box", required=True)
-    ap.add_argument("--hut", required=True)
+    ap.add_argument("--sheet", help="one image with paw, box, hut, tower, palace left to right")
+    ap.add_argument("--preview", action="store_true", help="also write scripts/markers-preview.png")
+    ap.add_argument("--paw")
+    ap.add_argument("--box")
+    ap.add_argument("--hut")
     ap.add_argument("--tower")
     ap.add_argument("--palace")
     ap.add_argument("--tol", type=int, default=18)
     a = ap.parse_args()
 
-    images = {
+    if a.sheet:
+        images = dict(zip(["paw", "box", "hut", "tower", "palace"], (square(i) for i in split_sheet(a.sheet))))
+    elif not (a.paw and a.box and a.hut):
+        ap.error("give --sheet, or --paw --box --hut")
+    else:
+      images = {
         "paw": square(recolor_silhouette(a.paw)),
         "box": square(cut_background(a.box, a.tol)),
         "hut": square(cut_background(a.hut, a.tol)),
         "tower": square(cut(a.tower, a.tol)) if a.tower else placeholder(1),
         "palace": square(cut(a.palace, a.tol)) if a.palace else placeholder(2),
-    }
+      }
 
     out_dir = MOBILE / "assets" / "markers"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -136,6 +177,14 @@ def main():
         lines.append(f"  {grade}: 'data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}',")
     lines.append("};")
     (MOBILE / "src" / "map" / "marker-images.generated.ts").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if a.preview:
+        # on meadow green and on fog grey: the two grounds a marker actually sits on
+        sheet = Image.new("RGBA", (SIZE * 5, SIZE * 2), (0x8F, 0xC6, 0x58, 255))
+        sheet.paste((0xCA, 0xD7, 0xD1, 255), (0, SIZE, SIZE * 5, SIZE * 2))
+        for i, img in enumerate(images.values()):
+            sheet.alpha_composite(img, (i * SIZE, 0))
+            sheet.alpha_composite(img, (i * SIZE, SIZE))
+        sheet.convert("RGB").save(MOBILE / "scripts" / "markers-preview.png")
     print("wrote", ", ".join(images))
 
 

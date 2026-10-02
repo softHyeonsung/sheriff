@@ -28,7 +28,7 @@ const search = async (text: string) => {
 
 test('비어 있으면 안내', async () => {
   await render(<WishlistScreen />);
-  expect(screen.getByText('가고 싶은 곳이 있나요? 검색해서 찜해두면 지도에 표시돼요.')).toBeTruthy();
+  expect(screen.getByText('가고 싶은 곳이 있냥? 검색해서 찜해두면 지도에 표시된다냥.')).toBeTruthy();
 });
 
 test('이름으로 검색 → 결과 → ⭐ 찜', async () => {
@@ -39,7 +39,7 @@ test('이름으로 검색 → 결과 → ⭐ 찜', async () => {
   await search('카페');
   expect(searchPlaces).toHaveBeenCalledWith('카페', { lat: 37.5, lng: 127 });
   await waitFor(() => expect(screen.getByText('찜한 카페')).toBeTruthy());
-  await fireEvent.press(screen.getByRole('button', { name: '⭐ 찜' }));
+  await fireEvent.press(screen.getByRole('button', { name: '찜한 카페 찜' }));
   expect(w.add).toHaveBeenCalledWith(place('1', '찜한 카페'));
 });
 
@@ -56,8 +56,8 @@ test('이미 찜한 곳은 찜 해제, 목록에 달성 표시', async () => {
   expect(screen.getByText('고양이가 찜한 곳')).toBeTruthy();
   expect(screen.getByText('달성 ✓')).toBeTruthy();
   await search('카페');
-  await waitFor(() => expect(screen.getAllByRole('button', { name: '찜 해제' }).length).toBeGreaterThan(1));
-  await fireEvent.press(screen.getAllByRole('button', { name: '찜 해제' })[0]);
+  await waitFor(() => expect(screen.getAllByRole('button', { name: /찜 해제$/ }).length).toBeGreaterThan(1));
+  await fireEvent.press(screen.getAllByRole('button', { name: /찜 해제$/ })[0]);
   expect(w.remove).toHaveBeenCalledWith('1');
 });
 
@@ -76,16 +76,16 @@ test('공유로 열리면 바로 해석, 못 찾으면 안내', async () => {
   (parseShared as jest.Mock).mockResolvedValue({ places: [], query: null });
   await render(<WishlistScreen />);
   await waitFor(() => expect(parseShared).toHaveBeenCalledWith('인스타 글\nhttps://instagram.com/p/x', { lat: 37.5, lng: 127 }));
-  expect(screen.getByText('장소를 찾지 못했어요. 이름으로 검색해 볼까요?')).toBeTruthy();
+  expect(screen.getByText('장소를 찾지 못했다냥. 이름으로 검색해 볼까냥?')).toBeTruthy();
 });
 
 test('검색 결과 없음·연결 끊김 안내, 돌아가기', async () => {
   (searchPlaces as jest.Mock).mockResolvedValueOnce([]).mockRejectedValueOnce({ message: 'TypeError: Network request failed' });
   await render(<WishlistScreen />);
   await search('없는곳');
-  await waitFor(() => expect(screen.getByText('음, 못 찾았어요. 다른 이름으로 찾아볼까요?')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('음, 못 찾았다냥. 다른 이름으로 찾아볼까냥?')).toBeTruthy());
   await search('카페');
-  await waitFor(() => expect(screen.getByText('연결이 끊겨 있어요. 잠시 뒤에 다시 해볼까요?')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('연결이 끊겨 있다냥. 잠시 뒤에 다시 해볼까냥?')).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: '돌아가기' }));
   expect(router.back).toHaveBeenCalled();
 });

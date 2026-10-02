@@ -2,7 +2,7 @@
 // [순간 남기기 📷]: 찍기/고르기 → 위치 → 대기열에 챙기고 바로 올려 본다.
 import { useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, font, radius, space, type } from '@/constants/tokens';
+import { color, radius, space, type } from '@/constants/tokens';
 import type { Fix } from '@/features/checkin/checkinApi';
 import { MSG } from '@/features/checkin/copy';
 import { keepMemory } from './memoryQueue';
@@ -10,10 +10,10 @@ import { flushMemoriesNow } from './memoriesApi';
 import { pickMemoryPhoto } from './photo';
 
 export const MEMORY_MSG = {
-  kept: '순간을 남겼어요 📷',
-  denied: '사진을 쓰려면 권한이 필요해요.',
-  failed: '사진을 준비하지 못했어요. 다시 해볼까요?',
-  dropped: '남긴 순간을 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.',
+  kept: '순간을 남겼다냥 📷',
+  denied: '사진을 쓰려면 권한이 필요하다냥.',
+  failed: '사진을 준비하지 못했다냥. 다시 해볼까냥?',
+  dropped: '남긴 순간을 올리지 못했다냥. 너무 멀었거나 위치가 흐렸다냥.',
 };
 
 // 위치를 못 쓰는 까닭을 사람 말로(흐림·멂 등) 돌려줄 수 있다.
@@ -105,13 +105,11 @@ const styles = StyleSheet.create({
     minHeight: space.tapMin,
     paddingHorizontal: 20,
     justifyContent: 'center',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: color.primary,
-    backgroundColor: color.surfaceCard,
+    borderRadius: radius.btn,
+    backgroundColor: color.skyLight, // 보조 행동(하늘): 햇살색은 그 화면의 가장 중요한 버튼에만
   },
   off: { opacity: 0.5 },
-  btnText: { fontFamily: font.semibold, fontSize: 15, color: color.primary },
+  btnText: { ...type.label, color: color.skyInk },
   note: { ...type.caption, color: color.inkSub, textAlign: 'center' },
-  link: { ...type.caption, color: color.primary, textDecorationLine: 'underline' },
+  link: { ...type.caption, color: color.ink, textDecorationLine: 'underline' },
 });

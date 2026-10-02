@@ -1,7 +1,7 @@
 // mobile/src/features/territory/catLine.ts
 export const CAT_LINES = {
-  calm: '우리 동네, 오늘도 조용하고 좋네요.',
-  nudge: '저쪽 골목은 아직 안개예요. 같이 가볼까요?',
+  calm: '우리 동네, 오늘도 조용하고 좋다냥.',
+  nudge: '저쪽 골목은 아직 안개냥. 같이 가볼까냥?',
 };
 
 // n = 몇 번째 탭인지. 안개가 남았으면 권유와 인사를 번갈아, 다 걷혔으면 인사만.

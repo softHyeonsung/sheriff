@@ -35,13 +35,13 @@ export function FirstFootprintStep({ onDone }: { onDone: (made: boolean) => void
         </>
       }>
       <Text style={styles.title} accessibilityRole="header">
-        자, 지금 여기. 첫 발자국을 남겨볼까요?
+        자, 지금 여기. 첫 발자국을 남겨볼까냥?
       </Text>
       {locating && <Text style={styles.body}>{MSG.locating}</Text>}
       {state.name === 'failed' && <Text style={styles.body}>{state.message}</Text>}
       {state.name === 'queued' && (
         <>
-          <Text style={styles.body}>발자국을 챙겨뒀어요. 연결되면 남길게요 🐾</Text>
+          <Text style={styles.body}>발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾</Text>
           <PrimaryButton
             label="다음"
             onPress={() => {

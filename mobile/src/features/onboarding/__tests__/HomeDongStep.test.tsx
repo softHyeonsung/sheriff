@@ -18,7 +18,7 @@ test('GPS로 추정 → 맞아요 → 저장', async () => {
   const onDone = jest.fn();
   await render(<HomeDongStep onDone={onDone} />);
   await waitFor(() => expect(screen.getByText('서울특별시 종로구 사직동')).toBeTruthy());
-  expect(screen.getByText('여기가 우리 동네가 맞나요?')).toBeTruthy();
+  expect(screen.getByText('여기가 우리 동네가 맞냥?')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '맞아요' }));
   expect(setHomeDong).toHaveBeenCalledWith('서울특별시 종로구 사직동');
   expect(onDone).toHaveBeenCalledWith('서울특별시 종로구 사직동');
@@ -29,7 +29,7 @@ test('위치 없으면 바로 검색, 결과를 골라 저장', async () => {
   (searchRegion as jest.Mock).mockResolvedValue(['서울특별시 종로구 사직동', '부산광역시 동래구 사직동']);
   const onDone = jest.fn();
   await render(<HomeDongStep onDone={onDone} />);
-  await waitFor(() => expect(screen.getByText('우리 동네 이름을 알려주세요')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('우리 동네 이름을 알려달라냥')).toBeTruthy());
   expect(regionAt).not.toHaveBeenCalled();
   await fireEvent.changeText(screen.getByLabelText('동네 이름'), '사직동');
   await fireEvent.press(screen.getByRole('button', { name: '찾기' }));
@@ -42,10 +42,10 @@ test('추정 실패 → 검색, 0건이면 못 찾았어요', async () => {
   (getFreshFix as jest.Mock).mockRejectedValue(new Error('gps'));
   (searchRegion as jest.Mock).mockResolvedValue([]);
   await render(<HomeDongStep onDone={jest.fn()} />);
-  await waitFor(() => expect(screen.getByText('우리 동네 이름을 알려주세요')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('우리 동네 이름을 알려달라냥')).toBeTruthy());
   await fireEvent.changeText(screen.getByLabelText('동네 이름'), '없는동');
   await fireEvent.press(screen.getByRole('button', { name: '찾기' }));
-  expect(await screen.findByText('음, 못 찾았어요. 다른 이름으로 찾아볼까요?')).toBeTruthy();
+  expect(await screen.findByText('음, 못 찾았다냥. 다른 이름으로 찾아볼까냥?')).toBeTruthy();
 });
 
 test('다른 동네예요 → 검색 모드', async () => {
@@ -53,7 +53,7 @@ test('다른 동네예요 → 검색 모드', async () => {
   (regionAt as jest.Mock).mockResolvedValue(['서울특별시 종로구 사직동']);
   await render(<HomeDongStep onDone={jest.fn()} />);
   await fireEvent.press(await screen.findByRole('button', { name: '다른 동네예요' }));
-  expect(screen.getByText('우리 동네 이름을 알려주세요')).toBeTruthy();
+  expect(screen.getByText('우리 동네 이름을 알려달라냥')).toBeTruthy();
 });
 
 test('저장 실패 → 오류, 다시 누를 수 있음', async () => {
@@ -64,7 +64,7 @@ test('저장 실패 → 오류, 다시 누를 수 있음', async () => {
   const onDone = jest.fn();
   await render(<HomeDongStep onDone={onDone} />);
   await fireEvent.press(await screen.findByRole('button', { name: '맞아요' }));
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '맞아요' }));
   expect(onDone).toHaveBeenCalled();
 });
@@ -83,6 +83,6 @@ test.each([
   await act(async () => {
     jest.advanceTimersByTime(10000);
   });
-  expect(screen.getByText('우리 동네 이름을 알려주세요')).toBeTruthy();
+  expect(screen.getByText('우리 동네 이름을 알려달라냥')).toBeTruthy();
   jest.useRealTimers();
 });

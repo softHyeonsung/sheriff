@@ -5,7 +5,8 @@ import type { CatPose } from './catColors';
 import type { Grade } from './grades';
 
 export type LatLng = { lat: number; lng: number };
-export type HideoutPin = { id: string; lat: number; lng: number; grade: Grade };
+// name: 가까이 볼 때 핀 위에 붙는 이름.
+export type HideoutPin = { id: string; lat: number; lng: number; grade: Grade; name: string };
 export type WishPin = { placeId: string; lat: number; lng: number };
 export type MyLocation = { lat: number; lng: number; accuracy: number };
 // 걷힌 칸 하나: 남서·북동 모서리.
@@ -17,11 +18,12 @@ export type AppToMap =
   | { type: 'setHideouts'; hideouts: HideoutPin[] }
   | { type: 'setWishes'; wishes: WishPin[] }
   | ({ type: 'setMyLocation' } & MyLocation)
-  | ({ type: 'panTo' } & LatLng)
+  | ({ type: 'panTo'; level?: number } & LatLng) // level: 그만큼 가까이 당기며 이동(길을 보러 갈 때)
   | { type: 'setFog'; cells: FogCell[] }
   | { type: 'catSay'; text: string }
   | { type: 'setCat'; poses: Record<CatPose, string> }
-  | { type: 'setCourse'; course: CoursePlan | null };
+  | { type: 'setCourse'; course: CoursePlan | null }
+  | { type: 'setFocus'; at: LatLng | null }; // 검색해서 고른 곳의 표시(없애려면 null)
 
 export type MapToApp =
   | { type: 'ready' }

@@ -15,8 +15,8 @@ beforeEach(() => jest.clearAllMocks());
 
 test('첫 후보를 물어보고, 맞으면 그 장소로', async () => {
   await render(<CheckinSheet {...props} state={state()} />);
-  expect(screen.getByText('여기 단골 카페 맞나요?')).toBeTruthy();
-  expect(screen.getByText('지금까지 3번 다녀왔어요')).toBeTruthy();
+  expect(screen.getByText('여기 단골 카페 맞냥?')).toBeTruthy();
+  expect(screen.getByText('지금까지 3번 다녀왔다냥')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
   expect(props.onChoose).toHaveBeenCalledWith({ kind: 'mine', aidutId: 'a1' });
 });
@@ -43,8 +43,8 @@ test('후보가 없으면 바로 목록(새로 만들기만)', async () => {
 });
 
 test('거절 안내는 시트 안에', async () => {
-  await render(<CheckinSheet {...props} state={state({ error: '조금만 더 가까이 가면 발자국을 남길 수 있어요.' })} />);
-  expect(screen.getByText('조금만 더 가까이 가면 발자국을 남길 수 있어요.')).toBeTruthy();
+  await render(<CheckinSheet {...props} state={state({ error: '조금만 더 가까이 가면 발자국을 남길 수 있다냥.' })} />);
+  expect(screen.getByText('조금만 더 가까이 가면 발자국을 남길 수 있다냥.')).toBeTruthy();
 });
 
 test('저장 중엔 닫히지 않는다', async () => {
@@ -56,7 +56,7 @@ test('저장 중엔 닫히지 않는다', async () => {
 
 test('오프라인이면 내 아지트만 보여준다고 알린다', async () => {
   await render(<CheckinSheet state={state({ offline: true })} {...props} />);
-  expect(screen.getByText('연결이 끊겨 있어서 내 아지트만 보여드려요')).toBeTruthy();
+  expect(screen.getByText('연결이 끊겨 있어서 내 아지트만 보여준다냥')).toBeTruthy();
 });
 
 test('보이는 닫기 버튼으로 닫고, 다른 곳이에요도 저장 중엔 비활성으로 읽힌다', async () => {

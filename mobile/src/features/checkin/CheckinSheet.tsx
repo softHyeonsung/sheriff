@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { color, font, radius, space, type } from '@/constants/tokens';
+import { color, radius, scrim, space, type } from '@/constants/tokens';
 import { markerFor } from '@/map/markers';
 import { targetFor } from './candidates';
 import type { CheckinTarget } from './checkinApi';
@@ -45,15 +45,15 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
       {/* 배경을 눌러도 닫히지만, 읽어 주는 닫기는 아래 보이는 버튼 하나만. */}
       <Pressable style={styles.backdrop} onPress={close} accessible={false} importantForAccessibility="no" />
       <SafeAreaView edges={['bottom']} style={styles.sheet}>
-        {state.offline && <Text style={styles.caption}>연결이 끊겨 있어서 내 아지트만 보여드려요</Text>}
+        {state.offline && <Text style={styles.caption}>연결이 끊겨 있어서 내 아지트만 보여준다냥</Text>}
         {view === 'confirm' && first ? (
           <View style={styles.confirm}>
             {first.kind === 'mine' && <Image source={{ uri: markerFor(first.grade).uri }} style={styles.art} />}
             <Text style={styles.title} accessibilityRole="header">
-              여기 {first.name} 맞나요?
+              여기 {first.name} 맞냥?
             </Text>
             {first.kind === 'mine' && footprintsById[first.aidutId] !== undefined && (
-              <Text style={styles.caption}>지금까지 {footprintsById[first.aidutId]}번 다녀왔어요</Text>
+              <Text style={styles.caption}>지금까지 {footprintsById[first.aidutId]}번 다녀왔다냥</Text>
             )}
             <Pressable
               onPress={() => onChoose(targetFor(first))}
@@ -111,7 +111,7 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(74, 61, 48, 0.25)' }, // color.ink @ 25%
+  backdrop: { flex: 1, backgroundColor: scrim.light },
   sheet: {
     backgroundColor: color.surfaceCard,
     borderTopLeftRadius: radius.sheet,
@@ -124,21 +124,21 @@ const styles = StyleSheet.create({
   title: { ...type.title, color: color.ink, textAlign: 'center' },
   list: { maxHeight: 360 },
   row: { minHeight: space.tapMin, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: color.line },
-  rowTitle: { ...type.body, color: color.ink },
+  rowTitle: { ...type.bodyStrong, color: color.ink },
   caption: { ...type.caption, color: color.inkSub },
   cta: {
     alignSelf: 'stretch',
     marginTop: 12,
-    height: 52,
+    height: 54,
     borderRadius: radius.btn,
     backgroundColor: color.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaBusy: { opacity: 0.7 },
-  ctaText: { fontFamily: font.semibold, fontSize: 16, color: color.onPrimary },
+  ctaText: { ...type.label, color: color.onPrimary },
   secondary: { minHeight: space.tapMin, justifyContent: 'center' },
-  secondaryText: { ...type.body, color: color.inkSub, textDecorationLine: 'underline' },
+  secondaryText: { ...type.label, color: color.ink },
   closeText: { textAlign: 'center' },
   error: { ...type.caption, color: color.ink, marginTop: 12, marginBottom: 8, minHeight: 18, textAlign: 'center' },
 });

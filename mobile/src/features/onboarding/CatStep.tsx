@@ -52,7 +52,7 @@ export function CatStep({
     <StepScreen onBack={onBack} footer={<PrimaryButton label={cta} onPress={submit} disabled={!ok || saving} />}>
       <Image testID="cat-preview" source={{ uri: catArt(coat, 'sit') }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
-        이 친구, 이름을 지어줄래요? 털색도 골라봐요.
+        이 친구, 이름을 지어줄래냥? 털색도 골라보라냥.
       </Text>
       <TextInput
         value={name}
@@ -64,7 +64,7 @@ export function CatStep({
         returnKeyType="done"
         onSubmitEditing={submit}
       />
-      {!ok && <Text style={styles.hint}>이름은 1~10자로 지어주세요</Text>}
+      {!ok && <Text style={styles.hint}>이름은 1~10자로 지어달라냥</Text>}
       <View style={styles.coats} accessibilityRole="radiogroup">
         {CAT_COLORS.map((c) => (
           <Pressable

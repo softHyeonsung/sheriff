@@ -41,7 +41,7 @@ test('찍으면 그 위치로 챙기고 알린 뒤 올려 본다, 올라가면 o
   await choose('사진 찍기');
   expect(pickMemoryPhoto).toHaveBeenCalledWith('camera');
   expect(keepMemory).toHaveBeenCalledWith({ id: 'p1', aidutId: 'a1', fix, localUri: 'file:///doc/memories/p1.jpg' });
-  expect(screen.getByText('순간을 남겼어요 📷')).toBeTruthy();
+  expect(screen.getByText('순간을 남겼다냥 📷')).toBeTruthy();
   await waitFor(() => expect(onUploaded).toHaveBeenCalled());
 });
 
@@ -61,7 +61,7 @@ test('사진 권한 거절 → 안내 + 설정 열기', async () => {
   await render(<MemoryButton aidutId="a1" getFix={async () => fix} />);
   await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
   await choose('사진 찍기');
-  expect(screen.getByText('사진을 쓰려면 권한이 필요해요.')).toBeTruthy();
+  expect(screen.getByText('사진을 쓰려면 권한이 필요하다냥.')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '설정 열기' }));
   expect(open).toHaveBeenCalled();
 });
@@ -71,7 +71,7 @@ test('위치 권한이 없으면 위치 안내, 사진을 찍기 전에 멈춘�
   await render(<MemoryButton aidutId="a1" getFix={async () => 'denied'} />);
   await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
   await choose('사진 찍기');
-  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.')).toBeTruthy();
+  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.')).toBeTruthy();
   expect(pickMemoryPhoto).not.toHaveBeenCalled();
   expect(keepMemory).not.toHaveBeenCalled();
 });
@@ -82,7 +82,7 @@ test('준비가 실패하면 다시 해보자고', async () => {
   await render(<MemoryButton aidutId="a1" getFix={async () => fix} />);
   await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
   await choose('사진 찍기');
-  expect(screen.getByText('사진을 준비하지 못했어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('사진을 준비하지 못했다냥. 다시 해볼까냥?')).toBeTruthy();
 });
 
 test('disabled면 누를 수 없다', async () => {
@@ -91,10 +91,10 @@ test('disabled면 누를 수 없다', async () => {
 });
 
 test('위치가 흐리거나 멀면 찍기 전에 알려 준다(사진을 잃지 않게)', async () => {
-  await render(<MemoryButton aidutId="a1" getFix={async () => ({ problem: '위치가 흐려요. 조금 뒤에 다시 해볼까요?' })} />);
+  await render(<MemoryButton aidutId="a1" getFix={async () => ({ problem: '위치가 흐리다냥. 조금 뒤에 다시 해볼까냥?' })} />);
   await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
   await choose('사진 찍기');
-  expect(screen.getByText('위치가 흐려요. 조금 뒤에 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('위치가 흐리다냥. 조금 뒤에 다시 해볼까냥?')).toBeTruthy();
   expect(pickMemoryPhoto).not.toHaveBeenCalled();
 });
 
@@ -104,5 +104,5 @@ test('바로 올렸는데 서버가 거절하면 알려 준다', async () => {
   await render(<MemoryButton aidutId="a1" getFix={async () => fix} />);
   await fireEvent.press(screen.getByRole('button', { name: '순간 남기기 📷' }));
   await choose('사진 찍기');
-  await waitFor(() => expect(screen.getByText('남긴 순간을 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('남긴 순간을 올리지 못했다냥. 너무 멀었거나 위치가 흐렸다냥.')).toBeTruthy());
 });

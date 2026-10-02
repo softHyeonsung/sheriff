@@ -35,8 +35,10 @@ test('닉네임·고양이·동네를 보여주고 바꾸기로 간다', async (
   await render(<ProfileScreen />);
   expect(screen.getByText('나비집사')).toBeTruthy();
   expect(screen.getByText('나비')).toBeTruthy();
+  expect(screen.getByText('나비집사 님의 동네 짝꿍')).toBeTruthy();
+  expect(screen.getByText('고등어')).toBeTruthy();
   expect(screen.getByText('서울특별시 종로구 사직동')).toBeTruthy();
-  const buttons = screen.getAllByRole('button', { name: '바꾸기' });
+  const buttons = screen.getAllByRole('button', { name: /바꾸기$/ });
   await fireEvent.press(buttons[0]);
   await fireEvent.press(buttons[1]);
   await fireEvent.press(buttons[2]);
@@ -46,9 +48,9 @@ test('닉네임·고양이·동네를 보여주고 바꾸기로 간다', async (
 test('닉네임이 없으면 정하기, 동네가 없으면 안내', async () => {
   useMeStore.setState({ me: { ...me, nickname: null, homeDong: null } });
   await render(<ProfileScreen />);
-  expect(screen.getByText('아직 닉네임이 없어요')).toBeTruthy();
-  expect(screen.getByRole('button', { name: '정하기' })).toBeTruthy();
-  expect(screen.getByText('아직 정하지 않았어요')).toBeTruthy();
+  expect(screen.getByText('아직 닉네임이 없다냥')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '닉네임, 아직 닉네임이 없다냥, 바꾸기' })).toBeTruthy();
+  expect(screen.getByText('아직 정하지 않았다냥')).toBeTruthy();
 });
 
 test('도착 알림 스위치, 설정이 필요하면 안내 + 설정 열기', async () => {
@@ -58,7 +60,7 @@ test('도착 알림 스위치, 설정이 필요하면 안내 + 설정 열기', a
   await render(<ProfileScreen />);
   await fireEvent(screen.getByRole('switch', { name: '도착 알림' }), 'valueChange', true);
   expect(s.toggle).toHaveBeenCalledWith(true);
-  expect(screen.getByText("설정에서 위치를 '항상 허용'으로 바꿔주세요")).toBeTruthy();
+  expect(screen.getByText("설정에서 위치를 '항상 허용'으로 바꿔달라냥")).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '설정 열기' }));
   expect(open).toHaveBeenCalled();
 });
@@ -73,7 +75,8 @@ test('약관 링크를 연다', async () => {
 test('로그아웃은 한 번 확인하고', async () => {
   await render(<ProfileScreen />);
   await fireEvent.press(screen.getByRole('button', { name: '로그아웃' }));
-  expect((Alert.alert as jest.Mock).mock.calls[0][0]).toBe('로그아웃할까요?');
+  expect((Alert.alert as jest.Mock).mock.calls[0][0]).toBe('로그아웃할까냥?');
+  expect((Alert.alert as jest.Mock).mock.calls[0][1]).toBe('다음에 또 만나자냥.');
   expect(auth.signOut).not.toHaveBeenCalled();
   await alertButton('로그아웃');
   expect(auth.signOut).toHaveBeenCalled();
@@ -85,10 +88,10 @@ test('탈퇴: 확인 문구, 떠나기를 누르면 진행, 실패하면 안내'
   await render(<ProfileScreen />);
   await fireEvent.press(screen.getByRole('button', { name: '계정 탈퇴' }));
   const [title, body, buttons] = (Alert.alert as jest.Mock).mock.calls[0];
-  expect(title).toBe('정말 떠나시겠어요?');
-  expect(body).toBe('그동안 함께 누빈 동네와 순간들이 모두 지워져요.');
+  expect(title).toBe('정말 떠나냥?');
+  expect(body).toBe('그동안 함께 누빈 동네와 순간들이 모두 지워진다냥.');
   expect((buttons as AlertButton[]).map((b) => b.text)).toEqual(['취소', '떠나기']);
   await alertButton('떠나기');
   expect(auth.deleteAccount).toHaveBeenCalled();
-  expect(screen.getByText('지금은 떠날 수 없어요. 잠시 뒤 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('지금은 떠날 수 없다냥. 잠시 뒤 다시 해볼까냥?')).toBeTruthy();
 });

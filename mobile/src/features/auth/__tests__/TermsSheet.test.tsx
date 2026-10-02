@@ -53,7 +53,7 @@ test('닫으면 체크가 초기화된다', async () => {
 
 test('실패하면 시트 안에 다시 해보라는 안내', async () => {
   await render(<TermsSheet {...props} failed />);
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
 });
 
 test('저장 중엔 닫히지 않는다', async () => {

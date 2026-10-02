@@ -1,10 +1,11 @@
 // mobile/src/app/(tabs)/index.tsx
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { color, font, radius, space, type } from '@/constants/tokens';
+import { Button, Icon, ICON, IconButton } from '@/components/kit';
+import { color, radius, shadow, space, type } from '@/constants/tokens';
 import { ArrivalOffer } from '@/features/arrival/ArrivalOffer';
 import { answerArrivalOffer, shouldOfferArrival } from '@/features/arrival/register';
 import { useArrivalTap } from '@/features/arrival/useArrivalTap';
@@ -16,7 +17,9 @@ import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { bareName, COURSE } from '@/features/course/copy';
 import { CourseCard } from '@/features/course/CourseCard';
 import { type Course, findKakaoPlace, suggestCourse } from '@/features/course/courseApi';
+import { looksShared } from '@/features/wishlist/sharedText';
 import { useWishes } from '@/features/wishlist/useWishes';
+import { type Place, searchPlaces } from '@/features/wishlist/wishlistApi';
 import { useShareStore } from '@/stores/shareStore';
 import { onOnline } from '@/lib/network';
 import { isNetworkError } from '@/lib/networkError';
@@ -29,25 +32,13 @@ import { useDongAt } from '@/features/territory/useDongAt';
 import { useMyFog } from '@/features/territory/useMyFog';
 import { GRADE_LABEL } from '@/map/grades';
 import { MapBridge, type MapBridgeHandle } from '@/map/MapBridge';
+import { catArt } from '@/map/catArt';
 import { markerFor } from '@/map/markers';
 import { useMeStore } from '@/stores/meStore';
 
 const CITY_HALL = { lat: 37.5665, lng: 126.978 };
-
-function Pill({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      style={[styles.pill, disabled && styles.stampBusy]}
-      hitSlop={8}>
-      <Text style={styles.pillText}>{label}</Text>
-    </Pressable>
-  );
-}
+// 길을 보러 갈 때(내 위치로·검색한 곳)의 줌: 수채 세계가 걷히고 실제 지도가 보이는 단계.
+const STREET_LEVEL = 3;
 
 export default function MapScreen() {
   const { hideouts, thresholds, status, retry } = useMyHideouts();
@@ -158,6 +149,53 @@ export default function MapScreen() {
       if (id === courseReq.current) setCourseBusy(false);
     }
   };
+  // 장소 검색: 위의 검색창 → 결과 목록 → 고르면 지도가 그곳으로 가고 아래 판에 그 장소가 뜬다.
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Place[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchNote, setSearchNote] = useState<string | null>(null);
+  const [found, setFound] = useState<Place | null>(null);
+  const searchReq = useRef(0);
+  const focus = useMemo(() => (found ? { lat: found.lat, lng: found.lng } : null), [found]);
+  const clearSearch = () => {
+    searchReq.current++;
+    setQuery('');
+    setResults(null);
+    setSearchNote(null);
+    setSearching(false);
+  };
+  const runSearch = async () => {
+    const q = query.trim();
+    if (!q) return;
+    // 붙여넣은 공유 링크·글은 찜 화면이 풀어 준다(지도 링크를 따라가 가게를 찾는다).
+    if (looksShared(q)) {
+      router.push({ pathname: '/wishlist', params: { shared: q } });
+      return;
+    }
+    const id = ++searchReq.current;
+    setSearching(true);
+    setSearchNote(null);
+    setResults(null);
+    try {
+      const places = await searchPlaces(q, location ? { lat: location.lat, lng: location.lng } : null);
+      if (id !== searchReq.current) return;
+      if (places.length === 0) setSearchNote('음, 못 찾았다냥. 다른 이름으로 찾아볼까냥?');
+      else setResults(places.slice(0, 5));
+    } catch (e) {
+      if (id !== searchReq.current) return;
+      if (!isNetworkError(e)) console.error('장소 검색 실패', e);
+      setSearchNote(isNetworkError(e) ? MSG.offline : MSG.unknown);
+    } finally {
+      if (id === searchReq.current) setSearching(false);
+    }
+  };
+  const pick = (p: Place) => {
+    setResults(null);
+    setSelectedId(null);
+    setWishId(null);
+    setFound(p);
+    bridge.current?.panTo(p.lat, p.lng, STREET_LEVEL);
+  };
   const [mapFailed, setMapFailed] = useState(false);
   const [mapKey, setMapKey] = useState(0);
   // What the map was last centered on. A ref, not state: updating it must not re-render.
@@ -199,14 +237,15 @@ export default function MapScreen() {
 
   // Same array across unrelated re-renders (marker taps, location ticks), so the map doesn't
   // tear down and rebuild every marker each time.
-  const pins = useMemo(() => hideouts.map(({ id, lat, lng, grade }) => ({ id, lat, lng, grade })), [hideouts]);
+  const pins = useMemo(() => hideouts.map(({ id, lat, lng, grade, name }) => ({ id, lat, lng, grade, name })), [hideouts]);
 
   if (mapFailed) {
     return (
       <SafeAreaView style={[styles.screen, styles.centerBox]}>
-        <Text style={styles.body}>지도를 불러오지 못했어요. 다시 해볼까요?</Text>
-        <Pill
+        <Text style={styles.body}>지도를 불러오지 못했다냥. 다시 해볼까냥?</Text>
+        <Button
           label="다시 시도"
+          variant="tonal"
           onPress={() => {
             setMapFailed(false);
             centeredOn.current = 'none';
@@ -216,6 +255,13 @@ export default function MapScreen() {
       </SafeAreaView>
     );
   }
+
+  const idle = checkin.state.name === 'idle';
+  const failed = checkin.state.name === 'failed' ? checkin.state : null;
+  const showCourse = !!course && idle && !selected && !selectedWish && !found;
+  // 아래 판에 따로 보여줄 것이 없을 때만 고양이의 한마디가 나온다.
+  const quiet =
+    !arrivalOffer && idle && !selected && !selectedWish && !found && !course && !courseBusy && !courseNote && queue.dropped === 0 && queue.droppedMemories === 0;
 
   return (
     <View style={styles.screen}>
@@ -227,17 +273,20 @@ export default function MapScreen() {
         center={CITY_HALL}
         onHideoutTap={(id) => {
           setWishId(null);
+          setFound(null);
           setSelectedId(id);
         }}
         wishes={wishPins}
         onWishTap={(id) => {
           setSelectedId(null);
+          setFound(null);
           setWishId(id);
         }}
         fog={fog.cells}
         onIdle={dongAt.onIdle}
         catColor={catColor}
         course={coursePlan}
+        focus={focus}
         onCatTap={() => bridge.current?.catSay(pickCatLine(dongAt.dong?.ratio ?? null, catTaps.current++))}
         onError={(reason) => {
           console.warn('지도 오류', reason);
@@ -245,18 +294,64 @@ export default function MapScreen() {
         }}
       />
 
+      {/* 위: 장소 검색창과 찜한 곳. 그 아래로 검색 결과, 지금 보는 동네, 지금 알아야 할 상태 한 줄씩. */}
       <SafeAreaView edges={['top']} style={styles.top} pointerEvents="box-none">
-        <DongBadge dong={offline ? null : dongAt.dong} />
-        {/* 발자국 실패 안내가 같은 말과 [설정 열기]를 이미 보여주고 있으면 이 배너는 숨긴다. */}
-        {permission === 'denied' && !(checkin.state.name === 'failed' && checkin.state.needsSettings) && (
+        <View style={styles.topRow} pointerEvents="box-none">
+          <View style={styles.search}>
+            <Icon name={ICON.search} size={20} tint={color.inkSub} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              accessibilityLabel="장소 검색"
+              placeholder="장소 검색"
+              placeholderTextColor={color.inkSub}
+              style={styles.searchInput}
+              returnKeyType="search"
+              onSubmitEditing={runSearch}
+            />
+            {(query.length > 0 || results || searchNote) && (
+              <Pressable onPress={clearSearch} accessibilityRole="button" accessibilityLabel="검색어 지우기" hitSlop={10}>
+                <Icon name={ICON.close} size={18} tint={color.inkSub} />
+              </Pressable>
+            )}
+          </View>
+          <IconButton icon={ICON.star} label="찜한 곳" onPress={() => router.push('/wishlist')} />
+        </View>
+        {(searching || searchNote) && (
           <View style={styles.banner}>
-            <Text style={styles.bannerText}>위치를 켜두시면 지금 있는 곳을 보여드릴게요</Text>
-            <Pill label="설정 열기" onPress={() => Linking.openSettings()} />
+            <Text style={styles.bannerText}>{searching ? '찾고 있다냥…' : searchNote}</Text>
+          </View>
+        )}
+        {results && (
+          <View style={styles.results}>
+            {results.map((p, i) => (
+              <Pressable
+                key={p.placeId}
+                onPress={() => pick(p)}
+                accessibilityRole="button"
+                accessibilityLabel={p.name}
+                style={({ pressed }) => [styles.result, i > 0 && styles.resultLine, pressed && styles.resultPressed]}>
+                <Text style={styles.resultName} numberOfLines={1}>
+                  {p.name}
+                </Text>
+                <Text style={styles.caption} numberOfLines={1}>
+                  {[p.roadAddress, p.distanceM != null ? `약 ${Math.round(p.distanceM)}m` : null].filter(Boolean).join(' · ')}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+        {!results && <DongBadge dong={offline ? null : dongAt.dong} />}
+        {/* 발자국 실패 안내가 같은 말과 [설정 열기]를 이미 보여주고 있으면 이 배너는 숨긴다. */}
+        {permission === 'denied' && !failed?.needsSettings && (
+          <View style={styles.banner}>
+            <Text style={[styles.bannerText, styles.grow]}>위치를 켜두면 지금 있는 곳을 보여줄게냥</Text>
+            <Button label="설정 열기" variant="tonal" onPress={() => Linking.openSettings()} />
           </View>
         )}
         {offline && (
           <View style={styles.banner}>
-            <Text style={styles.bannerText}>연결이 끊겨 있어요. 마지막으로 본 지도예요.</Text>
+            <Text style={styles.bannerText}>연결이 끊겨 있다냥. 마지막으로 본 지도냥.</Text>
           </View>
         )}
         {queue.pending > 0 && (
@@ -266,145 +361,178 @@ export default function MapScreen() {
         )}
         {status === 'error' && (
           <View style={styles.banner}>
-            <Text style={styles.bannerText}>아지트를 불러오지 못했어요</Text>
-            <Pill label="다시 시도" onPress={retry} />
-          </View>
-        )}
-        {status === 'ready' && hideouts.length === 0 && (
-          <View style={styles.banner}>
-            <Text style={styles.bannerText}>아직 발자국이 없어요. 가까운 곳부터 같이 가볼까요?</Text>
+            <Text style={[styles.bannerText, styles.grow]}>아지트를 불러오지 못했다냥</Text>
+            <Button label="다시 시도" variant="tonal" onPress={retry} />
           </View>
         )}
       </SafeAreaView>
 
-      <View style={styles.courseBtn}>
-        <Pill label={COURSE.button} onPress={startCourse} disabled={courseBusy} />
-      </View>
-      <View style={styles.wishBtn}>
-        <Pill label="⭐ 찜" onPress={() => router.push('/wishlist')} />
-      </View>
+      {/* 아래: 지도 도구(오른쪽)는 판 바로 위에 붙어 다니고, 판 하나에 안내·카드·가장 중요한 버튼이 모인다. */}
+      <View style={styles.bottom} pointerEvents="box-none">
+        <View style={styles.rail} pointerEvents="box-none">
+          <IconButton round icon={ICON.walk} label={COURSE.button} onPress={startCourse} disabled={courseBusy} />
+          {location && <IconButton round icon={ICON.locate} label="내 위치로" onPress={() => bridge.current?.panTo(location.lat, location.lng, STREET_LEVEL)} />}
+        </View>
 
-      {location && (
-        <View style={styles.locate}>
-          <Pill label="내 위치로" onPress={() => bridge.current?.panTo(location.lat, location.lng)} />
-        </View>
-      )}
+        <View style={styles.dock}>
+          {arrivalOffer && (
+            <ArrivalOffer
+              onAnswer={(accept) => {
+                setArrivalOffer(false);
+                answerArrivalOffer(accept)
+                  .then((granted) => {
+                    if (granted) retry(); // 다시 불러오면서 감시 목록을 등록한다
+                  })
+                  .catch((e) => console.warn('도착 알림 켜기 실패', e));
+              }}
+            />
+          )}
 
-      {checkin.state.name === 'queued' && (
-        <View style={styles.checkinNote}>
-          <Text style={styles.bannerText}>발자국을 챙겨뒀어요. 연결되면 남길게요 🐾</Text>
-          <View style={styles.row}>
-            <Pill label="닫기" onPress={checkin.close} />
-          </View>
-        </View>
-      )}
-      {queue.dropped > 0 && checkin.state.name === 'idle' && (
-        <View style={styles.checkinNote}>
-          <Text style={styles.bannerText}>챙겨둔 발자국 {queue.dropped}개는 남기지 못했어요. 너무 멀었거나 위치가 흐렸어요.</Text>
-          <View style={styles.row}>
-            <Pill label="닫기" onPress={queue.clearDropped} />
-          </View>
-        </View>
-      )}
-      {queue.droppedMemories > 0 && queue.dropped === 0 && checkin.state.name === 'idle' && (
-        <View style={styles.checkinNote}>
-          <Text style={styles.bannerText}>남긴 순간 {queue.droppedMemories}개는 올리지 못했어요. 너무 멀었거나 위치가 흐렸어요.</Text>
-          <View style={styles.row}>
-            <Pill label="닫기" onPress={queue.clearDroppedMemories} />
-          </View>
-        </View>
-      )}
-      {(locating || checkin.state.name === 'failed') && (
-        <View style={styles.checkinNote}>
-          <Text style={styles.bannerText}>
-            {checkin.state.name === 'failed' ? checkin.state.message : '잠깐, 위치를 확인하고 있어요…'}
-          </Text>
-          {locating && (
-            <View style={styles.row}>
-              <Pill label="닫기" onPress={checkin.close} />
+          {(locating || failed) && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>{failed ? failed.message : '잠깐, 위치를 확인하고 있다냥…'}</Text>
+              <View style={styles.actions}>
+                {failed && <Button label="다시 시도" variant="tonal" onPress={checkin.start} />}
+                {failed?.needsSettings && <Button label="설정 열기" variant="tonal" onPress={() => Linking.openSettings()} />}
+                <Button label="닫기" variant="plain" onPress={checkin.close} />
+              </View>
             </View>
           )}
-          {checkin.state.name === 'failed' && (
-            <View style={styles.row}>
-              <Pill label="다시 시도" onPress={checkin.start} />
-              {checkin.state.needsSettings && <Pill label="설정 열기" onPress={() => Linking.openSettings()} />}
-              <Pill label="닫기" onPress={checkin.close} />
+          {checkin.state.name === 'queued' && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾</Text>
+              <View style={styles.actions}>
+                <Button label="닫기" variant="plain" onPress={checkin.close} />
+              </View>
             </View>
           )}
-        </View>
-      )}
+          {queue.dropped > 0 && idle && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>챙겨둔 발자국 {queue.dropped}개는 남기지 못했다냥. 너무 멀었거나 위치가 흐렸다냥.</Text>
+              <View style={styles.actions}>
+                <Button label="닫기" variant="plain" onPress={queue.clearDropped} />
+              </View>
+            </View>
+          )}
+          {queue.droppedMemories > 0 && queue.dropped === 0 && idle && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>남긴 순간 {queue.droppedMemories}개는 올리지 못했다냥. 너무 멀었거나 위치가 흐렸다냥.</Text>
+              <View style={styles.actions}>
+                <Button label="닫기" variant="plain" onPress={queue.clearDroppedMemories} />
+              </View>
+            </View>
+          )}
 
-      <View style={styles.stampWrap} pointerEvents="box-none">
-        <Pressable
-          onPress={() => {
-            setSelectedId(null); // the card sits where the check-in messages appear
-            checkin.start();
-          }}
-          disabled={locating}
-          accessibilityRole="button"
-          accessibilityLabel="발자국 남기기"
-          accessibilityState={{ disabled: locating }}
-          style={[styles.stamp, locating && styles.stampBusy]}>
-          <Text style={styles.stampText}>발자국 남기기</Text>
-        </Pressable>
+          {selected && (
+            <View style={styles.note}>
+              <View style={styles.place}>
+                <Image source={{ uri: markerFor(selected.grade).uri }} style={styles.placeArt} />
+                <View style={styles.grow}>
+                  <Text style={styles.placeTitle}>{selected.name}</Text>
+                  <Text style={styles.caption}>{GRADE_LABEL[selected.grade]}</Text>
+                </View>
+              </View>
+              <Text style={styles.noteText}>지금까지 {selected.footprintCount}번 다녀왔다냥</Text>
+              {thresholds && <Text style={styles.caption}>{nextStageHint(selected.footprintCount, thresholds)}</Text>}
+              <View style={styles.actions}>
+                <Button label="추억 보기" variant="tonal" onPress={() => router.push({ pathname: '/aidut/[id]', params: { id: selected.id } })} />
+                <Button label="닫기" variant="plain" onPress={() => setSelectedId(null)} />
+              </View>
+            </View>
+          )}
+
+          {selectedWish && (
+            <View style={styles.note}>
+              <View>
+                <Text style={styles.placeTitle}>{selectedWish.name}</Text>
+                <Text style={styles.caption}>고양이가 찜한 곳</Text>
+              </View>
+              {selectedWish.roadAddress && <Text style={styles.noteText}>{selectedWish.roadAddress}</Text>}
+              <View style={styles.actions}>
+                <Button
+                  label="찜 해제"
+                  variant="tonal"
+                  onPress={() => {
+                    setWishId(null);
+                    wishList.remove(selectedWish.placeId).catch((e) => console.warn('찜 해제 실패', e));
+                  }}
+                />
+                <Button label="닫기" variant="plain" onPress={() => setWishId(null)} />
+              </View>
+            </View>
+          )}
+
+          {found && idle && (
+            <View style={styles.note}>
+              <View>
+                <Text style={styles.placeTitle}>{found.name}</Text>
+                {found.roadAddress && <Text style={styles.caption}>{found.roadAddress}</Text>}
+              </View>
+              <View style={styles.actions}>
+                {wishList.wishes.some((w) => w.placeId === found.placeId) ? (
+                  <Text style={styles.done}>찜한 곳이다냥</Text>
+                ) : (
+                  <Button label="찜하기" variant="tonal" onPress={() => wishList.add(found).catch((e) => console.warn('찜 실패', e))} />
+                )}
+                <Button label="닫기" variant="plain" onPress={() => setFound(null)} />
+              </View>
+            </View>
+          )}
+
+          {/* 발자국 안내와 같은 자리라, 체크인이 진행 중이면 코스 쪽을 잠깐 숨긴다(핀은 남는다). */}
+          {idle && (courseBusy || courseNote) && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>{courseBusy ? COURSE.finding : courseNote}</Text>
+              <View style={styles.actions}>
+                <Button label="닫기" variant="plain" onPress={closeCourse} />
+              </View>
+            </View>
+          )}
+          {showCourse && course && (
+            <CourseCard
+              key={courseKey}
+              catName={catName}
+              course={course}
+              onWish={async (stop) => {
+                const place = await findKakaoPlace(stop);
+                if (!place) return false;
+                await wishList.add(place);
+                return true;
+              }}
+              onFind={(stop) => router.push({ pathname: '/wishlist', params: { shared: bareName(stop.name) } })}
+              onClose={closeCourse}
+            />
+          )}
+
+          {quiet && (
+            <View style={styles.place}>
+              <Image source={{ uri: catArt(catColor, 'sit') }} style={styles.cat} />
+              <View style={styles.grow}>
+                {status === 'ready' && hideouts.length === 0 ? (
+                  <Text style={styles.noteText}>아직 발자국이 없다냥. 가까운 곳부터 같이 가볼까냥?</Text>
+                ) : (
+                  <>
+                    <Text style={styles.placeTitle}>오늘은 어디로 가볼까냥?</Text>
+                    {status === 'ready' && <Text style={styles.caption}>함께 누빈 아지트 {hideouts.length}곳</Text>}
+                  </>
+                )}
+              </View>
+            </View>
+          )}
+
+          {!arrivalOffer && (
+            <Button
+              label="발자국 남기기"
+              size="lg"
+              busy={locating}
+              onPress={() => {
+                setSelectedId(null); // 아지트 카드 자리에 발자국 안내가 나온다
+                checkin.start();
+              }}
+            />
+          )}
+        </View>
       </View>
-
-      {selected && (
-        <View style={styles.card}>
-          <Image source={{ uri: markerFor(selected.grade).uri }} style={styles.cardArt} />
-          <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>{selected.name}</Text>
-            <Text style={styles.caption}>{GRADE_LABEL[selected.grade]}</Text>
-            <Text style={styles.body}>지금까지 {selected.footprintCount}번 다녀왔어요</Text>
-            {thresholds && <Text style={styles.caption}>{nextStageHint(selected.footprintCount, thresholds)}</Text>}
-          </View>
-          <Pill label="추억 보기" onPress={() => router.push({ pathname: '/aidut/[id]', params: { id: selected.id } })} />
-          <Pill label="닫기" onPress={() => setSelectedId(null)} />
-        </View>
-      )}
-
-      {selectedWish && (
-        <View style={styles.card}>
-          <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>{selectedWish.name}</Text>
-            <Text style={styles.caption}>고양이가 찜한 곳</Text>
-            {selectedWish.roadAddress && <Text style={styles.body}>{selectedWish.roadAddress}</Text>}
-          </View>
-          <Pill
-            label="찜 해제"
-            onPress={() => {
-              setWishId(null);
-              wishList.remove(selectedWish.placeId).catch((e) => console.warn('찜 해제 실패', e));
-            }}
-          />
-          <Pill label="닫기" onPress={() => setWishId(null)} />
-        </View>
-      )}
-
-      {/* 발자국 안내와 같은 자리라, 체크인이 진행 중이면 코스 쪽을 잠깐 숨긴다(핀은 남는다). */}
-      {checkin.state.name === 'idle' && (courseBusy || courseNote) && (
-        <View style={styles.checkinNote}>
-          <Text style={styles.bannerText}>{courseBusy ? COURSE.finding : courseNote}</Text>
-          <View style={styles.row}>
-            <Pill label="닫기" onPress={closeCourse} />
-          </View>
-        </View>
-      )}
-      {course && checkin.state.name === 'idle' && !selected && !selectedWish && (
-        <CourseCard
-          key={courseKey}
-          catName={catName}
-          course={course}
-          onWish={async (stop) => {
-            const place = await findKakaoPlace(stop);
-            if (!place) return false;
-            await wishList.add(place);
-            return true;
-          }}
-          onFind={(stop) => router.push({ pathname: '/wishlist', params: { shared: bareName(stop.name) } })}
-          onClose={closeCourse}
-        />
-      )}
 
       {checkin.state.name === 'choosing' && (
         <CheckinSheet state={checkin.state} footprintsById={footprintsById} onChoose={checkin.choose} onClose={checkin.close} />
@@ -430,89 +558,64 @@ export default function MapScreen() {
           }}
         />
       )}
-      {arrivalOffer && (
-        <ArrivalOffer
-          onAnswer={(accept) => {
-            setArrivalOffer(false);
-            answerArrivalOffer(accept)
-              .then((granted) => {
-                if (granted) retry(); // 다시 불러오면서 감시 목록을 등록한다
-              })
-              .catch((e) => console.warn('도착 알림 켜기 실패', e));
-          }}
-        />
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  checkinNote: {
-    position: 'absolute',
-    left: space.gutter,
-    right: space.gutter,
-    bottom: 96,
-    backgroundColor: color.surfaceCard,
-    borderRadius: radius.card,
-    padding: 12,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: color.line,
-  },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  stampWrap: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center' },
-  stamp: {
-    minHeight: 52,
-    paddingHorizontal: 28,
-    borderRadius: radius.pill,
-    backgroundColor: color.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stampBusy: { opacity: 0.6 },
-  stampText: { fontFamily: font.semibold, fontSize: 16, color: color.onPrimary },
   screen: { flex: 1, backgroundColor: color.surface },
   centerBox: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: space.gutter },
-  top: { position: 'absolute', left: space.gutter, right: space.gutter, top: 0, gap: 8 },
-  banner: {
-    marginTop: 8,
-    backgroundColor: color.surfaceCard,
-    borderRadius: radius.card,
-    padding: 12,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: color.line,
-  },
-  bannerText: { ...type.body, color: color.ink },
-  locate: { position: 'absolute', right: space.gutter, bottom: 180 },
-  wishBtn: { position: 'absolute', right: space.gutter, bottom: 240 },
-  courseBtn: { position: 'absolute', right: space.gutter, bottom: 300 },
-  pill: {
-    alignSelf: 'flex-start',
-    minHeight: space.tapMin,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    borderRadius: radius.pill,
-    backgroundColor: color.primary,
-  },
-  pillText: { fontFamily: font.semibold, fontSize: 15, color: color.onPrimary },
-  card: {
-    position: 'absolute',
-    left: space.gutter,
-    right: space.gutter,
-    bottom: 96,
+  grow: { flex: 1 },
+  top: { position: 'absolute', left: 12, right: 12, top: 0, gap: 8 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  search: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    borderRadius: radius.sheet,
+    gap: 8,
+    height: 44,
+    paddingHorizontal: 14,
+    borderRadius: radius.btn,
     backgroundColor: color.surfaceCard,
-    borderWidth: 1,
-    borderColor: color.line,
+    ...shadow.card,
   },
-  cardArt: { width: 56, height: 56 },
-  cardText: { flex: 1, gap: 2 },
-  cardTitle: { ...type.subtitle, color: color.ink },
+  searchInput: { flex: 1, ...type.body, lineHeight: undefined, color: color.ink, paddingVertical: 0 },
+  results: { backgroundColor: color.surfaceCard, borderRadius: radius.card, overflow: 'hidden', ...shadow.card },
+  result: { paddingVertical: 12, paddingHorizontal: 16, gap: 2 },
+  resultLine: { borderTopWidth: 1, borderTopColor: color.line },
+  resultPressed: { backgroundColor: color.surfaceSunk },
+  resultName: { ...type.bodyStrong, color: color.ink },
+  done: { ...type.label, color: color.natureInk, paddingHorizontal: 8 },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: color.surfaceCard,
+    borderRadius: radius.card,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    ...shadow.card,
+  },
+  bannerText: { ...type.caption, fontSize: 14, lineHeight: 20, color: color.ink },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  rail: { alignSelf: 'flex-end', gap: 8, marginRight: 12, marginBottom: 12 },
+  dock: {
+    backgroundColor: color.surfaceCard,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    paddingHorizontal: space.gutter,
+    paddingTop: 20,
+    paddingBottom: 16,
+    gap: 16,
+    ...shadow.dock,
+  },
+  note: { gap: 8 },
+  noteText: { ...type.body, color: color.ink },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  place: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  placeArt: { width: 48, height: 48 },
+  placeTitle: { ...type.subtitle, color: color.ink },
+  cat: { width: 44, height: 44 },
   body: { ...type.body, color: color.ink },
   caption: { ...type.caption, color: color.inkSub },
 });

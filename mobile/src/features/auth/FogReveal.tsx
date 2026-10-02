@@ -1,10 +1,10 @@
 // mobile/src/features/auth/FogReveal.tsx
 //
 // Login hero: the neighborhood under fog, a first paw print lands, and the fog around it
-// clears to sage — the same moment onboarding's "첫 발자국" delivers for real.
-// ponytail: blobs are flat View circles; swap for the watercolor fog/paw art once DESIGN.md §4 assets land.
+// clears to meadow — the same moment onboarding's "첫 발자국" delivers for real.
+// The cleared patch is the watercolor meadow; fog masses are still flat circles.
 import { useEffect } from 'react';
-import { StyleSheet, View, type DimensionValue } from 'react-native';
+import { Image, StyleSheet, View, type DimensionValue } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -17,6 +17,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { color } from '@/constants/tokens';
+
+const MEADOW = require('@/assets/images/meadow.jpg');
 
 const CENTER = { left: '40%', top: '48%' } as const;
 
@@ -113,7 +115,11 @@ export function FogReveal() {
       </Animated.View>
       <Animated.View style={[styles.anchor, coreStyle]}>
         {CLEARING.map((c, i) => (
-          <Blob key={i} size={c.size} style={{ left: c.x, top: c.y, backgroundColor: color.nature }} />
+          <Image
+            key={i}
+            source={MEADOW}
+            style={{ position: 'absolute', width: c.size, height: c.size, borderRadius: c.size / 2, left: c.x - c.size / 2, top: c.y - c.size / 2 }}
+          />
         ))}
       </Animated.View>
       <Animated.View style={[styles.anchor, pawStyle]}>

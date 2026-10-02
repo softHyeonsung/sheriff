@@ -77,9 +77,9 @@ export default function LoginScreen() {
       <FogReveal />
       <View style={styles.body}>
         <Text style={styles.headline} accessibilityRole="header">
-          저랑 같이 우리 동네를{'\n'}누벼볼까요?
+          나랑 같이 우리 동네를{'\n'}누벼볼까냥?
         </Text>
-        <Text style={styles.lede}>다녀온 곳마다 발자국이 남고,{'\n'}그 자리부터 안개가 걷혀요.</Text>
+        <Text style={styles.lede}>다녀온 곳마다 발자국이 남고,{'\n'}그 자리부터 안개가 걷힌다냥.</Text>
 
         <Pressable
           onPress={onKakao}
@@ -93,7 +93,7 @@ export default function LoginScreen() {
         </Pressable>
 
         <Text style={styles.error} accessibilityLiveRegion="polite">
-          {failed && !pending ? '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' : ' '}
+          {failed && !pending ? '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?' : ' '}
         </Text>
       </View>
 

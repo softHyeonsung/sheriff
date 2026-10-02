@@ -93,5 +93,5 @@ test('새 위치: 휴대폰 위치 서비스가 꺼져 있으면 location_off', 
   (Location.hasServicesEnabledAsync as jest.Mock).mockResolvedValueOnce(false);
   await expect(getFreshFix()).rejects.toMatchObject({ code: 'location_off' });
   expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
-  expect(messageFor(new CheckinError('location_off'))).toBe('휴대폰의 위치 서비스가 꺼져 있어요. 켜고 다시 해볼까요?');
+  expect(messageFor(new CheckinError('location_off'))).toBe('휴대폰의 위치 서비스가 꺼져 있다냥. 켜고 다시 해볼까냥?');
 });

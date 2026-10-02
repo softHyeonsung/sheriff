@@ -9,7 +9,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
     <StepScreen footer={<PrimaryButton label="시작할게요" onPress={onDone} />}>
       <Image source={{ uri: catArt('cheese', 'look') }} style={styles.cat} />
       <Text style={styles.title} accessibilityRole="header">
-        안녕하세요. 저랑 같이 우리 동네를 누벼볼까요?
+        안녕하냥! 나랑 같이 우리 동네를 누벼볼까냥?
       </Text>
     </StepScreen>
   );

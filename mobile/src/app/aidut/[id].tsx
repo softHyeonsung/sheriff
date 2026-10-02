@@ -4,7 +4,8 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { color, font, radius, space, type } from '@/constants/tokens';
+import { Button } from '@/components/kit';
+import { color, radius, space, type } from '@/constants/tokens';
 import { getFreshFix } from '@/features/checkin/checkinApi';
 import { messageFor } from '@/features/checkin/copy';
 import { CheckinError } from '@/features/checkin/errors';
@@ -22,14 +23,6 @@ import { GRADE_LABEL } from '@/map/grades';
 import { markerFor } from '@/map/markers';
 
 type Info = { hideout: MyHideout; thresholds: GradeThresholds | null } | 'missing' | null;
-
-function Pill({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.pill} hitSlop={8}>
-      <Text style={styles.pillText}>{label}</Text>
-    </Pressable>
-  );
-}
 
 export default function HideoutDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -60,8 +53,8 @@ export default function HideoutDetail() {
   if (info === 'missing') {
     return (
       <SafeAreaView style={[styles.screen, styles.center]}>
-        <Text style={styles.body}>이 아지트를 찾지 못했어요.</Text>
-        <Pill label="돌아가기" onPress={() => router.back()} />
+        <Text style={styles.body}>이 아지트를 찾지 못했다냥.</Text>
+        <Button label="돌아가기" variant="tonal" onPress={() => router.back()} />
       </SafeAreaView>
     );
   }
@@ -82,27 +75,27 @@ export default function HideoutDetail() {
       throw e;
     }
     if (fix === 'denied') return fix;
-    if (fix.accuracy > OFFLINE_ACCURACY_MAX_M) return { problem: '위치가 흐려요. 조금 뒤에 다시 해볼까요?' };
-    if (metersBetween(fix, h) > OFFLINE_RADIUS_M) return { problem: '조금만 더 가까이 가면 순간을 남길 수 있어요.' };
+    if (fix.accuracy > OFFLINE_ACCURACY_MAX_M) return { problem: '위치가 흐리다냥. 조금 뒤에 다시 해볼까냥?' };
+    if (metersBetween(fix, h) > OFFLINE_RADIUS_M) return { problem: '조금만 더 가까이 가면 순간을 남길 수 있다냥.' };
     return fix;
   };
 
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Pill label="돌아가기" onPress={() => router.back()} />
+        <Button label="돌아가기" variant="plain" style={styles.back} onPress={() => router.back()} />
         <View style={styles.header}>
           <Image source={{ uri: markerFor(h.grade).uri }} style={styles.art} />
           <Text style={styles.title} accessibilityRole="header">
             {h.name}
           </Text>
           <Text style={styles.caption}>{GRADE_LABEL[h.grade]}</Text>
-          <Text style={styles.body}>지금까지 {h.footprintCount}번 다녀왔어요</Text>
+          <Text style={styles.body}>지금까지 {h.footprintCount}번 다녀왔다냥</Text>
           {thresholds && <Text style={styles.caption}>{nextStageHint(h.footprintCount, thresholds)}</Text>}
         </View>
 
-        {visited.status === 'offline' && <Text style={[styles.caption, styles.centerText]}>연결되면 간 곳을 보여드릴게요.</Text>}
-        {visited.status === 'error' && <Text style={[styles.caption, styles.centerText]}>간 곳을 불러오지 못했어요.</Text>}
+        {visited.status === 'offline' && <Text style={[styles.caption, styles.centerText]}>연결되면 간 곳을 보여줄게냥.</Text>}
+        {visited.status === 'error' && <Text style={[styles.caption, styles.centerText]}>간 곳을 불러오지 못했다냥.</Text>}
         {showPlaces && (
           <View style={styles.places}>
             <Text style={styles.section}>여기서 간 곳</Text>
@@ -120,18 +113,18 @@ export default function HideoutDetail() {
           disabled={!near}
           onUploaded={memories.refresh}
         />
-        {!near && <Text style={[styles.caption, styles.centerText]}>가까이 가면 순간을 남길 수 있어요.</Text>}
+        {!near && <Text style={[styles.caption, styles.centerText]}>가까이 가면 순간을 남길 수 있다냥.</Text>}
 
         <Text style={styles.section}>여기서의 순간들</Text>
-        {status === 'offline' && <Text style={styles.body}>연결되면 순간들을 보여드릴게요.</Text>}
+        {status === 'offline' && <Text style={styles.body}>연결되면 순간들을 보여줄게냥.</Text>}
         {status === 'error' && (
           <View style={styles.row}>
-            <Text style={styles.body}>순간들을 불러오지 못했어요.</Text>
-            <Pill label="다시 시도" onPress={memories.refresh} />
+            <Text style={styles.body}>순간들을 불러오지 못했다냥.</Text>
+            <Button label="다시 시도" variant="tonal" style={styles.back} onPress={memories.refresh} />
           </View>
         )}
         {status === 'ready' && photos.length === 0 && pending === 0 && (
-          <Text style={styles.body}>아직 남긴 순간이 없어요. 다음에 오면 하나 남겨볼까요?</Text>
+          <Text style={styles.body}>아직 남긴 순간이 없다냥. 다음에 오면 하나 남겨볼까냥?</Text>
         )}
         <View style={styles.grid}>
           {Array.from({ length: pending }, (_, i) => (
@@ -157,7 +150,7 @@ export default function HideoutDetail() {
           <View style={styles.scrim}>
             <Image testID="photo-large" source={{ uri: large.url ?? undefined }} style={styles.large} resizeMode="contain" />
             {!!large.placeName && <Text style={styles.onScrim}>{large.placeName}에서</Text>}
-            <Pill label="닫기" onPress={() => setLarge(null)} />
+            <Button label="닫기" variant="tonal" onPress={() => setLarge(null)} />
           </View>
         </Modal>
       )}
@@ -184,14 +177,6 @@ const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', gap: 16, padding: space.gutter },
   large: { width: '100%', height: '75%' },
   places: { gap: 4 },
+  back: { alignSelf: 'flex-start' },
   onScrim: { ...type.body, color: '#FFFFFF' },
-  pill: {
-    alignSelf: 'flex-start',
-    minHeight: space.tapMin,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    borderRadius: radius.pill,
-    backgroundColor: color.primary,
-  },
-  pillText: { fontFamily: font.semibold, fontSize: 15, color: color.onPrimary },
 });

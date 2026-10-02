@@ -13,6 +13,10 @@ module.exports = ({ config }) => {
   );
   return {
     ...config,
-    plugins: [...plugins, ['@react-native-kakao/core', { nativeAppKey }]],
+    plugins: [
+      ...plugins,
+      // 카카오 로그인 뒤 앱으로 돌아오는 주소(kakao{키}://oauth)를 받는 설정. 없으면 동의 화면에서 멈춘다.
+      ['@react-native-kakao/core', { nativeAppKey, android: { authCodeHandlerActivity: true }, ios: { handleKakaoOpenUrl: true } }],
+    ],
   };
 };

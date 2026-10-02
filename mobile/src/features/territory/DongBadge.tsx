@@ -1,6 +1,7 @@
 // mobile/src/features/territory/DongBadge.tsx
+// 지도 위 왼쪽: 지금 보는 동네와 그 동네를 얼마나 누볐는지.
 import { StyleSheet, Text, View } from 'react-native';
-import { color, font, radius, type } from '@/constants/tokens';
+import { color, radius, shadow, type } from '@/constants/tokens';
 import { STAGE_LABEL } from './stages';
 import type { Dong } from './territoryApi';
 
@@ -10,9 +11,9 @@ export function DongBadge({ dong }: { dong: Dong | null }) {
   const rest = ` · ${emoji} ${name} · 개척률 ${dong.ratio}%`;
   return (
     <View style={styles.badge} accessible accessibilityLabel={`${dong.name}${rest}`}>
-      <Text style={styles.text}>
-        <Text style={styles.strong}>{dong.name}</Text>
-        {rest}
+      <Text style={styles.name}>{dong.name}</Text>
+      <Text style={styles.rest}>
+        {emoji} {name} · 개척률 {dong.ratio}%
       </Text>
     </View>
   );
@@ -20,15 +21,13 @@ export function DongBadge({ dong }: { dong: Dong | null }) {
 
 const styles = StyleSheet.create({
   badge: {
-    alignSelf: 'center',
-    marginTop: 8,
+    alignSelf: 'flex-start',
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: radius.pill,
+    borderRadius: radius.btn,
     backgroundColor: color.surfaceCard,
-    borderWidth: 1,
-    borderColor: color.line,
+    ...shadow.card,
   },
-  text: { ...type.caption, color: color.ink },
-  strong: { fontFamily: font.semibold },
+  name: { ...type.label, color: color.ink },
+  rest: { ...type.caption, fontSize: 12, lineHeight: 16, color: color.inkSub },
 });

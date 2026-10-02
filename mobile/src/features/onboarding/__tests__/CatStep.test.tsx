@@ -15,7 +15,7 @@ test('이름·털색을 저장하고 넘어간다', async () => {
   (saveCat as jest.Mock).mockResolvedValue(undefined);
   const onDone = jest.fn();
   await render(<CatStep onDone={onDone} />);
-  expect(screen.getByText('이 친구, 이름을 지어줄래요? 털색도 골라봐요.')).toBeTruthy();
+  expect(screen.getByText('이 친구, 이름을 지어줄래냥? 털색도 골라보라냥.')).toBeTruthy();
   await fireEvent.changeText(name(), '  나비 ');
   await fireEvent.press(screen.getByRole('radio', { name: '하양' }));
   expect(screen.getByRole('radio', { name: '하양', selected: true })).toBeTruthy();
@@ -28,7 +28,7 @@ test('공백만이면 비활성 + 안내, 10자 넘어도', async () => {
   await render(<CatStep onDone={jest.fn()} />);
   await fireEvent.changeText(name(), '   ');
   expect(submit().props.accessibilityState).toMatchObject({ disabled: true });
-  expect(screen.getByText('이름은 1~10자로 지어주세요')).toBeTruthy();
+  expect(screen.getByText('이름은 1~10자로 지어달라냥')).toBeTruthy();
   await fireEvent.changeText(name(), '열한글자짜리이름입니다');
   expect(submit().props.accessibilityState).toMatchObject({ disabled: true });
   await fireEvent.changeText(name(), '🐱');
@@ -42,7 +42,7 @@ test('저장 실패 → 입력 유지 + 오류 + 다시 누를 수 있음', asyn
   await render(<CatStep onDone={onDone} />);
   await fireEvent.changeText(name(), '나비');
   await fireEvent.press(submit());
-  expect(screen.getByText('앗, 잠깐 문제가 생겼어요. 다시 해볼까요?')).toBeTruthy();
+  expect(screen.getByText('앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?')).toBeTruthy();
   expect(name().props.value).toBe('나비');
   expect(onDone).not.toHaveBeenCalled();
   await fireEvent.press(submit());

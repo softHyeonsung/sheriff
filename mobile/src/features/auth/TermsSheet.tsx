@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 
-import { color, font, radius, space, type } from '@/constants/tokens';
+import { color, font, radius, scrim, space, type } from '@/constants/tokens';
 import { TERMS_LINKS } from '@/constants/terms';
 
 const ITEMS = [
@@ -59,7 +59,7 @@ export function TermsSheet({
       <Pressable style={styles.backdrop} onPress={close} accessibilityRole="button" accessibilityLabel="닫기" />
       <SafeAreaView edges={['bottom']} style={styles.sheet}>
         <Text style={styles.title} accessibilityRole="header">
-          시작하기 전에 확인해 주세요
+          시작하기 전에 확인해 달라냥
         </Text>
 
         <Checkbox label="모두 동의할게요" checked={all} onPress={() => setAll(!all)} strong />
@@ -100,7 +100,7 @@ export function TermsSheet({
         </Pressable>
 
         <Text style={styles.error} accessibilityLiveRegion="polite">
-          {failed ? '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' : ' '}
+          {failed ? '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?' : ' '}
         </Text>
       </SafeAreaView>
     </Modal>
@@ -108,7 +108,7 @@ export function TermsSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(74, 61, 48, 0.25)' }, // color.ink @ 25%
+  backdrop: { flex: 1, backgroundColor: scrim.light },
   sheet: {
     backgroundColor: color.surfaceCard,
     borderTopLeftRadius: radius.sheet,
@@ -137,14 +137,14 @@ const styles = StyleSheet.create({
   viewText: { ...type.caption, color: color.inkSub, textDecorationLine: 'underline' },
   cta: {
     marginTop: 20,
-    height: 52,
+    height: 54,
     borderRadius: radius.btn,
     backgroundColor: color.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaOff: { backgroundColor: color.line },
-  ctaText: { fontFamily: font.semibold, fontSize: 16, color: color.onPrimary },
+  ctaText: { ...type.label, color: color.onPrimary },
   ctaTextOff: { color: color.inkSub },
   error: { ...type.caption, color: color.ink, marginTop: 12, marginBottom: 8, minHeight: 18 },
 });

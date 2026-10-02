@@ -54,6 +54,7 @@
         {
           "fonts": [
             "./assets/fonts/Pretendard-Regular.otf",
+            "./assets/fonts/Pretendard-Medium.otf",
             "./assets/fonts/Pretendard-SemiBold.otf",
             "./assets/fonts/Pretendard-Bold.otf"
           ]

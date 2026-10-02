@@ -29,7 +29,7 @@ const api = (state: object) => {
 test('발자국 남기기 → 체크인 시작', async () => {
   const a = api({ name: 'idle' });
   await render(<FirstFootprintStep onDone={jest.fn()} />);
-  expect(screen.getByText('자, 지금 여기. 첫 발자국을 남겨볼까요?')).toBeTruthy();
+  expect(screen.getByText('자, 지금 여기. 첫 발자국을 남겨볼까냥?')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
   expect(a.start).toHaveBeenCalled();
 });
@@ -44,10 +44,10 @@ test('축하를 닫으면 끝(찍음)', async () => {
 });
 
 test('실패(권한 없음) → 안내 + 설정 열기 + 나중에 할게요', async () => {
-  api({ name: 'failed', message: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.', needsSettings: true });
+  api({ name: 'failed', message: '위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.', needsSettings: true });
   const onDone = jest.fn();
   await render(<FirstFootprintStep onDone={onDone} />);
-  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.')).toBeTruthy();
+  expect(screen.getByText('위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.')).toBeTruthy();
   expect(screen.getByRole('button', { name: '설정 열기' })).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '나중에 할게요' }));
   expect(onDone).toHaveBeenCalledWith(false);
@@ -81,7 +81,7 @@ test('오프라인에서 챙긴 첫 발자국 → 안내 후 다음으로(막히
   const onDone = jest.fn();
   const h = api({ name: 'queued' });
   await render(<FirstFootprintStep onDone={onDone} />);
-  expect(screen.getByText('발자국을 챙겨뒀어요. 연결되면 남길게요 🐾')).toBeTruthy();
+  expect(screen.getByText('발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '다음' }));
   expect(h.close).toHaveBeenCalled();
   expect(onDone).toHaveBeenCalledWith(false);

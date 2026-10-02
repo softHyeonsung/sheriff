@@ -48,12 +48,12 @@ test('pickNearest는 가까운 순으로 n개', () => {
 });
 
 test('문구: 작은 집 이상은 단골 문구', () => {
-  expect(arrivalMessage('동네 빵집', 'paw')).toBe('동네 빵집 오셨네요. 발자국 남길까요?');
-  expect(arrivalMessage('동네 빵집', 'box')).toBe('동네 빵집 오셨네요. 발자국 남길까요?');
-  expect(arrivalMessage('동네 빵집', 'hut')).toBe('또 왔네요, 동네 빵집. 여기 자주 오시네요 :)');
-  expect(arrivalMessage('동네 빵집', 'palace')).toBe('또 왔네요, 동네 빵집. 여기 자주 오시네요 :)');
+  expect(arrivalMessage('동네 빵집', 'paw')).toBe('동네 빵집 왔다냥! 발자국 남길까냥?');
+  expect(arrivalMessage('동네 빵집', 'box')).toBe('동네 빵집 왔다냥! 발자국 남길까냥?');
+  expect(arrivalMessage('동네 빵집', 'hut')).toBe('또 왔다냥, 동네 빵집. 여기 자주 오는구냥 :)');
+  expect(arrivalMessage('동네 빵집', 'palace')).toBe('또 왔다냥, 동네 빵집. 여기 자주 오는구냥 :)');
 });
 
 test('찜한 곳 문구', () => {
-  expect(arrivalMessage('찜한 카페', 'paw', true)).toBe('가고 싶다던 찜한 카페, 드디어 왔어요!');
+  expect(arrivalMessage('찜한 카페', 'paw', true)).toBe('가고 싶다던 찜한 카페, 드디어 왔다냥!');
 });

@@ -50,7 +50,7 @@ test('GPS 약함은 자동으로 한 번 더, 그래도 약하면 안내', async
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
   expect(getFix).toHaveBeenCalledTimes(2);
-  expect(h.current.state).toEqual({ name: 'failed', message: '잠깐, 위치를 확인하고 있어요…', needsSettings: false });
+  expect(h.current.state).toEqual({ name: 'failed', message: '잠깐, 위치를 확인하고 있다냥…', needsSettings: false });
 });
 
 test('GPS 약함 뒤 두 번째에 잡히면 그대로 진행', async () => {
@@ -66,7 +66,7 @@ test('위치 권한 없음 → 설정 안내', async () => {
   await act(async () => h.current.start());
   expect(h.current.state).toEqual({
     name: 'failed',
-    message: '위치가 꺼져 있어서 발자국을 남기기 어려워요. 켜두시면 제가 도와드릴게요.',
+    message: '위치가 꺼져 있어서 발자국을 남기기 어렵다냥. 켜두면 내가 도와줄게냥.',
     needsSettings: true,
   });
   expect(suggest).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ test('후보 조회 실패 → 멈추지 않고 다시 시도할 수 있는 안�
   suggest.mockRejectedValue(new CheckinError('unknown'));
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
-  expect(h.current.state).toEqual({ name: 'failed', message: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?', needsSettings: false });
+  expect(h.current.state).toEqual({ name: 'failed', message: '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?', needsSettings: false });
   suggest.mockResolvedValue(ok);
   await act(async () => h.current.start());
   expect(h.current.state.name).toBe('choosing');
@@ -87,7 +87,7 @@ test('기록 거절 → 시트는 열린 채 안내(다른 후보 고르기 가�
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
-  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '조금만 더 가까이 가면 발자국을 남길 수 있어요.' });
+  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '조금만 더 가까이 가면 발자국을 남길 수 있다냥.' });
 });
 
 test('진행 중 두 번째 요청 무시(연타)', async () => {
@@ -125,7 +125,7 @@ test('위치가 응답 없이 멈추면 제한 시간 뒤 다시 시도할 수 �
     await act(async () => {
       jest.advanceTimersByTime(15000);
     });
-    expect(h.current.state).toEqual({ name: 'failed', message: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?', needsSettings: false });
+    expect(h.current.state).toEqual({ name: 'failed', message: '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?', needsSettings: false });
   } finally {
     jest.useRealTimers();
   }
@@ -207,7 +207,7 @@ test('챙기기(파일 쓰기)가 실패하면 시트에 안내', async () => {
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
   await act(async () => h.current.choose({ kind: 'mine', aidutId: 'a1' }));
-  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '앗, 잠깐 문제가 생겼어요. 다시 해볼까요?' });
+  expect(h.current.state).toMatchObject({ name: 'choosing', busy: false, error: '앗, 잠깐 문제가 생겼다냥. 다시 해볼까냥?' });
 });
 
 test('오프라인 후보였어도 고를 때 연결돼 있으면 바로 보낸다(느린 서버로 오프라인 후보가 뜬 경우)', async () => {

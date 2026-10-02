@@ -1,9 +1,10 @@
 // mobile/src/features/onboarding/ui.tsx
 // 온보딩 단계들이 같이 쓰는 화면틀·버튼.
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { color, font, radius, space } from '@/constants/tokens';
+import { Button } from '@/components/kit';
+import { color, space } from '@/constants/tokens';
 
 // onBack: 설정에서 다시 쓸 때만(온보딩은 앞으로만). 저장하지 않고 나가는 길.
 export function StepScreen({ children, footer, onBack }: { children: ReactNode; footer?: ReactNode; onBack?: () => void }) {
@@ -21,25 +22,11 @@ export function StepScreen({ children, footer, onBack }: { children: ReactNode; 
 }
 
 export function PrimaryButton({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      style={[styles.primary, disabled && styles.disabled]}>
-      <Text style={styles.primaryText}>{label}</Text>
-    </Pressable>
-  );
+  return <Button label={label} size="lg" onPress={onPress} disabled={disabled} />;
 }
 
 export function TextButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.text} hitSlop={8}>
-      <Text style={styles.textLabel}>{label}</Text>
-    </Pressable>
-  );
+  return <Button label={label} variant="plain" style={styles.text} onPress={onPress} />;
 }
 
 const styles = StyleSheet.create({
@@ -47,9 +34,5 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.surface },
   body: { flex: 1, paddingHorizontal: space.gutter, alignItems: 'center', justifyContent: 'center', gap: 16 },
   footer: { paddingHorizontal: space.gutter, paddingBottom: space.section, gap: 8 },
-  primary: { height: 52, borderRadius: radius.btn, backgroundColor: color.primary, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.4 },
-  primaryText: { fontFamily: font.semibold, fontSize: 16, color: color.onPrimary },
-  text: { minHeight: space.tapMin, alignItems: 'center', justifyContent: 'center' },
-  textLabel: { fontFamily: font.semibold, fontSize: 15, color: color.inkSub },
+  text: { alignSelf: 'center' },
 });
