@@ -19,7 +19,7 @@ select throws_ok($$select public.aidut_grade(20)$$, 'P0001', 'missing app_config
 update public.app_config set value = '{"box":2,"hut":5,"tower":10,"palace":20}' where key = 'grade_thresholds';
 
 -- 설정
-select is(public.cfg_num('checkin_radius_m'), 150::numeric, 'checkin_radius_m = 150');
+select is(public.cfg_num('checkin_radius_m'), 50::numeric, 'checkin_radius_m = 50');
 select throws_ok($$select public.cfg_num('no_such_key')$$, 'P0001', 'missing app_config no_such_key',
   '없는 설정 키는 조용히 NULL이 아니라 오류');
 
@@ -62,7 +62,7 @@ select is((select count(*)::int from public.aidut_memories), 0, 'A는 B 아지�
 select ok((select count(*) from public.app_config) >= 6, '로그인 사용자는 app_config를 읽는다');
 
 update public.app_config set value = '999' where key = 'checkin_radius_m';
-select is(public.cfg_num('checkin_radius_m'), 150::numeric, 'app_config는 사용자가 못 바꾼다(0행 갱신)');
+select is(public.cfg_num('checkin_radius_m'), 50::numeric, 'app_config는 사용자가 못 바꾼다(0행 갱신)');
 
 select is(
   (select array_agg(name order by distance_m) from public.nearby_aidut(37.5, 126.94, 150)),

@@ -1,9 +1,9 @@
 // mobile/src/features/checkin/CheckinSheet.tsx
 import { useState } from 'react';
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { color, radius, scrim, space, type } from '@/constants/tokens';
+import { Popup } from '@/components/kit';
+import { color, radius, space, type } from '@/constants/tokens';
 import { markerFor } from '@/map/markers';
 import { targetFor } from './candidates';
 import type { CheckinTarget } from './checkinApi';
@@ -14,6 +14,7 @@ type Props = {
   footprintsById: Record<string, number>;
   onChoose: (t: CheckinTarget) => void;
   onClose: () => void;
+  dwell?: boolean; // 고르면 바로 남지 않고 3분 머문 뒤에 남는다: 그렇게 한다고 알리고 누르게 한다
 };
 
 function Row({ title, sub, onPress, disabled }: { title: string; sub: string; onPress: () => void; disabled: boolean }) {
@@ -31,8 +32,10 @@ function Row({ title, sub, onPress, disabled }: { title: string; sub: string; on
   );
 }
 
-export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props) {
+export function CheckinSheet({ state, footprintsById, onChoose, onClose, dwell = false }: Props) {
   const first = state.candidates[0];
+  const hereName = state.hereName; // 건물 이름이 있을 때만 새로 만들 수 있다(이름 없는 자리는 장소가 아니다)
+  const nothing = !first && !hereName;
   const [view, setView] = useState<'confirm' | 'list'>(first ? 'confirm' : 'list');
   // While a footprint is being saved the sheet can't be dismissed — otherwise the
   // celebration would pop up after the user thought they'd cancelled.
@@ -41,12 +44,11 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
   };
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={close}>
-      {/* 배경을 눌러도 닫히지만, 읽어 주는 닫기는 아래 보이는 버튼 하나만. */}
-      <Pressable style={styles.backdrop} onPress={close} accessible={false} importantForAccessibility="no" />
-      <SafeAreaView edges={['bottom']} style={styles.sheet}>
+    <Popup onClose={close}>
         {state.offline && <Text style={styles.caption}>연결이 끊겨 있어서 내 아지트만 보여준다냥</Text>}
-        {view === 'confirm' && first ? (
+        {nothing ? (
+          <Text style={styles.title}>주변에서 장소를 찾을 수 없다냥. 가게나 건물 가까이에서 다시 해볼까냥?</Text>
+        ) : view === 'confirm' && first ? (
           <View style={styles.confirm}>
             {first.kind === 'mine' && <Image source={{ uri: markerFor(first.grade).uri }} style={styles.art} />}
             <Text style={styles.title} accessibilityRole="header">
@@ -85,40 +87,27 @@ export function CheckinSheet({ state, footprintsById, onChoose, onClose }: Props
                 onPress={() => onChoose(targetFor(c))}
               />
             ))}
-            <Row
-              title="여기에 새로 만들기"
-              sub={state.hereAddress ?? '이름 없는 골목'}
-              disabled={state.busy}
-              onPress={() => onChoose({ kind: 'new', roadAddress: state.hereAddress })}
-            />
+            {hereName && (
+              <Row
+                title="여기에 새로 만들기"
+                sub={hereName}
+                disabled={state.busy}
+                onPress={() => onChoose({ kind: 'new', roadAddress: state.hereAddress, name: hereName })}
+              />
+            )}
           </ScrollView>
         )}
-        <Text style={styles.error} accessibilityLiveRegion="polite">
-          {state.error ?? ' '}
-        </Text>
-        <Pressable
-          onPress={close}
-          disabled={state.busy}
-          accessibilityRole="button"
-          accessibilityLabel="닫기"
-          accessibilityState={{ disabled: state.busy }}
-          style={styles.secondary}>
-          <Text style={[styles.secondaryText, styles.closeText]}>닫기</Text>
-        </Pressable>
-      </SafeAreaView>
-    </Modal>
+        {dwell && !nothing && <Text style={styles.dwell}>3분 동안 여기 머물면 발자국이 남는다냥. 3분 뒤에 위치를 한 번 더 확인할게냥.</Text>}
+        {state.error && (
+          <Text style={styles.error} accessibilityLiveRegion="polite">
+            {state.error}
+          </Text>
+        )}
+    </Popup>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: scrim.light },
-  sheet: {
-    backgroundColor: color.surfaceCard,
-    borderTopLeftRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
-    paddingHorizontal: space.gutter,
-    paddingTop: space.section,
-  },
   confirm: { alignItems: 'center', gap: 8 },
   art: { width: 72, height: 72 },
   title: { ...type.title, color: color.ink, textAlign: 'center' },
@@ -139,6 +128,6 @@ const styles = StyleSheet.create({
   ctaText: { ...type.label, color: color.onPrimary },
   secondary: { minHeight: space.tapMin, justifyContent: 'center' },
   secondaryText: { ...type.label, color: color.ink },
-  closeText: { textAlign: 'center' },
-  error: { ...type.caption, color: color.ink, marginTop: 12, marginBottom: 8, minHeight: 18, textAlign: 'center' },
+  error: { ...type.caption, color: color.ink, textAlign: 'center' },
+  dwell: { ...type.caption, color: color.inkSub, textAlign: 'center' },
 });

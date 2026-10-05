@@ -23,7 +23,10 @@ export type KakaoCandidate = {
 };
 export type SuggestResult =
   | { status: 'weak_gps' }
-  | { status: 'ok'; hereAddress: string | null; candidates: (MineCandidate | KakaoCandidate)[] };
+  | { status: 'ok'; hereAddress: string | null; hereName: string | null; candidates: (MineCandidate | KakaoCandidate)[] };
+
+// 지금 서 있는 자리: 주소와, 알면 그 건물의 이름(새 아지트의 이름이 된다).
+export type Here = { address: string; name: string | null };
 
 // 내 아지트(건물)에서 간 곳 하나. 좌표·주소는 아지트의 것(다시 고르면 같은 아지트로 합쳐진다).
 export type Visited = { aidutId: string; placeId: string | null; name: string; visits: number; lat: number; lng: number; roadAddress: string | null };
@@ -33,7 +36,7 @@ export interface SuggestDeps {
   nearbyMine(lat: number, lng: number, radiusM: number): Promise<(MineCandidate & { kakaoPlaceId: string | null })[]>;
   visited(lat: number, lng: number, radiusM: number): Promise<Visited[]>;
   kakaoNearby(lat: number, lng: number, radiusM: number): Promise<KakaoCandidate[]>;
-  kakaoAddress(lat: number, lng: number): Promise<string | null>;
+  kakaoAddress(lat: number, lng: number): Promise<Here | null>;
 }
 
 const byDistance = (a: { distanceM: number }, b: { distanceM: number }) => a.distanceM - b.distanceM;
@@ -46,7 +49,7 @@ export async function suggestPlace(
   if (!(accuracy <= cfg.accuracyMaxM)) return { status: 'weak_gps' };
 
   // Kakao is optional: a failure or timeout leaves only my hideouts, never blocks a check-in.
-  const [mine, visited, places, hereAddress] = await Promise.all([
+  const [mine, visited, places, here] = await Promise.all([
     deps.nearbyMine(lat, lng, cfg.radiusM),
     // 간 곳 조회가 실패해도 예전처럼(아지트 + 주변 장소) 응답한다.
     deps.visited(lat, lng, cfg.radiusM).catch(() => [] as Visited[]),
@@ -75,7 +78,7 @@ export async function suggestPlace(
   }
   const kakaoCandidates = places.filter((p) => !known.has(p.placeId)).sort(byDistance);
 
-  return { status: 'ok', hereAddress, candidates: [...mineCandidates, ...kakaoCandidates].slice(0, MAX_CANDIDATES) };
+  return { status: 'ok', hereAddress: here?.address ?? null, hereName: here?.name ?? null, candidates: [...mineCandidates, ...kakaoCandidates].slice(0, MAX_CANDIDATES) };
 }
 
 interface KakaoDoc {
@@ -129,14 +132,15 @@ export async function kakaoAddress(
   fetchImpl: typeof fetch = fetch,
   key = KAKAO_REST_KEY,
   timeoutMs = 2000,
-): Promise<string | null> {
+): Promise<Here | null> {
   const res = await fetchImpl(`https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`, {
     headers: { Authorization: `KakaoAK ${key}` },
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) return null;
   const d = (await res.json()).documents?.[0];
-  return d?.road_address?.address_name ?? d?.address?.address_name ?? null;
+  const address = d?.road_address?.address_name ?? d?.address?.address_name;
+  return address ? { address, name: d?.road_address?.building_name || null } : null;
 }
 
 // db must carry the caller's JWT: nearby_aidut and app_config are read under the user's RLS.

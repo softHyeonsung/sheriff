@@ -24,7 +24,7 @@ export function useMyLocation() {
       starting.current = true;
       try {
         const s = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
+          { accuracy: Location.Accuracy.High, distanceInterval: 10 }, // High: 걸은 자리를 칸 단위로 걷으려면 GPS 정확도가 필요하다
           (p) => alive && setLocation({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy ?? 999 }),
         );
         // Unmounted while the watch was starting: release it instead of leaking GPS.

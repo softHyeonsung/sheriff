@@ -12,7 +12,7 @@ const deps = (over: Partial<SuggestDeps> = {}): SuggestDeps => ({
   nearbyMine: () => Promise.resolve([]),
   visited: () => Promise.resolve([]),
   kakaoNearby: () => Promise.resolve([]),
-  kakaoAddress: () => Promise.resolve('서울 테스트로 1'),
+  kakaoAddress: () => Promise.resolve({ address: '서울 테스트로 1', name: '테스트 빌딩' }),
   ...over,
 });
 const input = { lat: 37.5, lng: 126.94, accuracy: 20 };
@@ -33,6 +33,7 @@ Deno.test('내 아지트가 카카오보다 먼저, 각각 거리순, 최대 5�
   if (r.status !== 'ok') return;
   assertEquals(r.candidates.map((c) => (c.kind === 'mine' ? c.aidutId : c.placeId)), ['m1', 'm2', 'p1', 'p2', 'p3']);
   assertEquals(r.hereAddress, '서울 테스트로 1');
+  assertEquals(r.hereName, '테스트 빌딩');
   assertEquals('kakaoPlaceId' in r.candidates[0], false); // 내부 필드는 응답에 새지 않는다
 });
 
@@ -51,7 +52,7 @@ Deno.test('카카오가 실패해도 내 아지트만으로 응답한다', async
     kakaoNearby: () => Promise.reject(new Error('kakao 500')),
     kakaoAddress: () => Promise.reject(new Error('kakao 500')),
   }));
-  assertEquals(r, { status: 'ok', hereAddress: null, candidates: [{ kind: 'mine', aidutId: 'm1', name: '내 m1', grade: 'paw', distanceM: 10 }] });
+  assertEquals(r, { status: 'ok', hereAddress: null, hereName: null, candidates: [{ kind: 'mine', aidutId: 'm1', name: '내 m1', grade: 'paw', distanceM: 10 }] });
 });
 
 Deno.test({
@@ -87,13 +88,14 @@ Deno.test({
 });
 
 Deno.test({
-  name: 'kakaoAddress: 도로명 우선, 없으면 지번, 실패면 null',
+  name: 'kakaoAddress: 도로명 우선, 없으면 지번, 건물 이름은 있을 때만, 실패면 null',
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
     const ok = (body: unknown) => () => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
-    assertEquals(await kakaoAddress(37.5, 126.94, ok({ documents: [{ road_address: { address_name: '도로명 1' }, address: { address_name: '지번 1' } }] }) as typeof fetch, 'k'), '도로명 1');
-    assertEquals(await kakaoAddress(37.5, 126.94, ok({ documents: [{ road_address: null, address: { address_name: '지번 1' } }] }) as typeof fetch, 'k'), '지번 1');
+    assertEquals(await kakaoAddress(37.5, 126.94, ok({ documents: [{ road_address: { address_name: '도로명 1', building_name: '경복궁' }, address: { address_name: '지번 1' } }] }) as typeof fetch, 'k'), { address: '도로명 1', name: '경복궁' });
+    assertEquals(await kakaoAddress(37.5, 126.94, ok({ documents: [{ road_address: { address_name: '도로명 1', building_name: '' }, address: { address_name: '지번 1' } }] }) as typeof fetch, 'k'), { address: '도로명 1', name: null });
+    assertEquals(await kakaoAddress(37.5, 126.94, ok({ documents: [{ road_address: null, address: { address_name: '지번 1' } }] }) as typeof fetch, 'k'), { address: '지번 1', name: null });
     assertEquals(await kakaoAddress(37.5, 126.94, (() => Promise.resolve(new Response('x', { status: 401 }))) as typeof fetch, 'k'), null);
   },
 });

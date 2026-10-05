@@ -19,6 +19,7 @@ export type AppToMap =
   | { type: 'setWishes'; wishes: WishPin[] }
   | ({ type: 'setMyLocation' } & MyLocation)
   | ({ type: 'panTo'; level?: number } & LatLng) // level: 그만큼 가까이 당기며 이동(길을 보러 갈 때)
+  | { type: 'fit'; points: LatLng[] } // 이 점들이 모두 보이게(찜한 곳 모아 보기)
   | { type: 'setFog'; cells: FogCell[] }
   | { type: 'catSay'; text: string }
   | { type: 'setCat'; poses: Record<CatPose, string> }

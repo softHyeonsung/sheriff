@@ -1,17 +1,17 @@
 // mobile/src/features/checkin/offline.ts
-// 끊겼을 때 후보: 저장본의 내 아지트 중 가까운 곳 + 새로 만들기. 카카오 후보는 네트워크가 있어야 한다.
+// 끊겼을 때 후보: 저장본의 내 아지트 중 가까운 곳. 카카오 후보와 새로 만들기(건물 이름)는 네트워크가 있어야 한다.
 import { readMapCache } from '@/features/map/mapCache';
 import type { MyHideout } from '@/features/map/useMyHideouts';
 import { isOffline } from '@/lib/network';
 import { type Candidate, type Fix, type MineCandidate, suggestPlace } from './checkinApi';
 import { CheckinError } from './errors';
 
-export const OFFLINE_RADIUS_M = 150; // 서버 checkin_radius_m와 같은 값
+export const OFFLINE_RADIUS_M = 50; // 서버 checkin_radius_m와 같은 값
 export const OFFLINE_ACCURACY_MAX_M = 150; // 서버 gps_accuracy_max_m와 같은 값
 
 export type Suggestion =
   | { status: 'weak_gps' }
-  | { status: 'ok'; hereAddress: string | null; candidates: Candidate[]; offline: boolean };
+  | { status: 'ok'; hereAddress: string | null; hereName?: string | null; candidates: Candidate[]; offline: boolean };
 
 export function metersBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 6371000;

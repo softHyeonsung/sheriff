@@ -14,6 +14,7 @@ export function useCheckinQueue(onSynced: () => void) {
   const [celebrations, setCelebrations] = useState<CheckinResult[]>([]);
   const [dropped, setDropped] = useState(0);
   const [droppedMemories, setDroppedMemories] = useState(0);
+  const [cooled, setCooled] = useState(0);
   const flushing = useRef(false); // 동기 가드: 포커스와 재연결이 같은 순간에 올 수 있다
   const synced = useRef(onSynced);
   useEffect(() => {
@@ -32,7 +33,7 @@ export function useCheckinQueue(onSynced: () => void) {
     if (flushing.current) return;
     flushing.current = true;
     try {
-      const { results, dropped: d } = await flushQueue(submitCheckin);
+      const { results, dropped: d, cooled: c } = await flushQueue(submitCheckin);
       for (const r of results) {
         cancelArrivalAlert(r.aidutId).catch((e) => console.warn('도착 알림 취소 실패', e));
       }
@@ -41,6 +42,7 @@ export function useCheckinQueue(onSynced: () => void) {
         synced.current();
       }
       if (d) setDropped((x) => x + d);
+      if (c) setCooled((x) => x + c);
       // 발자국이 먼저 올라가야 사진이 붙을 아지트가 생긴다. 사진 실패가 발자국 결과를 막지 않게 따로 잡는다.
       try {
         const m = await flushMemoriesNow();
@@ -78,6 +80,7 @@ export function useCheckinQueue(onSynced: () => void) {
   const next = useCallback(() => setCelebrations((c) => c.slice(1)), []);
   const clearDropped = useCallback(() => setDropped(0), []);
   const clearDroppedMemories = useCallback(() => setDroppedMemories(0), []);
+  const clearCooled = useCallback(() => setCooled(0), []);
 
-  return { pending, celebrations, dropped, next, clearDropped, refresh, flush, droppedMemories, clearDroppedMemories };
+  return { pending, celebrations, dropped, next, clearDropped, refresh, flush, droppedMemories, clearDroppedMemories, cooled, clearCooled };
 }

@@ -10,12 +10,16 @@ jest.mock('../task', () => {
   ((globalThis as any).entryOrder ??= []).push('task');
   return {};
 });
+jest.mock('../../checkin/dwell', () => {
+  ((globalThis as any).entryOrder ??= []).push('dwell');
+  return {};
+});
 jest.mock('expo-router/entry', () => {
   ((globalThis as any).entryOrder ??= []).push('router');
   return {};
 });
 
-test('앱 진입점이 라우터보다 먼저 도착 알림 태스크를 정의한다', () => {
+test('앱 진입점이 라우터보다 먼저 백그라운드 태스크(도착 알림·머무름 확인)를 정의한다', () => {
   expect(pkg.main).toBe('index.ts');
-  expect((globalThis as any).entryOrder).toEqual(['task', 'router']);
+  expect((globalThis as any).entryOrder).toEqual(['task', 'dwell', 'router']);
 });

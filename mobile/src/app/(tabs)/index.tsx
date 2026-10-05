@@ -1,18 +1,22 @@
 // mobile/src/app/(tabs)/index.tsx
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Icon, ICON, IconButton } from '@/components/kit';
+import { Button, Icon, ICON, IconButton, Popup } from '@/components/kit';
 import { color, radius, shadow, space, type } from '@/constants/tokens';
 import { ArrivalOffer } from '@/features/arrival/ArrivalOffer';
 import { answerArrivalOffer, shouldOfferArrival } from '@/features/arrival/register';
 import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { Celebration } from '@/features/checkin/Celebration';
 import { CheckinSheet } from '@/features/checkin/CheckinSheet';
+import { nameFor } from '@/features/checkin/candidates';
 import { useCheckin } from '@/features/checkin/useCheckin';
-import { MSG } from '@/features/checkin/copy';
+import { useDwell } from '@/features/checkin/useDwell';
+import { checkinNextAt } from '@/features/checkin/checkinApi';
+import { messageFor, MSG } from '@/features/checkin/copy';
+import { CheckinError } from '@/features/checkin/errors';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
 import { bareName, COURSE } from '@/features/course/copy';
 import { CourseCard } from '@/features/course/CourseCard';
@@ -30,6 +34,7 @@ import { pickCatLine } from '@/features/territory/catLine';
 import { DongBadge } from '@/features/territory/DongBadge';
 import { useDongAt } from '@/features/territory/useDongAt';
 import { useMyFog } from '@/features/territory/useMyFog';
+import { useWalkFog } from '@/features/territory/useWalkFog';
 import { GRADE_LABEL } from '@/map/grades';
 import { MapBridge, type MapBridgeHandle } from '@/map/MapBridge';
 import { catArt } from '@/map/catArt';
@@ -39,6 +44,7 @@ import { useMeStore } from '@/stores/meStore';
 const CITY_HALL = { lat: 37.5665, lng: 126.978 };
 // 길을 보러 갈 때(내 위치로·검색한 곳)의 줌: 수채 세계가 걷히고 실제 지도가 보이는 단계.
 const STREET_LEVEL = 3;
+const NO_PINS: { placeId: string; lat: number; lng: number }[] = [];
 
 export default function MapScreen() {
   const { hideouts, thresholds, status, retry } = useMyHideouts();
@@ -54,6 +60,12 @@ export default function MapScreen() {
     [wishList.wishes],
   );
   const selectedWish = wishList.wishes.find((w) => w.placeId === wishId) ?? null;
+  // 찜한 곳 모아 보기: 지도는 핀이 모두 보이게 맞추고, 아래 판에 목록이 올라온다.
+  const [wishOpen, setWishOpen] = useState(false);
+  // 찜 핀은 별을 켰을 때만 지도에 뜬다(켜져 있으면 별이 노랗게 채워진다). 목록 판은 따로 닫을 수 있다.
+  const [wishPinsOn, setWishPinsOn] = useState(false);
+  // 아래 창(고양이 한마디 + 발자국 남기기)은 끌 수 있다. 꺼 두면 오른쪽 도구에 다시 여는 버튼이 생긴다.
+  const [dockOpen, setDockOpen] = useState(true);
 
   // 공유로 들어온 글이 기다리고 있으면 찜 화면으로(지도에 도착했다 = 로그인·온보딩 끝).
   const pendingShare = useShareStore((s) => s.pending);
@@ -65,6 +77,14 @@ export default function MapScreen() {
   }, [pendingShare, setPendingShare]);
   const { refresh: refreshFog } = fog;
   const { refresh: refreshDong } = dongAt;
+  // 걸어 지나간 자리도 걷힌다: 새 칸이 걷히면 안개와 개척률을 새로 불러온다.
+  useWalkFog(
+    location,
+    useCallback(() => {
+      refreshFog();
+      refreshDong();
+    }, [refreshFog, refreshDong]),
+  );
   // 챙겨둔 발자국이 올라가면 지도를 새로 불러온다(마커·안개·동).
   const queue = useCheckinQueue(
     useCallback(() => {
@@ -88,6 +108,16 @@ export default function MapScreen() {
     [retry, refreshFog],
   );
   const { flush: flushQueue } = queue;
+  // 발자국은 3분 머문 뒤에 남는다. 다 머물면 올리고(축하는 대기열이 띄운다) 지도를 새로 불러온다 —
+  // 앱을 내려놓은 사이 이미 올라갔을 수도 있다.
+  const dwell = useDwell(
+    useCallback(() => {
+      flushQueue();
+      retry();
+      refreshFog();
+      refreshDong();
+    }, [flushQueue, retry, refreshFog, refreshDong]),
+  );
   // 챙기자마자 한 번 올려 본다: 연결이 살아 있으면(서버만 느렸던 경우) 바로 올라간다.
   useEffect(() => {
     if (checkin.state.name === 'queued') flushQueue();
@@ -196,11 +226,34 @@ export default function MapScreen() {
     setFound(p);
     bridge.current?.panTo(p.lat, p.lng, STREET_LEVEL);
   };
+  const openWishes = () => {
+    setSelectedId(null);
+    setFound(null);
+    setWishId(null);
+    setWishOpen(true);
+    setWishPinsOn(true);
+    // 하나뿐이면 범위 맞추기가 끝까지 당겨 버린다: 길이 보이는 줌으로 간다.
+    if (wishPins.length === 1) bridge.current?.panTo(wishPins[0].lat, wishPins[0].lng, STREET_LEVEL);
+    else bridge.current?.fit(wishPins);
+  };
+  const closeWishes = () => {
+    setWishPinsOn(false);
+    setWishOpen(false);
+    setWishId(null);
+  };
+  const showWish = (w: { placeId: string; lat: number; lng: number }) => {
+    setSelectedId(null);
+    setFound(null);
+    setWishId(w.placeId);
+    bridge.current?.panTo(w.lat, w.lng, STREET_LEVEL);
+  };
   const [mapFailed, setMapFailed] = useState(false);
   const [mapKey, setMapKey] = useState(0);
   // What the map was last centered on. A ref, not state: updating it must not re-render.
   const centeredOn = useRef<'none' | 'hideout' | 'me'>('none');
   const [arrivalOffer, setArrivalOffer] = useState(false);
+  // 고른 곳이 아까 다녀온 곳일 때의 안내(3분을 기다리게 하지 않고 바로 알린다).
+  const [visitedNote, setVisitedNote] = useState<string | null>(null);
   const celebrated = checkin.state.name === 'celebrating' ? checkin.state.result : null;
   const celebratedFix = checkin.state.name === 'celebrating' ? checkin.state.fix : null;
   // 직접 남긴 발자국이 먼저. 올라간 발자국 축하는 체크인이 쉬고 있을 때 차례로.
@@ -258,10 +311,23 @@ export default function MapScreen() {
 
   const idle = checkin.state.name === 'idle';
   const failed = checkin.state.name === 'failed' ? checkin.state : null;
-  const showCourse = !!course && idle && !selected && !selectedWish && !found;
+  const showWishes = wishOpen && idle && !selected && !selectedWish && !found;
+  const showCourse = !!course && idle && !selected && !selectedWish && !found && !wishOpen;
   // 아래 판에 따로 보여줄 것이 없을 때만 고양이의 한마디가 나온다.
   const quiet =
-    !arrivalOffer && idle && !selected && !selectedWish && !found && !course && !courseBusy && !courseNote && queue.dropped === 0 && queue.droppedMemories === 0;
+    !arrivalOffer && idle && !dwell.pending && !selected && !selectedWish && !found && !wishOpen && !course && !courseBusy && !courseNote && queue.dropped === 0 && queue.droppedMemories === 0;
+
+  // 아래 창에 카드가 하나라도 떠 있는가(아래 JSX의 카드들과 같은 조건).
+  const card = !!(
+    arrivalOffer ||
+    selected ||
+    selectedWish ||
+    showWishes ||
+    showCourse ||
+    (idle && (dwell.pending || queue.dropped > 0 || queue.droppedMemories > 0 || found || courseBusy))
+  );
+  // 꺼 둔 창도 보여줄 카드(아지트·찜·검색·코스·안내)가 생기면 그동안은 다시 나온다.
+  const showDock = dockOpen || !quiet;
 
   return (
     <View style={styles.screen}>
@@ -276,7 +342,7 @@ export default function MapScreen() {
           setFound(null);
           setSelectedId(id);
         }}
-        wishes={wishPins}
+        wishes={wishPinsOn ? wishPins : NO_PINS}
         onWishTap={(id) => {
           setSelectedId(null);
           setFound(null);
@@ -315,7 +381,9 @@ export default function MapScreen() {
               </Pressable>
             )}
           </View>
-          <IconButton icon={ICON.star} label="찜한 곳" onPress={() => router.push('/wishlist')} />
+          <IconButton icon={ICON.star} label="찜한 곳" onPress={wishPinsOn ? closeWishes : openWishes}>
+            {wishPinsOn ? <Text style={styles.starOn}>★</Text> : undefined}
+          </IconButton>
         </View>
         {(searching || searchNote) && (
           <View style={styles.banner}>
@@ -372,8 +440,10 @@ export default function MapScreen() {
         <View style={styles.rail} pointerEvents="box-none">
           <IconButton round icon={ICON.walk} label={COURSE.button} onPress={startCourse} disabled={courseBusy} />
           {location && <IconButton round icon={ICON.locate} label="내 위치로" onPress={() => bridge.current?.panTo(location.lat, location.lng, STREET_LEVEL)} />}
+          {!showDock && <IconButton round icon={ICON.footprint} label="발자국 남기기 창 열기" onPress={() => setDockOpen(true)} />}
         </View>
 
+        {showDock && (
         <View style={styles.dock}>
           {arrivalOffer && (
             <ArrivalOffer
@@ -388,29 +458,24 @@ export default function MapScreen() {
             />
           )}
 
-          {(locating || failed) && (
-            <View style={styles.note}>
-              <Text style={styles.noteText}>{failed ? failed.message : '잠깐, 위치를 확인하고 있다냥…'}</Text>
-              <View style={styles.actions}>
-                {failed && <Button label="다시 시도" variant="tonal" onPress={checkin.start} />}
-                {failed?.needsSettings && <Button label="설정 열기" variant="tonal" onPress={() => Linking.openSettings()} />}
-                <Button label="닫기" variant="plain" onPress={checkin.close} />
-              </View>
-            </View>
-          )}
-          {checkin.state.name === 'queued' && (
-            <View style={styles.note}>
-              <Text style={styles.noteText}>발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾</Text>
-              <View style={styles.actions}>
-                <Button label="닫기" variant="plain" onPress={checkin.close} />
-              </View>
-            </View>
-          )}
           {queue.dropped > 0 && idle && (
             <View style={styles.note}>
               <Text style={styles.noteText}>챙겨둔 발자국 {queue.dropped}개는 남기지 못했다냥. 너무 멀었거나 위치가 흐렸다냥.</Text>
               <View style={styles.actions}>
                 <Button label="닫기" variant="plain" onPress={queue.clearDropped} />
+              </View>
+            </View>
+          )}
+          {dwell.pending && idle && (
+            <View style={styles.note}>
+              <Text style={styles.placeTitle}>{dwell.pending.name}에 머무는 중이다냥</Text>
+              <Text style={styles.noteText}>
+                {dwell.remainingS > 0
+                  ? `${Math.floor(dwell.remainingS / 60)}분 ${dwell.remainingS % 60}초 뒤에도 여기 있으면 발자국이 남는다냥.`
+                  : '아직 여기 있는지 확인하고 있다냥…'}
+              </Text>
+              <View style={styles.actions}>
+                <Button label="그만두기" variant="plain" onPress={dwell.cancel} />
               </View>
             </View>
           )}
@@ -472,17 +537,71 @@ export default function MapScreen() {
                 {wishList.wishes.some((w) => w.placeId === found.placeId) ? (
                   <Text style={styles.done}>찜한 곳이다냥</Text>
                 ) : (
-                  <Button label="찜하기" variant="tonal" onPress={() => wishList.add(found).catch((e) => console.warn('찜 실패', e))} />
+                  <Button
+                    label="찜하기"
+                    variant="tonal"
+                    onPress={() => {
+                      setWishPinsOn(true); // 방금 찜한 곳이 핀으로 보이게
+                      wishList.add(found).catch((e) => console.warn('찜 실패', e));
+                    }}
+                  />
                 )}
                 <Button label="닫기" variant="plain" onPress={() => setFound(null)} />
               </View>
             </View>
           )}
 
-          {/* 발자국 안내와 같은 자리라, 체크인이 진행 중이면 코스 쪽을 잠깐 숨긴다(핀은 남는다). */}
-          {idle && (courseBusy || courseNote) && (
+          {showWishes && (
             <View style={styles.note}>
-              <Text style={styles.noteText}>{courseBusy ? COURSE.finding : courseNote}</Text>
+              <View style={styles.place}>
+                <Text style={[styles.placeTitle, styles.grow]}>찜한 곳</Text>
+                <Button label="닫기" variant="plain" onPress={() => setWishOpen(false)} />
+              </View>
+              {wishList.wishes.length === 0 ? (
+                <>
+                  <Text style={styles.noteText}>아직 저장한 장소가 없다냥. 장소를 찾아볼까냥?</Text>
+                  <View style={styles.actions}>
+                    <Button
+                      label="장소 추천받기"
+                      variant="tonal"
+                      onPress={() => {
+                        setWishOpen(false);
+                        startCourse();
+                      }}
+                    />
+                  </View>
+                </>
+              ) : (
+                <ScrollView style={styles.wishList}>
+                  {wishList.wishes.map((w, i) => (
+                    <Pressable
+                      key={w.placeId}
+                      onPress={() => showWish(w)}
+                      accessibilityRole="button"
+                      accessibilityLabel={w.name}
+                      style={({ pressed }) => [styles.wishRow, i > 0 && styles.resultLine, pressed && styles.resultPressed]}>
+                      <View style={styles.grow}>
+                        <Text style={styles.resultName} numberOfLines={1}>
+                          {w.name}
+                        </Text>
+                        {w.roadAddress && (
+                          <Text style={styles.caption} numberOfLines={1}>
+                            {w.roadAddress}
+                          </Text>
+                        )}
+                      </View>
+                      {w.achievedAt && <Text style={styles.done}>달성 ✓</Text>}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          )}
+
+          {/* 발자국 안내와 같은 자리라, 체크인이 진행 중이면 코스 쪽을 잠깐 숨긴다(핀은 남는다). */}
+          {idle && courseBusy && (
+            <View style={styles.note}>
+              <Text style={styles.noteText}>{COURSE.finding}</Text>
               <View style={styles.actions}>
                 <Button label="닫기" variant="plain" onPress={closeCourse} />
               </View>
@@ -497,6 +616,7 @@ export default function MapScreen() {
                 const place = await findKakaoPlace(stop);
                 if (!place) return false;
                 await wishList.add(place);
+                setWishPinsOn(true);
                 return true;
               }}
               onFind={(stop) => router.push({ pathname: '/wishlist', params: { shared: bareName(stop.name) } })}
@@ -517,10 +637,14 @@ export default function MapScreen() {
                   </>
                 )}
               </View>
+              <Pressable onPress={() => setDockOpen(false)} accessibilityRole="button" accessibilityLabel="발자국 남기기 창 닫기" hitSlop={10} style={styles.dockClose}>
+                <Icon name={ICON.close} size={20} tint={color.inkSub} />
+              </Pressable>
             </View>
           )}
 
-          {!arrivalOffer && (
+          {/* 카드(아지트·찜·검색·장소 추천·안내)는 발자국과 다른 일이다: 카드가 떠 있는 동안엔 발자국 버튼을 두지 않는다. */}
+          {!card && (
             <Button
               label="발자국 남기기"
               size="lg"
@@ -532,10 +656,78 @@ export default function MapScreen() {
             />
           )}
         </View>
+        )}
       </View>
 
+      {/* 발자국 남기기의 진행·실패·챙김: 가운데 알림 창. ✕로 끈다. */}
+      {(locating || failed || checkin.state.name === 'queued') && (
+        <Popup onClose={checkin.close}>
+          <Text style={styles.noteText}>
+            {failed ? failed.message : locating ? '잠깐, 위치를 확인하고 있다냥…' : '발자국을 챙겨뒀다냥. 연결되면 남길게냥 🐾'}
+          </Text>
+          {failed && (
+            <View style={styles.actions}>
+              <Button label="다시 시도" variant="tonal" onPress={checkin.start} />
+              {failed.needsSettings && <Button label="설정 열기" variant="tonal" onPress={() => Linking.openSettings()} />}
+            </View>
+          )}
+        </Popup>
+      )}
+      {/* 장소 추천이 안 될 때(위치 꺼짐·오류·없음): 알림 창으로 확인받는다. */}
+      {visitedNote && (
+        <Popup onClose={() => setVisitedNote(null)}>
+          <Text style={styles.noteText}>{visitedNote}</Text>
+          <View style={styles.actions}>
+            <Button label="확인" onPress={() => setVisitedNote(null)} />
+          </View>
+        </Popup>
+      )}
+      {dwell.left && (
+        <Popup onClose={dwell.clearLeft}>
+          <Text style={styles.noteText}>3분 동안 머물지 않아서 발자국을 남기지 못했다냥.</Text>
+          <View style={styles.actions}>
+            <Button label="확인" onPress={dwell.clearLeft} />
+          </View>
+        </Popup>
+      )}
+      {queue.cooled > 0 && (
+        <Popup onClose={queue.clearCooled}>
+          <Text style={styles.noteText}>여긴 아까 다녀온 곳이라 이번 발자국은 남지 않았다냥. 조금 뒤에 다시 남겨볼까냥?</Text>
+          <View style={styles.actions}>
+            <Button label="확인" onPress={queue.clearCooled} />
+          </View>
+        </Popup>
+      )}
+      {courseNote && (
+        <Popup onClose={closeCourse}>
+          <Text style={styles.noteText}>{courseNote}</Text>
+          <View style={styles.actions}>
+            <Button label="확인" onPress={closeCourse} />
+            {courseNote === COURSE.noLocation && permission === 'denied' && (
+              <Button label="설정 열기" variant="tonal" onPress={() => Linking.openSettings()} />
+            )}
+          </View>
+        </Popup>
+      )}
       {checkin.state.name === 'choosing' && (
-        <CheckinSheet state={checkin.state} footprintsById={footprintsById} onChoose={checkin.choose} onClose={checkin.close} />
+        <CheckinSheet
+          dwell
+          state={checkin.state}
+          footprintsById={footprintsById}
+          onChoose={async (target) => {
+            if (checkin.state.name !== 'choosing') return;
+            const { fix, candidates } = checkin.state;
+            checkin.close();
+            // 못 물어봤으면(끊김 등) 그냥 머무름을 시작한다: 남길 때 서버가 다시 본다.
+            const nextAt = await checkinNextAt(fix, target).catch(() => null);
+            if (nextAt) {
+              setVisitedNote(messageFor(new CheckinError('cooldown', nextAt)));
+              return;
+            }
+            dwell.start({ fix, target, name: nameFor(target, candidates) }).catch((e) => console.warn('머무름 시작 실패', e));
+          }}
+          onClose={checkin.close}
+        />
       )}
       {shown && (
         <Celebration
@@ -585,6 +777,8 @@ const styles = StyleSheet.create({
   resultLine: { borderTopWidth: 1, borderTopColor: color.line },
   resultPressed: { backgroundColor: color.surfaceSunk },
   resultName: { ...type.bodyStrong, color: color.ink },
+  wishList: { maxHeight: 264 },
+  wishRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
   done: { ...type.label, color: color.natureInk, paddingHorizontal: 8 },
   banner: {
     flexDirection: 'row',
@@ -599,16 +793,18 @@ const styles = StyleSheet.create({
   bannerText: { ...type.caption, fontSize: 14, lineHeight: 20, color: color.ink },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   rail: { alignSelf: 'flex-end', gap: 8, marginRight: 12, marginBottom: 12 },
+  // 아래쪽에 떠 있는 창: 지도 위에 사방이 둥근 카드.
   dock: {
     backgroundColor: color.surfaceCard,
-    borderTopLeftRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
-    paddingHorizontal: space.gutter,
-    paddingTop: 20,
-    paddingBottom: 16,
+    borderRadius: radius.sheet,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    padding: space.gutter,
     gap: 16,
-    ...shadow.dock,
+    ...shadow.card,
   },
+  dockClose: { alignSelf: 'flex-start' },
+  starOn: { fontSize: 24, lineHeight: 28, color: color.primary },
   note: { gap: 8 },
   noteText: { ...type.body, color: color.ink },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },

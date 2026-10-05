@@ -9,7 +9,7 @@ const W = 0.00113; // one cell's width in lng
 const H = 0.0009; // one cell's height in lat
 const cell = (col: number) => ({ sw: { lat: 37.5, lng: 126.9 + col * W }, ne: { lat: 37.5 + H, lng: 126.9 + (col + 1) * W } });
 
-function boot() {
+function boot(size?: { clientWidth: number; clientHeight: number }) {
   const posted: any[] = [];
   const overlays: any[] = [];
   const lines: any[] = [];
@@ -38,6 +38,7 @@ function boot() {
     const e: any = {
       tag,
       style: {},
+      classList: { add() {}, remove() {} },
       children: [] as any[],
       listeners: {} as Record<string, () => void>,
       appendChild(c: any) {
@@ -55,8 +56,9 @@ function boot() {
     if (tag === 'img') imgs.push(e);
     return e;
   };
+  const box = { clientWidth: 400, clientHeight: 800 };
   const document = {
-    getElementById: () => ({ clientWidth: 400, clientHeight: 800 }),
+    getElementById: () => box,
     createElement: el,
     head: { appendChild: (s: any) => (sdk = s) },
   };
@@ -80,6 +82,7 @@ function boot() {
           handlers.zoom_changed?.();
         };
         this.panTo = () => {};
+        this.relayout = () => {};
         this.setBounds = (b: any) => fitted.push(b);
         // 1도 = 100000px, 화면 왼쪽 위 = (37.51, 126.9)
         this.getProjection = () => ({
@@ -108,7 +111,11 @@ function boot() {
       event: { addListener: (_t: any, name: string, f: () => void) => (handlers[name] = f) },
     },
   };
-  const window: any = { ReactNativeWebView: { postMessage: (s: string) => posted.push(JSON.parse(s)) } };
+  const window: any = {
+    ReactNativeWebView: { postMessage: (s: string) => posted.push(JSON.parse(s)) },
+    addEventListener: (name: string, f: () => void) => (handlers[name] = f),
+  };
+  if (size) Object.assign(box, size);
   const html = buildMapHtml({
     jsKey: 'k',
     markers,
@@ -128,6 +135,8 @@ function boot() {
     lines,
     fitted,
     canvases,
+    box,
+    resize: () => handlers.resize(),
     levelsSet,
     cats: () => at(5),
     stops: () => at(6),
@@ -144,6 +153,25 @@ function boot() {
 }
 
 beforeEach(() => jest.useFakeTimers());
+
+test('화면 크기가 0일 때 떠도 바탕을 그리다 죽지 않고, 크기가 잡히면 그린다', () => {
+  const page = boot({ clientWidth: 0, clientHeight: 0 });
+  page.loadTiles();
+  expect(page.canvases[0].ctx.ops).toEqual([]);
+  Object.assign(page.box, { clientWidth: 400, clientHeight: 800 });
+  page.resize();
+  jest.advanceTimersByTime(20);
+  expect(page.canvases[0].width).toBe(600);
+  expect(page.canvases[0].ctx.ops.some((o: any) => o.op === 'draw')).toBe(true);
+});
+
+test('fit: 받은 점들이 모두 보이게 범위를 맞춘다(없으면 그대로)', () => {
+  const page = boot();
+  page.send({ type: 'fit', points: [] });
+  expect(page.fitted).toHaveLength(0);
+  page.send({ type: 'fit', points: [{ lat: 37.5, lng: 126.9 }, { lat: 37.6, lng: 127 }] });
+  expect(page.fitted[0].points).toHaveLength(2);
+});
 afterEach(() => {
   jest.useRealTimers();
   jest.restoreAllMocks();

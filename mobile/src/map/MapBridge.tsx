@@ -12,7 +12,11 @@ import { type AppToMap, type CoursePlan, type FogCell, type HideoutPin, type Lat
 import { buildMapHtml } from './webview-template';
 
 // panTo의 level: 그만큼 가까이 당기며 이동(이미 더 가까우면 그대로).
-export type MapBridgeHandle = { panTo: (lat: number, lng: number, level?: number) => void; catSay: (text: string) => void };
+export type MapBridgeHandle = {
+  panTo: (lat: number, lng: number, level?: number) => void;
+  fit: (points: LatLng[]) => void; // 이 점들이 모두 보이게
+  catSay: (text: string) => void;
+};
 
 type Props = {
   hideouts: HideoutPin[];
@@ -100,6 +104,9 @@ export const MapBridge = forwardRef<MapBridgeHandle, Props>(function MapBridge(
       panTo: (lat, lng, level) => {
         if (ready) send({ type: 'panTo', lat, lng, level });
         else pendingPan.current = { lat, lng, level };
+      },
+      fit: (points) => {
+        if (ready) send({ type: 'fit', points });
       },
       // A line said before the map is ready has no cat to say it — dropped.
       catSay: (text) => {

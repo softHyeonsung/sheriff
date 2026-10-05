@@ -23,6 +23,13 @@ export async function dongAt(p: LatLng): Promise<Dong | null> {
   return data as Dong;
 }
 
+// 지금 서 있는 칸을 걷는다(걸어 지나간 자리). 새로 걷혔으면 true.
+export async function clearFogAt(p: { lat: number; lng: number; accuracy: number }): Promise<boolean> {
+  const { data, error } = await supabase.rpc('clear_fog_at', { p_lat: p.lat, p_lng: p.lng, p_accuracy: p.accuracy });
+  if (error) throw error;
+  return data === true;
+}
+
 export async function myFog(): Promise<FogCell[]> {
   const { data, error } = await supabase.rpc('my_fog');
   if (error) throw error;

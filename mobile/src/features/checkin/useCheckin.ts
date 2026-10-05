@@ -13,12 +13,14 @@ import {
 import { MSG, messageFor } from './copy';
 import { CheckinError } from './errors';
 import { suggestOrOffline } from './offline';
+import { nameFor } from './candidates';
 import { enqueueCheckin } from './queue';
 
 export type Choosing = {
   name: 'choosing';
   fix: Fix;
   hereAddress: string | null;
+  hereName?: string | null; // 지금 서 있는 건물의 이름(모르면 없음)
   candidates: Candidate[];
   offline: boolean;
   busy: boolean;
@@ -43,15 +45,6 @@ export function within<T>(p: Promise<T>, ms: number): Promise<T> {
     timer = setTimeout(() => reject(new CheckinError('unknown')), ms);
   });
   return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
-}
-
-// 대기열에서 보여줄 이름.
-function nameFor(target: CheckinTarget, candidates: Candidate[]): string {
-  if (target.kind === 'mine') {
-    const c = candidates.find((x) => x.kind === 'mine' && x.aidutId === target.aidutId);
-    return c?.name ?? '내 아지트';
-  }
-  return target.kind === 'kakao' ? target.name : '새 아지트';
 }
 
 export function useCheckin() {
@@ -84,7 +77,7 @@ export function useCheckin() {
         const s = await suggestOrOffline(fix);
         if (run.current !== id) return;
         if (s.status === 'ok') {
-          sheet.current = { fix, hereAddress: s.hereAddress, candidates: s.candidates, offline: s.offline };
+          sheet.current = { fix, hereAddress: s.hereAddress, hereName: s.hereName, candidates: s.candidates, offline: s.offline };
           fixIsStale.current = false;
           setState({ name: 'choosing', ...sheet.current, busy: false, error: null });
           return;

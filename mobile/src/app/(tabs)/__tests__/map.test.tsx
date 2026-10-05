@@ -7,11 +7,13 @@ import { answerArrivalOffer, shouldOfferArrival } from '@/features/arrival/regis
 import { useArrivalTap } from '@/features/arrival/useArrivalTap';
 import { useMyHideouts } from '@/features/map/useMyHideouts';
 import { useMyLocation } from '@/features/map/useMyLocation';
+import { checkinNextAt } from '@/features/checkin/checkinApi';
 import { MSG } from '@/features/checkin/copy';
 import { useCheckin } from '@/features/checkin/useCheckin';
 import { COURSE } from '@/features/course/copy';
 import { findKakaoPlace, suggestCourse } from '@/features/course/courseApi';
 import { useCheckinQueue } from '@/features/checkin/useCheckinQueue';
+import { useDwell } from '@/features/checkin/useDwell';
 import { onOnline } from '@/lib/network';
 import { useWishes } from '@/features/wishlist/useWishes';
 import { searchPlaces } from '@/features/wishlist/wishlistApi';
@@ -24,10 +26,12 @@ import MapScreen from '../index';
 let mockBridgeProps: Record<string, any> = {};
 const mockPanTo = jest.fn();
 const mockCatSay = jest.fn();
+const mockFit = jest.fn();
 jest.mock('expo-router', () => ({ router: { navigate: jest.fn(), push: jest.fn() } }));
 jest.mock('@/features/arrival/register', () => ({ shouldOfferArrival: jest.fn(), answerArrivalOffer: jest.fn() }));
 jest.mock('@/features/arrival/useArrivalTap', () => ({ useArrivalTap: jest.fn() }));
 jest.mock('@/features/territory/useMyFog', () => ({ useMyFog: jest.fn() }));
+jest.mock('@/features/territory/useWalkFog', () => ({ useWalkFog: jest.fn() }));
 jest.mock('@/features/territory/useDongAt', () => ({ useDongAt: jest.fn() }));
 jest.mock('@/map/MapBridge', () => {
   const React = require('react');
@@ -35,7 +39,7 @@ jest.mock('@/map/MapBridge', () => {
   return {
     MapBridge: React.forwardRef(function MockMapBridge(props: any, ref: any) {
       mockBridgeProps = props;
-      React.useImperativeHandle(ref, () => ({ panTo: mockPanTo, catSay: mockCatSay }));
+      React.useImperativeHandle(ref, () => ({ panTo: mockPanTo, fit: mockFit, catSay: mockCatSay }));
       return <View testID="map" />;
     }),
   };
@@ -46,6 +50,8 @@ let mockSheetProps: Record<string, any> = {};
 let mockCelebrationProps: Record<string, any> = {};
 jest.mock('@/features/checkin/useCheckin', () => ({ useCheckin: jest.fn() }));
 jest.mock('@/features/checkin/useCheckinQueue', () => ({ useCheckinQueue: jest.fn() }));
+jest.mock('@/features/checkin/useDwell', () => ({ useDwell: jest.fn() }));
+jest.mock('@/features/checkin/checkinApi', () => ({ checkinNextAt: jest.fn() }));
 jest.mock('@/features/wishlist/useWishes', () => ({ useWishes: jest.fn() }));
 jest.mock('@/features/wishlist/wishlistApi', () => ({ searchPlaces: jest.fn() }));
 jest.mock('@/lib/network', () => ({ onOnline: jest.fn(() => () => {}) }));
@@ -62,7 +68,8 @@ jest.mock('@/features/checkin/Celebration', () => {
 
 const T = { box: 2, hut: 5, tower: 10, palace: 20 };
 const cafe = { id: 'a1', name: '테스트 카페', grade: 'box' as const, footprintCount: 3, lat: 37.5, lng: 126.9 };
-const queueState = (over = {}) => ({ pending: 0, celebrations: [], dropped: 0, next: jest.fn(), clearDropped: jest.fn(), refresh: jest.fn(), flush: jest.fn(), droppedMemories: 0, clearDroppedMemories: jest.fn(), ...over });
+const dwellState = (over = {}) => ({ pending: null, remainingS: 0, left: false, clearLeft: jest.fn(), start: jest.fn(() => Promise.resolve()), cancel: jest.fn(), ...over });
+const queueState = (over = {}) => ({ cooled: 0, clearCooled: jest.fn(), pending: 0, celebrations: [], dropped: 0, next: jest.fn(), clearDropped: jest.fn(), refresh: jest.fn(), flush: jest.fn(), droppedMemories: 0, clearDroppedMemories: jest.fn(), ...over });
 const hideoutsState = (over = {}) => ({ hideouts: [cafe], thresholds: T, status: 'ready', retry: jest.fn(), ...over });
 
 beforeEach(() => {
@@ -75,6 +82,8 @@ beforeEach(() => {
   (useDongAt as jest.Mock).mockReturnValue({ dong: null, onIdle: jest.fn(), refresh: jest.fn() });
   (shouldOfferArrival as jest.Mock).mockResolvedValue(false);
   (useCheckinQueue as jest.Mock).mockReturnValue(queueState());
+  (useDwell as jest.Mock).mockReturnValue(dwellState());
+  (checkinNextAt as jest.Mock).mockResolvedValue(null);
   (useWishes as jest.Mock).mockReturnValue({ wishes: [], status: 'ready', refresh: jest.fn(), add: jest.fn(), remove: jest.fn() });
 
 });
@@ -189,6 +198,59 @@ test('후보 고르기 → 시트(발자국 수 전달)', async () => {
   expect(mockSheetProps.footprintsById).toEqual({ a1: 3 });
 });
 
+test('장소를 고르면 바로 남기지 않고 3분 머무름을 시작한다', async () => {
+  const api = checkin({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [{ kind: 'mine', aidutId: 'a1', name: '테스트 카페', grade: 'box', distanceM: 5 }], offline: false, busy: false, error: null });
+  const d = dwellState();
+  (useDwell as jest.Mock).mockReturnValue(d);
+  await render(<MapScreen />);
+  expect(mockSheetProps.dwell).toBe(true);
+  await act(async () => mockSheetProps.onChoose({ kind: 'mine', aidutId: 'a1' }));
+  expect(api.choose).not.toHaveBeenCalled();
+  expect(api.close).toHaveBeenCalled();
+  expect(d.start).toHaveBeenCalledWith({ fix: { lat: 1, lng: 2, accuracy: 3 }, target: { kind: 'mine', aidutId: 'a1' }, name: '테스트 카페' });
+});
+
+test('아까 다녀온 곳을 고르면 3분을 기다리게 하지 않고 바로 알린다', async () => {
+  checkin({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], offline: false, busy: false, error: null });
+  const d = dwellState();
+  (useDwell as jest.Mock).mockReturnValue(d);
+  (checkinNextAt as jest.Mock).mockResolvedValue(new Date(2026, 9, 5, 14, 3).toISOString());
+  await render(<MapScreen />);
+  await act(async () => mockSheetProps.onChoose({ kind: 'mine', aidutId: 'a1' }));
+  expect(checkinNextAt).toHaveBeenCalledWith({ lat: 1, lng: 2, accuracy: 3 }, { kind: 'mine', aidutId: 'a1' });
+  expect(d.start).not.toHaveBeenCalled();
+  expect(screen.getByText('여긴 아까 다녀왔다냥. 14시 3분부터 다시 남길 수 있다냥.')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '확인' }));
+  expect(screen.queryByText(/아까 다녀왔다냥/)).toBeNull();
+});
+
+test('다녀온 곳인지 못 물어봤으면(끊김) 그냥 머무름을 시작한다', async () => {
+  checkin({ name: 'choosing', fix: { lat: 1, lng: 2, accuracy: 3 }, hereAddress: null, candidates: [], offline: false, busy: false, error: null });
+  const d = dwellState();
+  (useDwell as jest.Mock).mockReturnValue(d);
+  (checkinNextAt as jest.Mock).mockRejectedValue(new Error('offline'));
+  await render(<MapScreen />);
+  await act(async () => mockSheetProps.onChoose({ kind: 'mine', aidutId: 'a1' }));
+  expect(d.start).toHaveBeenCalled();
+});
+
+test('머무는 중엔 남은 시간과 그만두기, 못 채웠으면 알림 창', async () => {
+  const d = dwellState({ pending: { name: '테스트 카페', until: 0 }, remainingS: 125 });
+  (useDwell as jest.Mock).mockReturnValue(d);
+  const { rerender } = await render(<MapScreen />);
+  expect(screen.getByText('테스트 카페에 머무는 중이다냥')).toBeTruthy();
+  expect(screen.getByText('2분 5초 뒤에도 여기 있으면 발자국이 남는다냥.')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '발자국 남기기' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '그만두기' }));
+  expect(d.cancel).toHaveBeenCalled();
+  const gone = dwellState({ left: true });
+  (useDwell as jest.Mock).mockReturnValue(gone);
+  await rerender(<MapScreen />);
+  expect(screen.getByText('3분 동안 머물지 않아서 발자국을 남기지 못했다냥.')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '확인' }));
+  expect(gone.clearLeft).toHaveBeenCalled();
+});
+
 test('축하 닫기 → 새로고침(마커가 자란 모습으로)', async () => {
   const retry = jest.fn();
   (useMyHideouts as jest.Mock).mockReturnValue(hideoutsState({ retry }));
@@ -246,14 +308,15 @@ test('실패 안내 + 다시 시도, 권한 문제면 설정 열기', async () =
 });
 
 
-test('카드가 열린 채 발자국 남기기를 누르면 카드를 닫아 안내가 가려지지 않게', async () => {
+test('카드가 떠 있는 동안엔 발자국 남기기 버튼이 없고, 닫으면 다시 나온다', async () => {
   const api = checkin({ name: 'idle' });
   await render(<MapScreen />);
   await act(async () => mockBridgeProps.onHideoutTap('a1'));
   expect(screen.getByText('테스트 카페')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '발자국 남기기' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기' }));
   expect(api.start).toHaveBeenCalled();
-  expect(screen.queryByText('테스트 카페')).toBeNull();
 });
 
 test('위치 확인 중에도 닫을 수 있다', async () => {
@@ -396,7 +459,7 @@ test('거절된 사진 안내 + 닫기', async () => {
   expect(q.clearDroppedMemories).toHaveBeenCalled();
 });
 
-test('[⭐ 찜] → 찜 화면, 달성 안 한 찜만 핀, 핀 카드에서 찜 해제', async () => {
+test('[⭐ 찜] → 지도 위 핀 + 아래 목록, 달성 안 한 찜만 핀, 고르면 그곳 카드에서 찜 해제', async () => {
   const remove = jest.fn(() => Promise.resolve());
   (useWishes as jest.Mock).mockReturnValue({
     wishes: [
@@ -406,14 +469,54 @@ test('[⭐ 찜] → 찜 화면, 달성 안 한 찜만 핀, 핀 카드에서 찜 
     status: 'ready', refresh: jest.fn(), add: jest.fn(), remove,
   });
   await render(<MapScreen />);
-  expect(mockBridgeProps.wishes).toEqual([{ placeId: '1', lat: 37.5, lng: 127 }]);
+  expect(mockBridgeProps.wishes).toEqual([]); // 별을 켜기 전엔 핀이 없다
+  expect(screen.queryByText('★')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: '찜한 곳' }));
-  expect(router.push).toHaveBeenCalledWith('/wishlist');
-  await act(async () => mockBridgeProps.onWishTap('1'));
+  expect(mockBridgeProps.wishes).toEqual([{ placeId: '1', lat: 37.5, lng: 127 }]);
+  expect(screen.getByText('★')).toBeTruthy(); // 핀이 떠 있는 동안 별이 채워진다
+  expect(router.push).not.toHaveBeenCalled();
+  expect(mockPanTo).toHaveBeenLastCalledWith(37.5, 127, 3); // 핀이 하나면 그곳으로
+  expect(screen.getByText('가 본 곳')).toBeTruthy();
+  expect(screen.getByText('달성 ✓')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '찜한 카페' }));
   expect(screen.getByText('찜한 카페')).toBeTruthy();
   expect(screen.getByText('고양이가 찜한 곳')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '찜 해제' }));
   expect(remove).toHaveBeenCalledWith('1');
+  await fireEvent.press(screen.getByRole('button', { name: '찜한 곳' })); // 다시 누르면 핀을 거둔다
+  expect(mockBridgeProps.wishes).toEqual([]);
+  expect(screen.queryByText('★')).toBeNull();
+});
+
+test('발자국 남기기 창은 끌 수 있고, 오른쪽 버튼으로 다시 연다', async () => {
+  await render(<MapScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기 창 닫기' }));
+  expect(screen.queryByRole('button', { name: '발자국 남기기' })).toBeNull();
+  await act(async () => mockBridgeProps.onHideoutTap('a1')); // 보여줄 카드가 생기면 그동안은 다시 나온다
+  expect(screen.getByText('테스트 카페')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  await fireEvent.press(screen.getByRole('button', { name: '발자국 남기기 창 열기' }));
+  expect(screen.getByRole('button', { name: '발자국 남기기' })).toBeTruthy();
+});
+
+test('찜한 곳이 없으면 없다고 알리고 장소 추천으로 넘긴다', async () => {
+  (suggestCourse as jest.Mock).mockResolvedValue({ stops: [], route: null, routeLimited: false, waitS: 0 });
+  await render(<MapScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: '찜한 곳' }));
+  expect(screen.getByText('아직 저장한 장소가 없다냥. 장소를 찾아볼까냥?')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '장소 추천받기' }));
+  expect(suggestCourse).toHaveBeenCalledWith(37.5, 126.9);
+  expect(screen.queryByText('아직 저장한 장소가 없다냥. 장소를 찾아볼까냥?')).toBeNull();
+});
+
+test('장소 추천 알림 창은 확인으로 끈다', async () => {
+  (useMyLocation as jest.Mock).mockReturnValue({ location: null, permission: 'denied' });
+  await render(<MapScreen />);
+  await fireEvent.press(screen.getByRole('button', { name: COURSE.button }));
+  expect(screen.getByText(COURSE.noLocation)).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: '설정 열기' })).toHaveLength(2); // 위 배너 + 알림 창
+  await fireEvent.press(screen.getByRole('button', { name: '확인' }));
+  expect(screen.queryByText(COURSE.noLocation)).toBeNull();
 });
 
 test('공유가 기다리고 있으면 찜 화면으로 넘기고 비운다', async () => {
@@ -435,9 +538,11 @@ test('산책 → 현재 위치로 코스를 받아 카드와 지도에', async (
   expect(suggestCourse).toHaveBeenCalledWith(37.5, 126.9);
   expect(await screen.findByText('고양이가 가보고 싶어하는 곳')).toBeTruthy();
   expect(mockBridgeProps.course).toEqual({ stops: [{ lat: 37.501, lng: 126.9 }], route: [[37.5, 126.9], [37.501, 126.9]] });
+  expect(screen.queryByRole('button', { name: '발자국 남기기' })).toBeNull(); // 장소 추천 창에는 발자국 버튼이 없다
   await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
   expect(mockBridgeProps.course).toBeNull();
   expect(screen.queryByText('고양이가 가보고 싶어하는 곳')).toBeNull();
+  expect(screen.getByRole('button', { name: '발자국 남기기' })).toBeTruthy();
 });
 
 test('산책: 찾는 동안 버튼 비활성, 닫은 뒤 늦게 온 응답은 버린다', async () => {

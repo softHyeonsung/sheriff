@@ -88,20 +88,21 @@ select is(
   (select array_agg(place_id || ':' || name || ':' || visits) from public.my_places((select id from public.aidut where kakao_place_id = '111'))),
   array['222:1호점 카페:2', '111:1층 편의점:2'], 'my_places: 장소별 횟수, 같으면 최근 순, 이름은 최근 것');
 
--- 5b) 주소를 못 받은 "새로 만들기"(오프라인 등)가 기존 아지트로 합쳐지면 그 아지트의 원래 장소로 센다
+-- 5b) "새로 만들기"(건물 이름)가 기존 아지트로 합쳐지면, 그 건물 이름의 장소로 따로 센다
 reset role;
 select pg_temp.age_checkins();
 set local role authenticated;
 select is(
-  (public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","roadAddress":null}') ->> 'footprintCount'),
-  '5', '주소 없는 새로 만들기가 기존 아지트로 합쳐진다');
+  (public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","roadAddress":null,"name":"성수 빌딩"}') ->> 'footprintCount'),
+  '5', '새로 만들기가 기존 아지트로 합쳐진다');
 select is(
-  (select array_agg(place_id || ':' || name || ':' || visits) from public.my_places((select id from public.aidut where kakao_place_id = '111'))),
-  array['111:1층 편의점:3', '222:1호점 카페:2'], '같은 이름이 두 줄로 갈라지지 않는다');
+  (select array_agg(x order by x) from (select coalesce(place_id, '없음') || ':' || name || ':' || visits as x
+     from public.my_places((select id from public.aidut where kakao_place_id = '111'))) t),
+  array['111:1층 편의점:2', '222:1호점 카페:2', '없음:성수 빌딩:1'], '건물 이름으로 남긴 발자국은 그 이름의 장소로');
 
 -- 6) 새로 만들기 → 번호 없이 주소 이름
 select is(
-  (public.submit_checkin(37.6, 126.94, 10, '{"kind":"new","roadAddress":"서울 새길 1"}') ->> 'footprintCount'),
+  (public.submit_checkin(37.6, 126.94, 10, '{"kind":"new","roadAddress":"서울 새길 1","name":"서울 새길 1"}') ->> 'footprintCount'),
   '1', '새로 만들기');
 select is(
   (select array_agg(coalesce(place_id, '없음') || ':' || name || ':' || visits)

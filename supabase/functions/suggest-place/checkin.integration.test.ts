@@ -33,7 +33,7 @@ async function signedInClient() {
   return { db, cleanup };
 }
 
-const fakeKakao = { kakaoNearby: () => Promise.resolve([]), kakaoAddress: () => Promise.resolve('서울 통합로 1') };
+const fakeKakao = { kakaoNearby: () => Promise.resolve([]), kakaoAddress: () => Promise.resolve({ address: '서울 통합로 1', name: null }) };
 const here = { lat: 37.51, lng: 126.95, accuracy: 15 };
 
 Deno.test({
@@ -47,11 +47,11 @@ Deno.test({
       const deps = { ...liveDeps(db), ...fakeKakao };
 
       const first = await suggestPlace(here, deps);
-      assertEquals(first, { status: 'ok', hereAddress: '서울 통합로 1', candidates: [] });
+      assertEquals(first, { status: 'ok', hereAddress: '서울 통합로 1', hereName: null, candidates: [] });
 
       const { data: stamped, error } = await db.rpc('submit_checkin', {
         p_lat: here.lat, p_lng: here.lng, p_accuracy: here.accuracy,
-        p_target: { kind: 'new', roadAddress: first.status === 'ok' ? first.hereAddress : null },
+        p_target: { kind: 'new', roadAddress: first.status === 'ok' ? first.hereAddress : null, name: '통합 빌딩' },
       });
       if (error) throw error;
       assertEquals({ ...stamped, aidutId: undefined }, {

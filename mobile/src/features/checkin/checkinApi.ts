@@ -22,11 +22,12 @@ export type KakaoCandidate = {
   distanceM: number;
 };
 export type Candidate = MineCandidate | KakaoCandidate;
-export type SuggestResult = { status: 'weak_gps' } | { status: 'ok'; hereAddress: string | null; candidates: Candidate[] };
+// hereName: 지금 서 있는 건물의 이름(모르면 없음). 새로 만드는 아지트의 이름이 된다.
+export type SuggestResult = { status: 'weak_gps' } | { status: 'ok'; hereAddress: string | null; hereName?: string | null; candidates: Candidate[] };
 export type CheckinTarget =
   | { kind: 'mine'; aidutId: string }
   | { kind: 'kakao'; placeId: string; name: string; lat: number; lng: number; roadAddress: string | null }
-  | { kind: 'new'; roadAddress: string | null };
+  | { kind: 'new'; roadAddress: string | null; name: string }; // name: 그 자리 건물의 이름(이름 없는 자리엔 만들지 않는다)
 export type CheckinResult = {
   aidutId: string;
   name: string;
@@ -65,6 +66,13 @@ export async function suggestPlace(fix: Fix): Promise<SuggestResult> {
     throw new CheckinError('unknown');
   }
   return data as SuggestResult;
+}
+
+// 아까 다녀온 곳이면 다시 남길 수 있는 시각, 지금 남길 수 있으면 null. 3분을 기다리게 하기 전에 묻는다.
+export async function checkinNextAt(fix: Fix, target: CheckinTarget): Promise<string | null> {
+  const { data, error } = await supabase.rpc('checkin_next_at', { p_lat: fix.lat, p_lng: fix.lng, p_target: target });
+  if (error) throw error;
+  return typeof data === 'string' ? data : null;
 }
 
 export async function submitCheckin(fix: Fix, target: CheckinTarget): Promise<CheckinResult> {

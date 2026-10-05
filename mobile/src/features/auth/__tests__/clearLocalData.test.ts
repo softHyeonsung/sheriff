@@ -1,5 +1,6 @@
 // mobile/src/features/auth/__tests__/clearLocalData.test.ts
 import { clearArrivalData } from '@/features/arrival/register';
+import { cancelDwell } from '@/features/checkin/dwell';
 import { clearQueue } from '@/features/checkin/queue';
 import { clearMapCache } from '@/features/map/mapCache';
 import { clearMemoryQueue } from '@/features/memories/memoryQueue';
@@ -8,6 +9,7 @@ import { clearLocalData } from '../clearLocalData';
 
 jest.mock('@/features/arrival/register', () => ({ clearArrivalData: jest.fn() }));
 jest.mock('@/features/checkin/queue', () => ({ clearQueue: jest.fn() }));
+jest.mock('@/features/checkin/dwell', () => ({ cancelDwell: jest.fn() }));
 jest.mock('@/features/map/mapCache', () => ({ clearMapCache: jest.fn() }));
 jest.mock('@/features/memories/memoryQueue', () => ({ clearMemoryQueue: jest.fn() }));
 jest.mock('@/features/memories/photo', () => ({ clearLocalPhotos: jest.fn() }));
@@ -21,6 +23,7 @@ test('로그아웃하면 이 폰에 남긴 내 것(대기열·지도 저장본·
   await clearLocalData();
   expect(clearArrivalData).toHaveBeenCalled();
   expect(clearQueue).toHaveBeenCalled();
+  expect(cancelDwell).toHaveBeenCalled();
   expect(clearMapCache).toHaveBeenCalled();
   expect(clearMemoryQueue).toHaveBeenCalled();
   expect(clearLocalPhotos).toHaveBeenCalled();

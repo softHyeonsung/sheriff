@@ -24,7 +24,11 @@ const CSS = [
   'html,body,#map{margin:0;padding:0;width:100%;height:100%}',
   '.me{width:16px;height:16px;border-radius:50%;background:#5BAFE6;border:3px solid #FFFFFF;box-shadow:0 0 0 6px rgba(91,175,230,0.25)}',
   '.ground{display:block;pointer-events:none;transition:opacity .25s ease-out}',
-  '.cat{position:relative;width:48px;height:48px;transition:opacity .25s ease-out}.cat img{width:48px;height:48px;display:block}',
+  '.cat{position:relative;width:48px;height:48px;transition:opacity .25s ease-out}.cat img{width:48px;height:48px;display:block;transform-origin:50% 100%}',
+  // 걷는 그림은 한 장뿐이라 움직임으로 걸음을 만든다: 좌우 뒤집기는 .catb(휙 돌아섬), 총총 걸음은 그 안의 그림(.trot).
+  '.catb{width:48px;height:48px;transition:transform .18s ease-in-out}',
+  '.cat img.trot{animation:trot .42s ease-in-out infinite}',
+  '@keyframes trot{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-3px) rotate(-3deg)}70%{transform:translateY(-1px) rotate(2deg)}}',
   '.bubble{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#FFFFFF;color:#333B31;border-radius:12px;padding:6px 10px;font:14px/1.3 sans-serif;box-shadow:0 2px 6px rgba(51,59,49,0.2);display:none}',
   // 아지트: 멀리선 그림(.spr), 가까이선 이름 달린 핀(.pin)
   '.spr{display:block;filter:drop-shadow(0 3px 4px rgba(51,59,49,0.25))}',
@@ -57,7 +61,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
   window.onerror = function (msg) { post({ type: 'error', reason: String(msg) }); };
   var map = null, me = null, meAt = null;
   var hideoutItems = [], wishItems = [], courseItems = [], focusPin = null;
-  var cells = [], cat = null, catEl = null, catImg = null, bubble = null, catAt = null, catCell = null, bubbleTimer = null;
+  var cells = [], cat = null, catEl = null, catImg = null, catFlip = null, bubble = null, catAt = null, catCell = null, bubbleTimer = null;
   var pose = 'sit', poseTimer = null, lieTimer = null, happyUntil = 0;
   var ground = null, gcv = null, gctx = null, fcv = null, fctx = null, tiles = {}, gW = 0, gH = 0, groundQueued = false;
 
@@ -87,16 +91,10 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
   function initGround() {
     gcv = document.createElement('canvas');
     if (!gcv.getContext) return;
-    var box = document.getElementById('map');
-    // 화면보다 넉넉히: 끄는 동안 가장자리로 맨 지도가 비치지 않게.
-    gW = Math.ceil(box.clientWidth * 1.5);
-    gH = Math.ceil(box.clientHeight * 1.5);
-    gcv.width = gW; gcv.height = gH; gcv.className = 'ground';
+    gcv.className = 'ground';
     gctx = gcv.getContext('2d');
     fcv = document.createElement('canvas');
-    fcv.width = gW; fcv.height = gH;
     fctx = fcv.getContext('2d');
-    ground = new kakao.maps.CustomOverlay({ content: gcv, position: map.getCenter(), map: map, xAnchor: 0.5, yAnchor: 0.5, zIndex: 1 });
     ['meadow', 'fog'].forEach(function (k) {
       var im = document.createElement('img');
       im.onload = function () { tiles[k] = im; drawGround(); };
@@ -111,6 +109,16 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
   function drawGround() {
     if (!gctx || !tiles.meadow || !tiles.fog) return;
     var box = document.getElementById('map');
+    // 화면보다 넉넉히: 끄는 동안 가장자리로 맨 지도가 비치지 않게. 크기는 그릴 때마다 맞춘다 —
+    // 페이지가 화면 크기가 잡히기 전(0)에 떴을 수 있고, 크기 0인 캔버스는 그리다 오류가 난다.
+    var w = Math.ceil(box.clientWidth * 1.5), h = Math.ceil(box.clientHeight * 1.5);
+    if (!w || !h) return;
+    if (w !== gW || h !== gH) {
+      gW = gcv.width = fcv.width = w; gH = gcv.height = fcv.height = h;
+      // 얹는 자리(가운데 맞춤)는 얹을 때의 크기로 정해진다: 크기가 바뀌면 다시 얹는다.
+      if (ground) ground.setMap(null);
+      ground = new kakao.maps.CustomOverlay({ content: gcv, position: map.getCenter(), map: map, xAnchor: 0.5, yAnchor: 0.5, zIndex: 1 });
+    }
     var dx = (gW - box.clientWidth) / 2, dy = (gH - box.clientHeight) / 2; // 캔버스가 화면보다 넘치는 만큼
     var proj = map.getProjection();
     ground.setPosition(map.getCenter());
@@ -213,7 +221,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
     queueGround();
     if (!list.length && cat) {
       cat.setMap(null); // no cleared ground, no cat — and the wander loop stops on !cat
-      cat = catEl = catImg = bubble = catCell = null;
+      cat = catEl = catImg = catFlip = bubble = catCell = null;
     }
     showCat();
   }
@@ -237,17 +245,31 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
     var near = neighbours(catCell);
     var next = near.length ? near[Math.floor(Math.random() * near.length)] : catCell;
     var to = randomIn(next);
-    var from = catAt, t0 = Date.now(), dur = 4000;
-    catImg.style.transform = to.lng < from.lng ? 'scaleX(-1)' : '';
+    var from = catAt;
+    // 걸음 빠르기는 늘 같게(먼 곳은 오래 걸린다). 위도 1도 ≈ 111km, 경도 1도 ≈ 88km(서울).
+    var meters = Math.sqrt(Math.pow((to.lat - from.lat) * 111000, 2) + Math.pow((to.lng - from.lng) * 88000, 2));
+    var dur = Math.max(1500, Math.min(7000, meters * 45));
+    catFlip.style.transform = to.lng < from.lng ? 'scaleX(-1)' : '';
     clearTimeout(lieTimer);
-    setPose('walk');
-    (function step() {
+    setPose('look'); // 갈 곳을 한 번 쳐다보고 나서 걷는다
+    setTimeout(function () {
       if (!cat) return;
-      var k = Math.min(1, (Date.now() - t0) / dur);
-      catAt = { lat: from.lat + (to.lat - from.lat) * k, lng: from.lng + (to.lng - from.lng) * k };
-      cat.setPosition(latLng(catAt));
-      if (k < 1) requestAnimationFrame(step);
-      else {
+      var t0 = Date.now();
+      setPose('walk');
+      catImg.classList.add('trot');
+      (function step() {
+        if (!cat) return;
+        var k = Math.min(1, (Date.now() - t0) / dur);
+        var e = k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k); // 천천히 출발해서 천천히 멈춘다
+        catAt = { lat: from.lat + (to.lat - from.lat) * e, lng: from.lng + (to.lng - from.lng) * e };
+        cat.setPosition(latLng(catAt));
+        if (k < 1) return requestAnimationFrame(step);
+        catImg.classList.remove('trot');
+        arrive();
+      })();
+    }, 450);
+    function arrive() {
+      {
         catCell = next;
         setPose('sit');
         // 가끔은 오래 쉰다: 20초 앉아 있으면 엎드린다.
@@ -255,7 +277,7 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
         if (rest > 20000) lieTimer = setTimeout(function () { setPose('lie'); }, 20000);
         setTimeout(wander, rest);
       }
-    })();
+    }
   }
 
   // 자세 바꾸기. 기뻐 뛰는 2초 동안은 다른 자세가 덮어쓰지 않는다(끝나면 원래 자세로).
@@ -289,8 +311,11 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
     catImg = document.createElement('img');
     pose = 'sit';
     catImg.src = cfg.cat.sit;
+    catFlip = document.createElement('div');
+    catFlip.className = 'catb';
+    catFlip.appendChild(catImg);
     catEl.appendChild(bubble);
-    catEl.appendChild(catImg);
+    catEl.appendChild(catFlip);
     catEl.addEventListener('click', function () { cheer(); post({ type: 'catTap' }); });
     cat = new kakao.maps.CustomOverlay({ content: catEl, position: latLng(catAt), map: map, yAnchor: 1, zIndex: 5, clickable: true });
     applyLod(); // 고양이는 수채 세계의 주민: 가까이 볼 땐 같이 물러난다
@@ -339,6 +364,14 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
     map.panTo(latLng(m));
   }
 
+  // 점들이 모두 보이게(찜한 곳 모아 보기). 아래는 목록 판이 가린다.
+  function fit(points) {
+    if (!points.length) return;
+    var bounds = new kakao.maps.LatLngBounds();
+    points.forEach(function (p) { bounds.extend(latLng(p)); });
+    map.setBounds(bounds, 120, 40, 380, 40);
+  }
+
   function init() {
     map = new kakao.maps.Map(document.getElementById('map'), { center: latLng(cfg.center), level: START });
     initGround();
@@ -348,12 +381,15 @@ export function buildMapHtml({ jsKey, markers, center, cat, ground }: Opts): str
       queueGround();
     });
     kakao.maps.event.addListener(map, 'center_changed', queueGround);
+    // 화면 크기가 (뒤늦게) 잡히거나 바뀌면 지도와 바탕을 다시 맞춘다.
+    window.addEventListener('resize', function () { map.relayout(); queueGround(); });
     kakao.maps.event.addListener(map, 'zoom_changed', function () { applyLod(); queueGround(); });
     window.__onAppMessage = function (m) {
       if (m.type === 'setHideouts') setHideouts(m.hideouts);
       else if (m.type === 'setWishes') setWishes(m.wishes);
       else if (m.type === 'setMyLocation') setMyLocation(m);
       else if (m.type === 'panTo') panTo(m);
+      else if (m.type === 'fit') fit(m.points);
       else if (m.type === 'setFog') setFog(m.cells);
       else if (m.type === 'catSay') catSay(m.text);
       else if (m.type === 'setCat') { cfg.cat = m.poses; setPose(pose); }

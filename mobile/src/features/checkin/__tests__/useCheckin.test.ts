@@ -38,8 +38,8 @@ test('시작 → 후보 고르기 → 발자국 → 축하', async () => {
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
   expect(h.current.state).toEqual({ name: 'choosing', fix, hereAddress: '서울 1', candidates: [cand], offline: false, busy: false, error: null });
-  await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1' }));
-  expect(submit).toHaveBeenCalledWith(fix, { kind: 'new', roadAddress: '서울 1' });
+  await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1', name: '새 곳' }));
+  expect(submit).toHaveBeenCalledWith(fix, { kind: 'new', roadAddress: '서울 1', name: '새 곳' });
   expect(h.current.state).toEqual({ name: 'celebrating', result, fix });
   await act(async () => h.current.close());
   expect(h.current.state).toEqual({ name: 'idle' });
@@ -96,8 +96,8 @@ test('진행 중 두 번째 요청 무시(연타)', async () => {
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
   await act(async () => {
-    void h.current.choose({ kind: 'new', roadAddress: null });
-    void h.current.choose({ kind: 'new', roadAddress: null });
+    void h.current.choose({ kind: 'new', roadAddress: null, name: '새 곳' });
+    void h.current.choose({ kind: 'new', roadAddress: null, name: '새 곳' });
   });
   expect(h.current.state).toMatchObject({ name: 'choosing', busy: true });
   await act(async () => release(result));
@@ -162,7 +162,7 @@ test('발자국을 남기면 그곳 도착 알림 예약을 취소한다(실패�
   (cancelArrivalAlert as jest.Mock).mockRejectedValueOnce(new Error('nope'));
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
-  await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1' }));
+  await act(async () => h.current.choose({ kind: 'new', roadAddress: '서울 1', name: '새 곳' }));
   expect(cancelArrivalAlert).toHaveBeenCalledWith('a1');
   expect(h.current.state).toEqual({ name: 'celebrating', result, fix });
 });
@@ -180,12 +180,12 @@ test('오프라인 후보에서 고르면 대기열에 챙기고 queued(서버�
   expect(h.current.state).toEqual({ name: 'queued' });
 });
 
-test('오프라인 새로 만들기는 "새 아지트"로 챙긴다', async () => {
+test('새로 만들기는 그 건물 이름으로 챙긴다', async () => {
   suggest.mockResolvedValue({ status: 'ok', hereAddress: null, candidates: [], offline: true });
   const { result: h } = await renderHook(() => useCheckin());
   await act(async () => h.current.start());
-  await act(async () => h.current.choose({ kind: 'new', roadAddress: null }));
-  expect(enqueueCheckin).toHaveBeenCalledWith({ fix, target: { kind: 'new', roadAddress: null }, name: '새 아지트' });
+  await act(async () => h.current.choose({ kind: 'new', roadAddress: null, name: '새 곳' }));
+  expect(enqueueCheckin).toHaveBeenCalledWith({ fix, target: { kind: 'new', roadAddress: null, name: '새 곳' }, name: '새 곳' });
 });
 
 test('온라인 제출이 연결 실패면 고른 발자국을 챙긴다', async () => {

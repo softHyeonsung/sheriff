@@ -18,17 +18,17 @@ select set_config('request.jwt.claims',
 
 -- 새로 만들기
 select is(
-  public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","roadAddress":"서울 테스트로 1"}') - 'aidutId' - 'dong' - 'wishAchieved',
+  public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","roadAddress":"서울 테스트로 1","name":"서울 테스트로 1"}') - 'aidutId' - 'dong' - 'wishAchieved',
   '{"name":"서울 테스트로 1","footprintCount":1,"grade":"paw","gradeChanged":false,"newCellsCleared":1}'::jsonb,
   '새로 만들기: 발자국 1, paw, 안개 1칸 (B의 같은 자리 아지트와 합쳐지지 않음)');
 
 -- 연타: 같은 자리 새로 만들기 → cooldown, 중복 없음
-select throws_ok($$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"new"}')$$,
+select throws_ok($$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","name":"이름 없는 골목"}')$$,
   'P0001', 'cooldown', '6시간 안에 같은 자리 → cooldown');
 select is((select count(*)::int from public.aidut), 1, '아지트 중복 없음');
 
 -- 다른 아지트는 쿨다운과 무관 + 주소 없으면 이름 없는 골목
-select is(public.submit_checkin(37.5, 126.9434, 10, '{"kind":"new"}') ->> 'name', '이름 없는 골목',
+select is(public.submit_checkin(37.5, 126.9434, 10, '{"kind":"new","name":"이름 없는 골목"}') ->> 'name', '이름 없는 골목',
   '300m 떨어진 다른 아지트는 바로 찍힌다');
 
 -- 6시간 지난 것으로 되돌리고 기존 아지트 키우기
@@ -56,12 +56,12 @@ select is((select count(*)::int from public.aidut), 2, '합쳐졌으니 아지�
 select throws_ok(
   $$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"kakao","placeId":"902","name":"먼 곳","lat":37.5018,"lng":126.94}')$$,
   'P0001', 'too_far', '150m 밖 후보(조작 포함) → too_far');
-select throws_ok($$select public.submit_checkin(37.5, 126.94, 200, '{"kind":"new"}')$$,
+select throws_ok($$select public.submit_checkin(37.5, 126.94, 200, '{"kind":"new","name":"이름 없는 골목"}')$$,
   'P0001', 'weak_gps', '정확도 200m → weak_gps');
 select throws_ok(
   $$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"mine","aidutId":"b1b1b1b1-0000-0000-0000-000000000001"}')$$,
   'P0001', 'not_yours', '남의 아지트 → not_yours');
-select throws_ok($$select public.submit_checkin(95, 126.94, 10, '{"kind":"new"}')$$,
+select throws_ok($$select public.submit_checkin(95, 126.94, 10, '{"kind":"new","name":"이름 없는 골목"}')$$,
   'P0001', 'invalid_coord', '위도 범위 밖 → invalid_coord');
 select throws_ok($$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"teleport"}')$$,
   'P0001', 'invalid_target', '알 수 없는 target → invalid_target');
@@ -78,7 +78,7 @@ select is((select count(*)::int from public.fog_cells where user_id = 'bbbbbbbb-
 
 -- 로그인 없음
 select set_config('request.jwt.claims', json_build_object('role', 'authenticated')::text, true);
-select throws_ok($$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"new"}')$$,
+select throws_ok($$select public.submit_checkin(37.5, 126.94, 10, '{"kind":"new","name":"이름 없는 골목"}')$$,
   'P0001', 'not_authenticated', 'sub 없는 요청 → not_authenticated');
 
 select * from finish();

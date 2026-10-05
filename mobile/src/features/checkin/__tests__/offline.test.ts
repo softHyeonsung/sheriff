@@ -17,11 +17,11 @@ const at = (id: string, dLatM: number, grade = 'box') => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [at('far', 200), at('near', 20, 'hut'), at('edge', 149)], thresholds: null, fog: null });
+  (readMapCache as jest.Mock).mockResolvedValue({ hideouts: [at('far', 200), at('near', 20, 'hut'), at('edge', 49)], thresholds: null, fog: null });
 });
 
-test('150m 안 내 아지트만, 가까운 순', () => {
-  const c = offlineCandidates(fix, [at('far', 200), at('near', 20, 'hut'), at('edge', 149)] as never);
+test('50m 안 내 아지트만, 가까운 순', () => {
+  const c = offlineCandidates(fix, [at('far', 200), at('near', 20, 'hut'), at('edge', 49)] as never);
   expect(c.map((x) => x.aidutId)).toEqual(['near', 'edge']);
   expect(c[0]).toMatchObject({ kind: 'mine', name: 'near', grade: 'hut' });
   expect(c[0].distanceM).toBeGreaterThan(19);

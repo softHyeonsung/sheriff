@@ -43,22 +43,22 @@ test('suggestPlace 실패는 unknown', async () => {
 test('submitCheckin 성공은 결과 그대로', async () => {
   const result = { aidutId: 'a1', name: '카페', footprintCount: 2, grade: 'box', gradeChanged: true, newCellsCleared: 0 };
   rpc.mockResolvedValue({ data: result, error: null });
-  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null })).resolves.toEqual(result);
+  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null, name: '새 곳' })).resolves.toEqual(result);
   expect(rpc).toHaveBeenCalledWith('submit_checkin', {
-    p_lat: 37.5, p_lng: 126.9, p_accuracy: 12, p_target: { kind: 'new', roadAddress: null },
+    p_lat: 37.5, p_lng: 126.9, p_accuracy: 12, p_target: { kind: 'new', roadAddress: null, name: '새 곳' },
   });
 });
 
 test('서버 거절 → 코드, 쿨다운은 다음 시각까지', async () => {
   rpc.mockResolvedValueOnce({ data: null, error: { message: 'too_far', details: null } });
-  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null })).rejects.toMatchObject({ code: 'too_far' });
+  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null, name: '새 곳' })).rejects.toMatchObject({ code: 'too_far' });
   rpc.mockResolvedValueOnce({ data: null, error: { message: 'cooldown', details: '2026-09-28T09:05:00Z' } });
-  const e = await submitCheckin(fix, { kind: 'new', roadAddress: null }).catch((x) => x);
+  const e = await submitCheckin(fix, { kind: 'new', roadAddress: null, name: '새 곳' }).catch((x) => x);
   expect(e).toBeInstanceOf(CheckinError);
   expect(e).toMatchObject({ code: 'cooldown', nextAt: '2026-09-28T09:05:00Z' });
   jest.spyOn(console, 'error').mockImplementation(() => {});
   rpc.mockResolvedValueOnce({ data: null, error: { message: 'relation does not exist', details: null } });
-  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null })).rejects.toMatchObject({ code: 'unknown' });
+  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null, name: '새 곳' })).rejects.toMatchObject({ code: 'unknown' });
 });
 
 test('후보 → target', () => {
@@ -72,7 +72,7 @@ test('연결이 안 되면 offline', async () => {
   invoke.mockResolvedValue({ data: null, error: { name: 'FunctionsFetchError', message: 'Failed to send a request to the Edge Function' } });
   await expect(suggestPlace(fix)).rejects.toMatchObject({ code: 'offline' });
   rpc.mockResolvedValue({ data: null, error: { message: 'TypeError: Network request failed', code: '' } });
-  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null })).rejects.toMatchObject({ code: 'offline' });
+  await expect(submitCheckin(fix, { kind: 'new', roadAddress: null, name: '새 곳' })).rejects.toMatchObject({ code: 'offline' });
 });
 
 test('새 위치: 아직 묻지 않은 권한은 거절로 치지 않고 지금 묻는다', async () => {
